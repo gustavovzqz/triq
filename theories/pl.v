@@ -49,7 +49,7 @@ Notation "[ ] s " := (instr  s)
   (at level 0, s custom com at level 200) : com_scope.
 
 
-Notation "'[<' i1 ; .. ; iN '>]'" := (cons i1 .. (cons iN nil) ..)
+Notation "'[ i1 ; .. ; iN ]'" := (cons i1 .. (cons iN nil) ..)
   (at level 0, i1 custom com, iN custom com) : com_scope.
 
 Open Scope com_scope.
