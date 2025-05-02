@@ -10,7 +10,7 @@ Inductive variable : Type :=
   | Y : variable.
 
 Inductive label : Type :=
-  | L : nat -> label.
+  | A : nat -> label.
 
 Inductive statement : Type :=
   | INCR : variable -> statement
@@ -23,7 +23,7 @@ Inductive instruction : Type :=
 
 Definition program := list instruction.
 
-(** Notacoes adaptadas de: https://softwarefoundations.cis.upenn.edu/lf-current/Imp.html *)
+(** Notações adaptadas de: https://softwarefoundations.cis.upenn.edu/lf-current/Imp.html *)
 
 Declare Custom Entry com.
 Declare Scope com_scope.
@@ -60,14 +60,14 @@ Open Scope com_scope.
 
 Definition x := X 0.
 Definition x1 := X 1.
-Definition l := L 0.
+Definition l := A 0.
 Definition y := Y.
 
 Check (<{x <- + 1}>).
 
 
-Definition prg :=
-  <{[ [l] x <- + 1;
+Definition prg : program :=
+  <{[ [l] x <-  + 1;
       [ ] x1 <- - 1;
       [ ] IF x GOTO l ]}>.
 
