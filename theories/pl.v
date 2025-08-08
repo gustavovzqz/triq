@@ -67,7 +67,7 @@ Check (<{x <- + 1}>).
 
 
 Definition prg : program :=
-  <{[ [l] x <-  + 1;
+  <{[ [l] x  <- + 1;
       [ ] x1 <- - 1;
       [ ] IF x GOTO l ]}>.
 
