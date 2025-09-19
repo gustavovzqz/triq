@@ -10,6 +10,7 @@ Inductive variable : Type :=
   | X : nat -> variable  (* input  *)
   | Z : nat -> variable  (* local  *)
   | Y : variable.        (* output *)
+
 Inductive label : Type :=
   | A : nat -> label.
 
@@ -120,6 +121,7 @@ Definition prg : program :=
       [ ] IF x GOTO l ]}>.
 
 (** Estado de um Programa *)
+
 (* Referências: 
   https://softwarefoundations.cis.upenn.edu/lf-current/Maps.html
   https://github.com/gustavovzqz/coq-lambda/blob/main/theories/Lambda.v
@@ -140,21 +142,25 @@ Definition t_decr (m : state ) (x : variable) :=
   let v := m x in 
   fun x' => if eqb_var x x' then (v - 1) else m x'.
 
-Inductive step : program -> (nat * state) -> (nat * state) -> Prop :=
+Inductive snapshot :=
+  | SNAP : nat -> state -> snapshot.
+
+
+Inductive step : program -> snapshot -> snapshot -> Prop :=
   | S_Incr : forall p x i m l ins,
       nth_error p i = Some ins ->
       (ins = instr (INCR x) \/ ins = L_instr l (INCR x)) ->
-      step p (i, m) (i + 1, t_incr m x)
+      step p (SNAP i m) (SNAP (i + 1) (t_incr m x))
 
   | S_Decr : forall p x i m l ins,
       nth_error p i = Some ins ->
       (ins = instr (DECR x) \/ ins = L_instr l (DECR x)) ->
-      step p (i, m) (i + 1, t_decr m x)
+      step p (SNAP i m) (SNAP (i + 1) (t_decr m x))
 
   | S_Skip : forall p x i m l ins,
       nth_error p i = Some ins ->
       (ins = instr (SKIP x) \/ ins = L_instr l (SKIP x)) ->
-      step p (i, m) (i + 1, m).
+      step p (SNAP i m) (SNAP (i + 1) m).
 
 (* Completar... *)
 
