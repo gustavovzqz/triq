@@ -17,12 +17,11 @@ Inductive label : Type :=
 Inductive statement : Type :=
   | INCR : variable -> statement
   | DECR : variable -> statement
-  | IF   : variable -> label -> statement
+  | IF_GOTO   : variable -> option label -> statement
   | SKIP : variable -> statement.
 
 Inductive instruction : Type :=
-  | L_instr : label -> statement -> instruction
-  | instr   : statement -> instruction.
+  | Instr : option label -> statement -> instruction.
 
 Definition program := list instruction.
 
@@ -32,6 +31,11 @@ Definition eqb_var v1 v2 :=
   | Z a, Z b => a =? b
   | Y, Y  => true
   | _, _ => false
+  end.
+
+Definition eqb_lbl l1 l2 :=
+  match l1, l2 with 
+  | A a, A b => a =? b
   end.
 
 Theorem eqb_var_refl : forall v, eqb_var v v = true.
@@ -83,13 +87,14 @@ Notation "x <- + 0" := (SKIP x)
 
 
 Notation "'IF' x 'GOTO' y " :=
-         (IF x y) 
+         (IF_GOTO x y) 
            (in custom com at level 89, x at level 99,
             y at level 99) : com_scope.
-Notation "[ l ] s " := (L_instr l s)
+
+Notation "[ l ] s " := (Instr (l) s)
   (at level 0, s custom com at level 200) : com_scope.
 
-Notation "[ ] s " := (instr  s)
+Notation "[ ] s " := (Instr None s)
   (at level 0, s custom com at level 200) : com_scope.
 
 
@@ -98,27 +103,27 @@ Notation "'[ i1 ; .. ; iN ]'" := (cons i1 .. (cons iN nil) ..)
 
 Open Scope com_scope.
 
+Definition eq_inst_label (instr : instruction ) (opt_lbl : option label) :=
+  match instr, opt_lbl with 
+  | Instr (Some lbl_a) _, Some lbl_b => eqb_lbl lbl_a lbl_b
+  | _, _                => false
+  end.
+
+Definition get_labeled_instr (p : program) (lbl : option label) :=
+  let fix aux l n :=
+    match l with 
+    | h :: t => match (eq_inst_label h lbl) with 
+                | true => n
+                | false => aux t (n + 1)
+                end
+    | []     => n 
+    end
+  in aux p 0.
 
 
 (** Exemplos *)
 
 
-
-Definition x := X 0.
-Definition x1 := X 1.
-Definition l := A 0.
-Definition y := Y.
-
-Check (instr (INCR (X 0))).
-
-(* Check ([ ] (X 0) <- + 1). *)
-
-
-Definition prg : program :=
-  <{[ [l] x  <- + 1;
-      [ ] x  <- - 1;
-      [ ] x  <- + 0;
-      [ ] IF x GOTO l ]}>.
 
 (** Estado de um Programa *)
 
@@ -145,23 +150,60 @@ Definition t_decr (m : state ) (x : variable) :=
 Inductive snapshot :=
   | SNAP : nat -> state -> snapshot.
 
-
 Inductive step : program -> snapshot -> snapshot -> Prop :=
-  | S_Incr : forall p x i m l ins,
-      nth_error p i = Some ins ->
-      (ins = instr (INCR x) \/ ins = L_instr l (INCR x)) ->
-      step p (SNAP i m) (SNAP (i + 1) (t_incr m x))
+  | S_Incr : forall program x i opt_lbl instruction st,
+      nth_error program i = Some instruction ->
+      instruction = ([opt_lbl] x <- + 1)     ->
+      step program (SNAP i st) (SNAP (i + 1) (t_incr st x))
 
-  | S_Decr : forall p x i m l ins,
-      nth_error p i = Some ins ->
-      (ins = instr (DECR x) \/ ins = L_instr l (DECR x)) ->
-      step p (SNAP i m) (SNAP (i + 1) (t_decr m x))
+  | S_Decr: forall program x i opt_lbl instruction st,
+      nth_error program i = Some instruction ->
+      (instruction = ([opt_lbl] x <- - 1))   ->
+      step program (SNAP i st) (SNAP (i + 1) (t_decr st x))
 
-  | S_Skip : forall p x i m l ins,
-      nth_error p i = Some ins ->
-      (ins = instr (SKIP x) \/ ins = L_instr l (SKIP x)) ->
-      step p (SNAP i m) (SNAP (i + 1) m).
+  | S_Skip: forall program x i opt_lbl instruction st,
+      nth_error program i = Some instruction ->
+      instruction = ([opt_lbl] x <- + 0 )    ->
+      step program (SNAP i st) (SNAP (i + 1) (t_decr st x))
 
-(* Completar... *)
+  | S_If_S: forall program x i opt_lbl l instruction st,
+      nth_error program i = Some instruction   ->
+      st x = 0                                 ->
+      (instruction = ([opt_lbl] IF x GOTO l )) ->
+      step program (SNAP i st) (SNAP (i + 1) (t_decr st x))
+
+  | S_If_0: forall program x i j opt_lbl l instruction st,
+      nth_error program i = Some instruction ->
+      st x <> 0                              ->
+      instruction = ([opt_lbl] IF x GOTO l ) ->
+      (get_labeled_instr program opt_lbl = j)                -> 
+      step program (SNAP i st) (SNAP j (t_decr st x)).
+
+
+
+
+Definition x := X 0.
+Definition x1 := X 1.
+Definition l := Some (A 0).
+Definition y := Y.
+
+Check (Instr None (INCR (X 0))).
+
+Check ([l] x <- + 1).
+
+Definition prg : program :=
+  <{[ [l] x  <- + 1;
+      [ ] x  <- - 1;
+      [ ] x  <- + 0;
+      [ ] IF x GOTO l ]}>.
+
+Definition state_t1 := t_incr initial_state x.
+
+
+Theorem exemplo : step prg (SNAP 0 initial_state) (SNAP 1 state_t1).
+Proof.
+  unfold prg. destruct l; eapply S_Incr; reflexivity.
+Qed.
+
 
 End SLang.
