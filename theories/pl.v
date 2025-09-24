@@ -1,6 +1,7 @@
 From Stdlib Require Import Nat.
 From Stdlib Require Import List.
 Import ListNotations.
+Require Import Extraction.
 
 Module SLang.
 
@@ -184,6 +185,7 @@ Inductive step : program -> snapshot -> snapshot -> Prop :=
       step program (SNAP i st) (SNAP i st).
 
 
+Hint Constructors step : stepdb.
 
 
 Definition x := X 0.
@@ -210,7 +212,9 @@ Proof.
 Qed.
 
 
-(* TODO: Usar Refine e pattern matching, lembrar como faz direito, arrumar nomes*)
+Notation "[ e ]" := (exist _ e _ ) .
+
+(* Primeira tentativa: sem usar Refine *)
 Definition next_step (prog : program) (snap1 : snapshot) : 
   {snap2 | step prog snap1 snap2}.
 Proof.
@@ -228,13 +232,32 @@ Proof.
          exists (SNAP n1 s). eapply S_If_S; eauto.
          intros H. pose proof (eq_stepl Hsv H). discriminate H0.
     + exists (SNAP (n + 1) s). eapply S_Skip; eauto.
-  - exists (SNAP n s). apply S_Out. assumption.
+   - exists (SNAP n s). apply S_Out. assumption.
+Defined. 
+
+
+(* Segunda tentativa: usando Refine para quase tudo *)
+Definition next_step' (prog : program) (snap1 : snapshot) : 
+  {snap2 | step prog snap1 snap2}.
+Proof.
+  destruct snap1 eqn:E.
+  refine (
+  (match (nth_error prog n) as eqn1 return (nth_error prog n = eqn1) -> _ with
+  | Some instruction => match instruction with 
+              | [l] x <- + 1     => fun _ => [SNAP (n + 1) (t_incr s x)]
+              | [l] x <- - 1     => fun _ => [SNAP (n + 1) (t_decr s x)]
+              | [l] x <- + 0     => fun _ => [SNAP (n + 1) s]
+              | [l] IF x GOTO j  =>
+                fun _ => ((match (s x) as eqn2 return (s x = eqn2) -> _ with
+                           | S m => fun _ => [SNAP (get_labeled_instr prog l) s]
+                           | 0   => fun _ => [SNAP (n + 1) s] 
+                           end) (eq_refl (s x)))
+              end
+  | None   => fun Hyp => [SNAP n s]
+  end) (eq_refl (nth_error prog n))); 
+  eauto with stepdb.
+  + eapply S_If_S; eauto. intros Hf. destruct (s x); discriminate.
 Defined.
 
-Print next_step.
 
-
-
-
-       
 End SLang.
