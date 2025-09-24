@@ -164,20 +164,24 @@ Inductive step : program -> snapshot -> snapshot -> Prop :=
   | S_Skip: forall program x i opt_lbl instruction st,
       nth_error program i = Some instruction ->
       instruction = ([opt_lbl] x <- + 0 )    ->
-      step program (SNAP i st) (SNAP (i + 1) (t_decr st x))
+      step program (SNAP i st) (SNAP (i + 1) st)
 
-  | S_If_S: forall program x i opt_lbl l instruction st,
+  | S_If_0: forall program x i opt_lbl l instruction st,
       nth_error program i = Some instruction   ->
       st x = 0                                 ->
       (instruction = ([opt_lbl] IF x GOTO l )) ->
-      step program (SNAP i st) (SNAP (i + 1) (t_decr st x))
+      step program (SNAP i st) (SNAP (i + 1) st)
 
-  | S_If_0: forall program x i j opt_lbl l instruction st,
-      nth_error program i = Some instruction ->
-      st x <> 0                              ->
-      instruction = ([opt_lbl] IF x GOTO l ) ->
-      (get_labeled_instr program opt_lbl = j)                -> 
-      step program (SNAP i st) (SNAP j (t_decr st x)).
+  | S_If_S: forall program x i j opt_lbl l instruction st,
+      nth_error program i = Some instruction  ->
+      st x <> 0                               ->
+      instruction = ([opt_lbl] IF x GOTO l )  ->
+      (get_labeled_instr program opt_lbl = j) ->
+      step program (SNAP i st) (SNAP j st )
+
+  | S_Out: forall program i st,
+      nth_error program i = None ->
+      step program (SNAP i st) (SNAP i st).
 
 
 
@@ -206,4 +210,31 @@ Proof.
 Qed.
 
 
+(* TODO: Usar Refine e pattern matching, lembrar como faz direito, arrumar nomes*)
+Definition next_step (prog : program) (snap1 : snapshot) : 
+  {snap2 | step prog snap1 snap2}.
+Proof.
+  destruct snap1. destruct (nth_error prog n) eqn:E.
+  - destruct i. destruct s0.
+    + exists (SNAP (n + 1) (t_incr s v)). eapply S_Incr.
+      ++ exact E.
+      ++ reflexivity.
+    + exists (SNAP (n + 1) (t_decr s v)). eapply S_Decr.
+      ++ exact E.
+      ++ reflexivity.
+    + destruct (s v) eqn:Hsv.
+      ++ exists (SNAP (n + 1) s). eapply S_If_0; eauto.
+      ++ remember (get_labeled_instr prog o).
+         exists (SNAP n1 s). eapply S_If_S; eauto.
+         intros H. pose proof (eq_stepl Hsv H). discriminate H0.
+    + exists (SNAP (n + 1) s). eapply S_Skip; eauto.
+  - exists (SNAP n s). apply S_Out. assumption.
+Defined.
+
+Print next_step.
+
+
+
+
+       
 End SLang.
