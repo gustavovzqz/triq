@@ -1,5 +1,6 @@
 From Stdlib Require Import Nat.
 From Stdlib Require Import List.
+From Stdlib Require Import ProofIrrelevance.
 Import ListNotations.
 Require Import Extraction.
 
@@ -212,7 +213,6 @@ Proof.
 Qed.
 
 
-Notation "[ e ]" := (exist _ e _ ) .
 
 (* Primeira tentativa: sem usar Refine *)
 Definition next_step (prog : program) (snap1 : snapshot) : 
@@ -235,7 +235,7 @@ Proof.
    - exists (SNAP n s). apply S_Out. assumption.
 Defined. 
 
-
+(*
 (* Segunda tentativa: usando Refine para quase tudo *)
 Definition next_step' (prog : program) (snap1 : snapshot) : 
   {snap2 | step prog snap1 snap2}.
@@ -258,6 +258,72 @@ Proof.
   eauto with stepdb.
   + eapply S_If_S; eauto. intros Hf. destruct (s x); discriminate.
 Defined.
+
+ *)
+Theorem step_unique : forall p snap1 snap2 snap3,
+  step p snap1 snap2 ->
+  step p snap1 snap3 ->
+  snap2 = snap3.
+Proof.
+  intros. destruct snap1. inversion H.
+  + inversion H0; subst.
+    ++ rewrite H4 in H10. inversion H10. reflexivity.
+    ++ rewrite H4 in H10. inversion H10. 
+    ++ rewrite H4 in H10. inversion H10. 
+    ++ rewrite H4 in H9.  inversion H9. 
+    ++ rewrite H4 in H9.  inversion H9. 
+    ++ rewrite H4 in H11. inversion H11. 
+  + inversion H0; subst.
+    ++ rewrite H4 in H10. inversion H10. 
+    ++ rewrite H4 in H10. inversion H10. reflexivity.
+    ++ rewrite H4 in H10. inversion H10. 
+    ++ rewrite H4 in H9.  inversion H9. 
+    ++ rewrite H4 in H9.  inversion H9. 
+    ++ rewrite H4 in H11. inversion H11. 
+  + inversion H0; subst.
+    ++ rewrite H4 in H10. inversion H10. 
+    ++ rewrite H4 in H10. inversion H10. 
+    ++ rewrite H4 in H10. inversion H10. reflexivity.
+    ++ rewrite H4 in H9.  inversion H9. 
+    ++ rewrite H4 in H9.  inversion H9. 
+    ++ rewrite H4 in H11. inversion H11. 
+  + inversion H0; subst.
+    ++ rewrite H3 in H11. inversion H11. 
+    ++ rewrite H3 in H11. inversion H11. 
+    ++ rewrite H3 in H11. inversion H11. 
+    ++ rewrite H3 in H10. inversion H10. reflexivity.
+    ++ rewrite H3 in H10. inversion H10. subst. apply H11 in H5. destruct H5.
+    ++ rewrite H3 in H12. inversion H12.
+  + inversion H0; subst.
+    ++ rewrite H3 in H12. inversion H12. 
+    ++ rewrite H3 in H12. inversion H12. 
+    ++ rewrite H3 in H12. inversion H12. 
+    ++ rewrite H3 in H11. inversion H11. subst. apply H4 in H13. destruct H13.
+    ++ rewrite H3 in H11. inversion H11. reflexivity.
+    ++ rewrite H3 in H13. inversion H13. 
+  + inversion H0; subst.
+    ++ rewrite H5 in H9. inversion H9. 
+    ++ rewrite H5 in H9. inversion H9. 
+    ++ rewrite H5 in H9. inversion H9. 
+    ++ rewrite H5 in H8. inversion H8. 
+    ++ rewrite H5 in H8. inversion H8. 
+    ++ reflexivity.
+Qed.
+
+ Theorem next_step_equivalence :
+  forall p snap1 H,
+    (next_step p snap1) = H <-> step p snap1 (proj1_sig H).
+Proof.
+  intros. destruct H as [snap2 proof]. split.
+  (* ida *)
+  + intros H. simpl. assumption.
+  (* volta *)
+  + simpl. intros H. destruct (next_step p snap1) as [snap2' proof']. 
+    assert (snap2' = snap2). {eapply step_unique; eassumption. }
+    subst. assert (proof = proof') by apply proof_irrelevance.
+    subst. reflexivity.
+Qed.
+
 
 
 End SLang.
