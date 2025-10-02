@@ -446,8 +446,8 @@ Compute (phi id_prg (cons 8 nil) 1).
 Theorem id_prg_halts : forall (s : state),
   exists (n : nat), STP (create_state [8]) id_prg n.
 Proof.
-  intros. exists 30. reflexivity.
-
+  intros. exists 43. cbv. reflexivity. 
+Qed.
 
 
 
