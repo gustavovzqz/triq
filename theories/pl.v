@@ -156,6 +156,15 @@ Inductive snapshot :=
 
 Definition initial_snapshot := SNAP 0 initial_state.
 
+Definition create_state x_list :=
+ let fix aux nat_list s n := 
+   match nat_list with 
+   | h :: t => aux t (t_update s (X n) h) (n + 1)
+   | []     =>  s
+   end
+ in aux x_list initial_state 0.
+
+
 (** 
    steps_to programa s s' :=
    O programa de snapshot s possui como próxima snapshot s'
@@ -193,7 +202,7 @@ Inductive steps_to : program -> snapshot -> snapshot -> Prop :=
       nth_error program i = Some instruction  ->
       st x <> 0                               ->
       instruction = ([opt_lbl] IF x GOTO l )  ->
-      (get_labeled_instr program opt_lbl = j) ->
+      (get_labeled_instr program l = j) ->
       steps_to program (SNAP i st) (SNAP j st )
 
   (* 
@@ -231,9 +240,9 @@ Proof.
       ++ reflexivity.
     + destruct (s v) eqn:Hsv.
       ++ exists (SNAP (n + 1) s). eapply S_If_0; eauto.
-      ++ remember (get_labeled_instr prog o).
+      ++ remember (get_labeled_instr prog o0).
          exists (SNAP n1 s). eapply S_If_S; eauto.
-         intros H. pose proof (eq_stepl Hsv H). discriminate H0.
+         +++ intros H. rewrite H in Hsv. discriminate Hsv.
     + exists (SNAP (n + 1) s). eapply S_Skip; eauto.
    - exists (SNAP n s). apply S_Out. assumption.
 Defined. 
@@ -258,7 +267,7 @@ Proof.
               | [l] x <- + 0     => fun _ => [SNAP (n + 1) s]
               | [l] IF x GOTO j  =>
                 fun _ => ((match (s x) as eqn2 return (s x = eqn2) -> _ with
-                           | S m => fun _ => [SNAP (get_labeled_instr prog l) s]
+                           | S m => fun _ => [SNAP (get_labeled_instr prog j) s]
                            | 0   => fun _ => [SNAP (n + 1) s] 
                            end) (eq_refl (s x)))
               end
@@ -352,4 +361,96 @@ Proof.
     simpl. eapply step_unique; eassumption.
 Qed.
 
-End SLang.
+
+
+
+Fixpoint compute_program (p : program) snap n :=
+  match n with
+  | S n' => compute_program p (proj1_sig (next_step p snap )) n'
+  | O    => snap
+  end.
+
+
+Definition STP (s : state) (p : program) (n : nat) :=
+  let inital_snap := SNAP 0 s in 
+  let nth_snap := compute_program p inital_snap n in 
+
+  match nth_snap with 
+  | SNAP n' _ => n' = (length p) 
+  end.
+
+Definition PRG := 
+  <{[ [] Y <- + 1
+    ]}>.
+
+Print PRG.
+
+Compute (length PRG).
+
+
+Theorem prg_halts : exists (t : nat) (s : state),
+  STP s PRG t.
+Proof.
+  exists 1. exists initial_state. unfold STP. simpl. reflexivity.
+Qed.
+
+
+Theorem prg_halts' : forall (s : state), exists t,
+  STP s PRG t.
+Proof.
+  intros s.  exists 1. unfold STP. unfold compute_program. unfold PRG. reflexivity.
+Qed.
+
+Definition id (x : nat) := x.
+
+Definition x :=  X 0.
+Definition z := Z 0.
+Definition y := Y.
+
+Definition a := Some (A 0).
+Definition b := Some (A 1).
+Definition e := Some (A 2).
+
+Definition id_prg := 
+  <{[[a] IF x GOTO b;
+     [ ] z <- + 1;
+     [ ] IF z GOTO e;
+     [b] x <- - 1;
+     [ ] y <- + 1;
+     [ ] z <- + 1;
+     [ ] IF z GOTO a]
+    }>.
+
+Definition k := 15.
+
+Definition state_id := create_state [k].
+
+Definition snap0 := (SNAP 0 state_id).
+
+Compute compute_program id_prg snap0 902.
+
+(*
+Inductive ex (A : Type) (P : A -> Prop) : Prop :=
+   ex_intro : forall x : A, P x -> exists y, P y.*)
+
+
+Definition phi (p : program) (l : list nat) (n : nat) 
+  (halts : (STP (create_state l) p n)) :=
+  match (compute_program p (SNAP 0 (create_state l)) n) with
+  | SNAP _ s => s Y
+  end.
+
+
+Compute (phi id_prg (cons 8 nil) 1).
+
+Theorem id_prg_halts : forall (s : state),
+  exists (n : nat), STP (create_state [8]) id_prg n.
+Proof.
+  intros. exists 30. reflexivity.
+
+
+
+
+
+  
+
