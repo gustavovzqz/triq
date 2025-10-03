@@ -371,7 +371,7 @@ Fixpoint compute_program (p : program) snap n :=
   end.
 
 
-Definition STP (s : state) (p : program) (n : nat) :=
+Definition HALT (s : state) (p : program) (n : nat) :=
   let inital_snap := SNAP 0 s in 
   let nth_snap := compute_program p inital_snap n in 
 
@@ -383,25 +383,29 @@ Definition PRG :=
   <{[ [] Y <- + 1
     ]}>.
 
-Print PRG.
-
-Compute (length PRG).
-
 
 Theorem prg_halts : exists (t : nat) (s : state),
-  STP s PRG t.
+  HALT s PRG t.
 Proof.
-  exists 1. exists initial_state. unfold STP. simpl. reflexivity.
+  exists 1. exists initial_state. unfold HALT. simpl. reflexivity.
 Qed.
 
 
 Theorem prg_halts' : forall (s : state), exists t,
-  STP s PRG t.
+  HALT s PRG t.
 Proof.
-  intros s.  exists 1. unfold STP. unfold compute_program. unfold PRG. reflexivity.
+  intros s.  exists 1. unfold HALT. unfold compute_program. unfold PRG. reflexivity.
 Qed.
 
-Definition id (x : nat) := x.
+
+(* Função definida pelo programa *)
+
+Definition phi (p : program) (l : list nat) (n : nat) 
+  (halts : (HALT (create_state l) p n)) :=
+  match (compute_program p (SNAP 0 (create_state l)) n) with
+  | SNAP _ s => s Y
+  end.
+
 
 Definition x :=  X 0.
 Definition z := Z 0.
@@ -421,33 +425,32 @@ Definition id_prg :=
      [ ] IF z GOTO a]
     }>.
 
-Definition k := 15.
-
-Definition state_id := create_state [k].
-
-Definition snap0 := (SNAP 0 state_id).
-
-Compute compute_program id_prg snap0 902.
-
-(*
-Inductive ex (A : Type) (P : A -> Prop) : Prop :=
-   ex_intro : forall x : A, P x -> exists y, P y.*)
-
-
-Definition phi (p : program) (l : list nat) (n : nat) 
-  (halts : (STP (create_state l) p n)) :=
-  match (compute_program p (SNAP 0 (create_state l)) n) with
-  | SNAP _ s => s Y
-  end.
-
 
 Compute (phi id_prg (cons 8 nil) 1).
 
-Theorem id_prg_halts : forall (s : state),
-  exists (n : nat), STP (create_state [8]) id_prg n.
+Theorem id_prg_halts : exists (n : nat), HALT (create_state [8]) id_prg n.
 Proof.
   intros. exists 43. cbv. reflexivity. 
 Qed.
+
+
+
+Theorem id_prg_halts' : forall (n : nat),
+  exists (t : nat), HALT (create_state [n]) id_prg t.
+Proof.
+  intros. unfold HALT. induction n as [| m].
+  - exists 3. cbv. reflexivity.
+  - destruct IHm. cbn. exists (5 + x0). cbn in H. unfold compute_program.
+    simpl. cbn. unfold t_incr. unfold t_decr. unfold t_update. simpl.  
+Abort.
+
+(* TODO: 
+   1. Adicionar notações para mapas:
+      - https://softwarefoundations.cis.upenn.edu/lf-current/Maps.html
+   2. Ajustar a forma de lidar com entradas. 
+*)
+
+
 
 
 
