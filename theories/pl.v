@@ -460,6 +460,15 @@ Proof.
   intros. unfold t_update. rewrite eqb_var_refl. reflexivity.
 Qed.
 
+Lemma t_update_unchanged : forall  (m : state ) x v,
+  m x = v -> 
+  (t_update m x v) = m.
+Proof.
+  intros. unfold t_update. apply functional_extensionality. intros x0.
+  destruct (eqb_var x x0) eqn:E.
+  + rewrite var_eqb_eq in E. rewrite <- E. rewrite H. reflexivity.
+  + reflexivity.
+Qed.
 
 Lemma t_update_shadow : forall (m : state) x v1 v2,
   (t_update (t_update m x v1) x v2) = t_update m x v2.
@@ -477,14 +486,9 @@ Proof.
   - destruct IHm with (y0 + 1) (z0 + 1). exists (5 + x). 
     simpl compute_program. 
    assert ((t_update (t_update (t_update empty (X 0) m) (Z 0) (z0 + 1)) Y
-              (y0 + 1)) = ((t_incr
-            (t_incr
-               (t_decr
-                  (t_update (t_update (t_update empty (X 0) (S m)) (Z 0) z0) Y
-                     y0)
-                  (X 0))
-               Y)
-            (Z 0)))).
+              (y0 + 1)) = ((t_incr (t_incr (t_decr (t_update 
+              (t_update (t_update empty (X 0) (S m)) (Z 0) z0) Y y0) (X 0)) Y)
+              (Z 0)))).
       { apply functional_extensionality. intros x0. unfold t_incr. 
         unfold t_decr. unfold t_update. rewrite eqb_var_refl. simpl.
         destruct x0; try (reflexivity); destruct n; try (reflexivity).
@@ -492,12 +496,28 @@ Proof.
       rewrite <- H0. destruct z0; assumption.
 Qed.
 
-Compute (phi id_prg (cons 8 nil) 1).
-Theorem id_prg_halts'' : forall n, exists (t : nat), HALT (create_state [n]) id_prg t.
+Theorem id_prg_halts'' : forall (x0 : nat),
+  exists (t : nat), HALT (create_state [x0])
+   id_prg t.
 Proof.
-  intros. unfold create_state. Abort.
+  intros x0. unfold create_state. 
+  assert ((t_update empty (X 0) x0) = 
+  (t_update (t_update (t_update empty (X 0) x0) (Z 0) 0) Y 0)). 
+  { apply functional_extensionality. intros x. unfold t_update. unfold empty.
+    destruct (eqb_var (X 0) x) eqn:E;
+    destruct (eqb_var Y x) eqn:E2; 
+    destruct (eqb_var (Z 0) x) eqn:E3; try(reflexivity).
+    + rewrite var_eqb_eq in E. rewrite var_eqb_eq in E2. 
+      subst. discriminate E2. 
+    + rewrite var_eqb_eq in E2. rewrite var_eqb_eq in E. subst. discriminate E2.
+    + rewrite var_eqb_eq in E3. rewrite var_eqb_eq in E. subst. discriminate E3.
+   }
+  rewrite H. apply id_prg_halts'. 
 Qed.
+ 
 
-
-
-(* Uffa... *)
+Theorem id_prg_halts_1000 : exists (t : nat), HALT (create_state [1000])
+  id_prg t.
+Proof.
+  apply id_prg_halts''.
+Qed.
