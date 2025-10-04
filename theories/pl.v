@@ -1,6 +1,8 @@
 From Stdlib Require Import Nat.
 From Stdlib Require Import List.
 From Stdlib Require Import ProofIrrelevance.
+From Stdlib Require Import FunctionalExtensionality.
+
 Import ListNotations.
 Require Import Extraction.
 
@@ -137,24 +139,30 @@ Open Scope s_lang_scope.
 
 Definition state := variable -> nat.
 
-Definition initial_state : state := (fun _ => 0).
+Definition empty : state := (fun _ => 0).
 
 
 Definition t_update (m : state ) (x : variable) (v : nat) :=
   fun x' => if eqb_var x x' then v else m x'.
 
+
+
+
+
+
+
 Definition t_incr (m : state ) (x : variable) :=
   let v := m x in 
-  fun x' => if eqb_var x x' then (v + 1) else m x'.
+  t_update m x (v + 1).
 
 Definition t_decr (m : state ) (x : variable) :=
   let v := m x in 
-  fun x' => if eqb_var x x' then (v - 1) else m x'.
+  t_update m x (v - 1).
 
 Inductive snapshot :=
   | SNAP : nat -> state -> snapshot.
 
-Definition initial_snapshot := SNAP 0 initial_state.
+Definition initial_snapshot := SNAP 0 empty.
 
 Definition create_state x_list :=
  let fix aux nat_list s n := 
@@ -162,7 +170,7 @@ Definition create_state x_list :=
    | h :: t => aux t (t_update s (X n) h) (n + 1)
    | []     =>  s
    end
- in aux x_list initial_state 0.
+ in aux x_list empty 0.
 
 
 (** 
@@ -278,6 +286,7 @@ Proof.
 Defined.
 
 
+
 (** Unicidade do passo *)
 
 Theorem step_unique : forall p snap1 snap2 snap3,
@@ -363,10 +372,25 @@ Qed.
 
 
 
+Definition next_step'' (prog : program) (snap : snapshot) : snapshot :=
+  match snap with
+  | SNAP n s =>
+    match nth_error prog n with
+    | Some ([l] x <- + 1) => SNAP (n + 1) (t_incr s x)
+    | Some ([l] x <- - 1) => SNAP (n + 1) (t_decr s x)
+    | Some ([l] x <- + 0) => SNAP (n + 1) s
+    | Some ([l] IF x GOTO j) =>
+        match s x with
+        | S m => SNAP (get_labeled_instr prog j) s
+        | 0   => SNAP (n + 1) s
+        end
+    | None => SNAP n s
+    end
+  end.
 
 Fixpoint compute_program (p : program) snap n :=
   match n with
-  | S n' => compute_program p (proj1_sig (next_step p snap )) n'
+  | S n' => compute_program p ((next_step'' p snap )) n'
   | O    => snap
   end.
 
@@ -387,7 +411,7 @@ Definition PRG :=
 Theorem prg_halts : exists (t : nat) (s : state),
   HALT s PRG t.
 Proof.
-  exists 1. exists initial_state. unfold HALT. simpl. reflexivity.
+  exists 1. exists empty. unfold HALT. simpl. reflexivity.
 Qed.
 
 
@@ -406,16 +430,14 @@ Definition phi (p : program) (l : list nat) (n : nat)
   | SNAP _ s => s Y
   end.
 
-
-Definition x :=  X 0.
-Definition z := Z 0.
-Definition y := Y.
-
-Definition a := Some (A 0).
-Definition b := Some (A 1).
-Definition e := Some (A 2).
-
 Definition id_prg := 
+  let x := X 0 in 
+  let z := Z 0 in 
+  let y := Y in 
+  let a := Some (A 0) in 
+  let b := Some (A 1) in 
+  let e := Some (A 10) in 
+
   <{[[a] IF x GOTO b;
      [ ] z <- + 1;
      [ ] IF z GOTO e;
@@ -427,33 +449,55 @@ Definition id_prg :=
 
 
 Compute (phi id_prg (cons 8 nil) 1).
-
 Theorem id_prg_halts : exists (n : nat), HALT (create_state [8]) id_prg n.
 Proof.
   intros. exists 43. cbv. reflexivity. 
 Qed.
 
-
-
-Theorem id_prg_halts' : forall (n : nat),
-  exists (t : nat), HALT (create_state [n]) id_prg t.
+Lemma t_update_eq : forall  (m : state ) x v,
+  (t_update m x v) x = v.
 Proof.
-  intros. unfold HALT. induction n as [| m].
-  - exists 3. cbv. reflexivity.
-  - destruct IHm. cbn. exists (5 + x0). cbn in H. unfold compute_program.
-    simpl. cbn. unfold t_incr. unfold t_decr. unfold t_update. simpl.  
-Abort.
-
-(* TODO: 
-   1. Adicionar notações para mapas:
-      - https://softwarefoundations.cis.upenn.edu/lf-current/Maps.html
-   2. Ajustar a forma de lidar com entradas. 
-*)
+  intros. unfold t_update. rewrite eqb_var_refl. reflexivity.
+Qed.
 
 
+Lemma t_update_shadow : forall (m : state) x v1 v2,
+  (t_update (t_update m x v1) x v2) = t_update m x v2.
+Proof.
+  intros. apply functional_extensionality.
+  intros x0. unfold t_update. destruct (eqb_var x x0); reflexivity.
+Qed.
+
+Theorem id_prg_halts' : forall (x0 : nat) (y0 : nat) (z0 : nat),
+  exists (t : nat), HALT
+  (t_update (t_update (t_update empty (X 0) x0) (Z 0) z0) Y y0) id_prg t.
+Proof.
+  intros x0. unfold HALT. induction x0 as [| m]; intros.
+  - exists 3. destruct z0; destruct y0; reflexivity.
+  - destruct IHm with (y0 + 1) (z0 + 1). exists (5 + x). 
+    simpl compute_program. 
+   assert ((t_update (t_update (t_update empty (X 0) m) (Z 0) (z0 + 1)) Y
+              (y0 + 1)) = ((t_incr
+            (t_incr
+               (t_decr
+                  (t_update (t_update (t_update empty (X 0) (S m)) (Z 0) z0) Y
+                     y0)
+                  (X 0))
+               Y)
+            (Z 0)))).
+      { apply functional_extensionality. intros x0. unfold t_incr. 
+        unfold t_decr. unfold t_update. rewrite eqb_var_refl. simpl.
+        destruct x0; try (reflexivity); destruct n; try (reflexivity).
+        + rewrite PeanoNat.Nat.sub_0_r. reflexivity. }
+      rewrite <- H0. destruct z0; assumption.
+Qed.
+
+Compute (phi id_prg (cons 8 nil) 1).
+Theorem id_prg_halts'' : forall n, exists (t : nat), HALT (create_state [n]) id_prg t.
+Proof.
+  intros. unfold create_state. Abort.
+Qed.
 
 
 
-
-  
-
+(* Uffa... *)
