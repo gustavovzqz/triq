@@ -8,8 +8,6 @@ Require Import Extraction.
 
 Module SLang.
 
-
-
 (** Elementos Básicos de um Programa *)
 
 Inductive variable : Type :=
@@ -79,7 +77,7 @@ Definition eq_inst_label (instr : instruction ) (opt_lbl : option label) :=
   | _, _                => false
   end.
 
-(** Função para encontrar a primeira instrução com certa label em um programa *)
+(** Função para encontrar a posição da primeira instrução com certa label em um programa *)
 
 Definition get_labeled_instr (p : program) (lbl : option label) :=
   let fix aux l n :=
@@ -141,15 +139,8 @@ Definition state := variable -> nat.
 
 Definition empty : state := (fun _ => 0).
 
-
 Definition t_update (m : state ) (x : variable) (v : nat) :=
   fun x' => if eqb_var x x' then v else m x'.
-
-
-
-
-
-
 
 Definition t_incr (m : state ) (x : variable) :=
   let v := m x in 
@@ -220,7 +211,7 @@ Inductive steps_to : program -> snapshot -> snapshot -> Prop :=
      1. O valor de "i" está restrito a: 1 <= i <= n + 1 
      2. Uma snapshot terminal é uma snapshot onde i = n + 1.
 
-    Da forma como está implementado, qualquer snapshot que possua uma linha fora dos limites do programa possuirá como resultado ela mesma. Provavelmente tudo isso será pouco relevante pois a definição de computação amarrará tudo.
+    Da forma como está implementado, qualquer snapshot que possua uma linha fora dos limites do programa possuirá como resultado ela mesma. 
 *)
 
   | S_Out: forall program i st,
@@ -235,7 +226,7 @@ Hint Constructors steps_to : stepdb.
 
 (* Primeira tentativa: sem usar refine *)
 
-Definition next_step (prog : program) (snap1 : snapshot) : 
+Definition next_step' (prog : program) (snap1 : snapshot) :
   {snap2 | steps_to prog snap1 snap2}.
 Proof.
   destruct snap1. destruct (nth_error prog n) eqn:E.
@@ -254,38 +245,6 @@ Proof.
     + exists (SNAP (n + 1) s). eapply S_Skip; eauto.
    - exists (SNAP n s). apply S_Out. assumption.
 Defined. 
-
-
-
-(** Segunda tentativa: usando refine *)
-
-Declare Scope refine_scope.
-Notation "[ e ]" := (exist _ e _ )  : refine_scope.
-Open Scope refine_scope.
-
-Definition next_step' (prog : program) (snap1 : snapshot) : 
-  {snap2 | steps_to prog snap1 snap2}.
-Proof.
-  destruct snap1 eqn:E.
-  refine (
-  (match (nth_error prog n) as eqn1 return (nth_error prog n = eqn1) -> _ with
-  | Some instruction => match instruction with 
-              | [l] x <- + 1     => fun _ => [SNAP (n + 1) (t_incr s x)]
-              | [l] x <- - 1     => fun _ => [SNAP (n + 1) (t_decr s x)]
-              | [l] x <- + 0     => fun _ => [SNAP (n + 1) s]
-              | [l] IF x GOTO j  =>
-                fun _ => ((match (s x) as eqn2 return (s x = eqn2) -> _ with
-                           | S m => fun _ => [SNAP (get_labeled_instr prog j) s]
-                           | 0   => fun _ => [SNAP (n + 1) s] 
-                           end) (eq_refl (s x)))
-              end
-  | None   => fun Hyp => [SNAP n s]
-  end) (eq_refl (nth_error prog n))); 
-  eauto with stepdb.
-  + eapply S_If_S; eauto. intros Hf. destruct (s x); discriminate.
-Defined.
-
-
 
 (** Unicidade do passo *)
 
@@ -340,39 +299,38 @@ Proof.
 Qed.
 
 
-Close Scope refine_scope.
-
 (** Equivalência entre o passo e a função *)
 
-Theorem next_step_equivalence :
+Theorem next_step_equivalence' :
   forall p snap1 (H : {snap2 | steps_to p snap1 snap2}) ,
-    (next_step p snap1) = H <-> steps_to p snap1 (proj1_sig H).
+    (next_step' p snap1) = H <-> steps_to p snap1 (proj1_sig H).
 Proof.
   intros p snap1 [snap2 proof]. split.
   (* Ida ==> *)
   + intros H. simpl. assumption.
   (* Volta <== *)
-  + simpl. intros H. destruct (next_step p snap1) as [snap2' proof']. 
+  + simpl. intros H. destruct (next_step' p snap1) as [snap2' proof']. 
     assert (snap2' = snap2). {eapply step_unique; eassumption. }
     subst. assert (proof = proof') by apply proof_irrelevance.
     subst. reflexivity.
 Qed.
 
 
-Theorem next_step_equivalence':
+Theorem next_step_equivalence'':
   forall p snap1 snap2,
-  (proj1_sig (next_step p snap1)) = snap2 <-> steps_to p snap1 snap2.
+  (proj1_sig (next_step' p snap1)) = snap2 <-> steps_to p snap1 snap2.
 Proof.
   intros. split.
-  + intros H. remember (next_step p snap1). destruct s as [snap' proof].
+  + intros H. remember (next_step' p snap1). destruct s as [snap' proof].
     simpl in H. rewrite <- H. assumption.
-  + intros H. remember (next_step p snap1). destruct s as [snap' proof].
+  + intros H. remember (next_step' p snap1). destruct s as [snap' proof].
     simpl. eapply step_unique; eassumption.
 Qed.
 
 
+(* Definição simples e equivalência tradicional. ! *)
 
-Definition next_step'' (prog : program) (snap : snapshot) : snapshot :=
+Definition next_step (prog : program) (snap : snapshot) : snapshot :=
   match snap with
   | SNAP n s =>
     match nth_error prog n with
@@ -388,9 +346,30 @@ Definition next_step'' (prog : program) (snap : snapshot) : snapshot :=
     end
   end.
 
+Theorem next_step_equivalence:
+  forall p snap1 snap2,
+  (next_step p snap1) = snap2 <-> steps_to p snap1 snap2.
+Proof.
+  intros. split.
+  - intros. destruct snap1. simpl in H. destruct (nth_error p n) eqn:E.
+    + destruct i. destruct s0; subst; try (econstructor); (try reflexivity);
+      try(eassumption).
+     ++ destruct (s v) eqn:E2.
+        +++ eapply S_If_0; try (eassumption); reflexivity.
+        +++ eapply S_If_S; try (eassumption); try (reflexivity).
+            * intros H. rewrite E2 in H. discriminate H.
+    + subst. apply S_Out. assumption.
+  - intros H. unfold next_step. inversion H; subst; rewrite H0;
+    try(reflexivity).
+     ++ rewrite H1; reflexivity.
+     ++ destruct (st x).
+        +++ exfalso. apply H1. reflexivity.
+        +++ reflexivity.
+Qed.
+
 Fixpoint compute_program (p : program) snap n :=
   match n with
-  | S n' => compute_program p ((next_step'' p snap )) n'
+  | S n' => compute_program p ((next_step p snap )) n'
   | O    => snap
   end.
 
@@ -424,16 +403,20 @@ Qed.
 
 (* Função definida pelo programa *)
 
-Definition phi (p : program) (l : list nat) (n : nat) 
+Definition phi (p : program) (l : list nat) (n : nat)
   (halts : (HALT (create_state l) p n)) :=
   match (compute_program p (SNAP 0 (create_state l)) n) with
   | SNAP _ s => s Y
   end.
 
+
+(* Programa Exemplo: Função Identidade *)
 Definition id_prg := 
-  let x := X 0 in 
-  let z := Z 0 in 
-  let y := Y in 
+
+  let x := X 0 in
+  let z := Z 0 in
+  let y := Y in
+
   let a := Some (A 0) in 
   let b := Some (A 1) in 
   let e := Some (A 10) in 
@@ -448,34 +431,16 @@ Definition id_prg :=
     }>.
 
 
-Compute (phi id_prg (cons 8 nil) 1).
+(* O programa para com o número 8 como entrada *)
 Theorem id_prg_halts : exists (n : nat), HALT (create_state [8]) id_prg n.
 Proof.
-  intros. exists 43. cbv. reflexivity. 
+  intros. exists 43.
+  cbv (* usar o reflexivity antes pode causar problemas *).  reflexivity. 
 Qed.
 
-Lemma t_update_eq : forall  (m : state ) x v,
-  (t_update m x v) x = v.
-Proof.
-  intros. unfold t_update. rewrite eqb_var_refl. reflexivity.
-Qed.
+(* Agora, o que eu quero provar é que o programa id_prg para, qualquer que seja o valor de x inicial. Porém, é mais fácil provar que o programa para para quaisquer valores de x y z no estado inicial. (poderia provara para todo estado inicial, mas achei mais complicado) *)
 
-Lemma t_update_unchanged : forall  (m : state ) x v,
-  m x = v -> 
-  (t_update m x v) = m.
-Proof.
-  intros. unfold t_update. apply functional_extensionality. intros x0.
-  destruct (eqb_var x x0) eqn:E.
-  + rewrite var_eqb_eq in E. rewrite <- E. rewrite H. reflexivity.
-  + reflexivity.
-Qed.
-
-Lemma t_update_shadow : forall (m : state) x v1 v2,
-  (t_update (t_update m x v1) x v2) = t_update m x v2.
-Proof.
-  intros. apply functional_extensionality.
-  intros x0. unfold t_update. destruct (eqb_var x x0); reflexivity.
-Qed.
+(* O programa para para quaisquer que sejam os valores iniciais de x0, y0 e z0 *)
 
 Theorem id_prg_halts' : forall (x0 : nat) (y0 : nat) (z0 : nat),
   exists (t : nat), HALT
@@ -507,12 +472,12 @@ Proof.
     destruct (eqb_var (X 0) x) eqn:E;
     destruct (eqb_var Y x) eqn:E2; 
     destruct (eqb_var (Z 0) x) eqn:E3; try(reflexivity).
-    + rewrite var_eqb_eq in E. rewrite var_eqb_eq in E2. 
-      subst. discriminate E2. 
+    + rewrite var_eqb_eq in E. rewrite var_eqb_eq in E2.
+      subst. discriminate E2.
     + rewrite var_eqb_eq in E2. rewrite var_eqb_eq in E. subst. discriminate E2.
     + rewrite var_eqb_eq in E3. rewrite var_eqb_eq in E. subst. discriminate E3.
    }
-  rewrite H. apply id_prg_halts'. 
+  rewrite H. apply id_prg_halts'.
 Qed.
  
 
@@ -521,3 +486,4 @@ Theorem id_prg_halts_1000 : exists (t : nat), HALT (create_state [1000])
 Proof.
   apply id_prg_halts''.
 Qed.
+
