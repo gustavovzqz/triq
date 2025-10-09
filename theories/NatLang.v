@@ -1,12 +1,10 @@
+(** * NatLang: Linguagem Simples Baseada em Naturais *)
+
 From Stdlib Require Import Nat.
 From Stdlib Require Import List.
-From Stdlib Require Import ProofIrrelevance.
-From Stdlib Require Import FunctionalExtensionality.
 
 Import ListNotations.
 Require Import Extraction.
-
-Module SLang.
 
 (** Elementos Básicos de um Programa *)
 
@@ -29,7 +27,46 @@ Inductive instruction : Type :=
 
 Definition program := list instruction.
 
-(** Decidibilidade e Auxiliares *)
+(** Notações. Adaptadas de: 
+    https://softwarefoundations.cis.upenn.edu/lf-current/Imp.html *)
+
+Declare Custom Entry com.
+Declare Scope nat_lang_scope.
+Declare Custom Entry com_aux.
+
+Notation "<{ e }>" := e (e custom com_aux) : nat_lang_scope.
+Notation "e" := e (in custom com_aux at level 0, e custom com) : nat_lang_scope.
+Notation "( x )" := x (in custom com, x at level 99) : nat_lang_scope.
+Notation "x" := x (in custom com at level 0, x constr at level 0) : nat_lang_scope.
+
+Notation "x <- + 1" := (INCR x)
+  (in custom com at level 50, left associativity).
+
+Notation "x <- - 1" := (DECR x)
+  (in custom com at level 50, left associativity).
+
+Notation "x <- + 0" := (SKIP x)
+  (in custom com at level 50, left associativity).
+
+
+Notation "'IF' x 'GOTO' y " :=
+         (IF_GOTO x y) 
+           (in custom com at level 89, x at level 99,
+            y at level 99) : nat_lang_scope.
+
+Notation "[ l ] s " := (Instr (l) s)
+  (at level 0, s custom com at level 200) : nat_lang_scope.
+
+Notation "[ ] s " := (Instr None s)
+  (at level 0, s custom com at level 200) : nat_lang_scope.
+
+
+Notation "'[ i1 ; .. ; iN ]'" := (cons i1 .. (cons iN nil) ..)
+  (at level 0, i1 custom com, iN custom com) : nat_lang_scope.
+
+Open Scope nat_lang_scope.
+
+(** Decidibilidade e Auxiliares Envolvendo Igualdades *)
 
 Definition eqb_var v1 v2 := 
   match v1, v2 with 
@@ -77,7 +114,8 @@ Definition eq_inst_label (instr : instruction ) (opt_lbl : option label) :=
   | _, _                => false
   end.
 
-(** Função para encontrar a posição da primeira instrução com certa label em um programa *)
+(** Função para encontrar a posição da primeira instrução com certa label 
+    em um programa *)
 
 Definition get_labeled_instr (p : program) (lbl : option label) :=
   let fix aux l n :=
@@ -91,64 +129,22 @@ Definition get_labeled_instr (p : program) (lbl : option label) :=
   in aux p 0.
 
 
-
-(** Notações. Adaptadas de: https://softwarefoundations.cis.upenn.edu/lf-current/Imp.html *)
-
-Declare Custom Entry com.
-Declare Scope s_lang_scope.
-Declare Custom Entry com_aux.
-
-Notation "<{ e }>" := e (e custom com_aux) : s_lang_scope.
-Notation "e" := e (in custom com_aux at level 0, e custom com) : s_lang_scope.
-Notation "( x )" := x (in custom com, x at level 99) : s_lang_scope.
-Notation "x" := x (in custom com at level 0, x constr at level 0) : s_lang_scope.
-
-Notation "x <- + 1" := (INCR x)
-  (in custom com at level 50, left associativity).
-
-Notation "x <- - 1" := (DECR x)
-  (in custom com at level 50, left associativity).
-
-Notation "x <- + 0" := (SKIP x)
-  (in custom com at level 50, left associativity).
-
-
-Notation "'IF' x 'GOTO' y " :=
-         (IF_GOTO x y) 
-           (in custom com at level 89, x at level 99,
-            y at level 99) : s_lang_scope.
-
-Notation "[ l ] s " := (Instr (l) s)
-  (at level 0, s custom com at level 200) : s_lang_scope.
-
-Notation "[ ] s " := (Instr None s)
-  (at level 0, s custom com at level 200) : s_lang_scope.
-
-
-Notation "'[ i1 ; .. ; iN ]'" := (cons i1 .. (cons iN nil) ..)
-  (at level 0, i1 custom com, iN custom com) : s_lang_scope.
-
-Open Scope s_lang_scope.
-
-(* ===================================================================== *)
-
-
 (** Estado de um Programa *)
 
 Definition state := variable -> nat.
 
 Definition empty : state := (fun _ => 0).
 
-Definition t_update (m : state ) (x : variable) (v : nat) :=
+Definition update (m : state ) (x : variable) (v : nat) :=
   fun x' => if eqb_var x x' then v else m x'.
 
-Definition t_incr (m : state ) (x : variable) :=
+Definition incr (m : state ) (x : variable) :=
   let v := m x in 
-  t_update m x (v + 1).
+  update m x (v + 1).
 
-Definition t_decr (m : state ) (x : variable) :=
+Definition decr (m : state ) (x : variable) :=
   let v := m x in 
-  t_update m x (v - 1).
+  update m x (v - 1).
 
 Inductive snapshot :=
   | SNAP : nat -> state -> snapshot.
@@ -158,30 +154,29 @@ Definition initial_snapshot := SNAP 0 empty.
 Definition create_state x_list :=
  let fix aux nat_list s n := 
    match nat_list with 
-   | h :: t => aux t (t_update s (X n) h) (n + 1)
+   | h :: t => aux t (update s (X n) h) (n + 1)
    | []     =>  s
    end
  in aux x_list empty 0.
 
 
-(** 
-   steps_to programa s s' :=
-   O programa de snapshot s possui como próxima snapshot s'
-*)
+(** Propriedade de Passo de Pomputação:
 
+    steps_to programa s s' :=
+    O programa de snapshot s possui como próxima snapshot s' *)
 
 Inductive steps_to : program -> snapshot -> snapshot -> Prop :=
   (* x <- x + 1 *)
   | S_Incr : forall program x i opt_lbl instruction st,
       nth_error program i = Some instruction ->
       instruction = ([opt_lbl] x <- + 1)     ->
-      steps_to program (SNAP i st) (SNAP (i + 1) (t_incr st x))
+      steps_to program (SNAP i st) (SNAP (i + 1) (incr st x))
 
   (* x <- x - 1 *)
   | S_Decr: forall program x i opt_lbl instruction st,
       nth_error program i = Some instruction ->
       (instruction = ([opt_lbl] x <- - 1))   ->
-      steps_to program (SNAP i st) (SNAP (i + 1) (t_decr st x))
+      steps_to program (SNAP i st) (SNAP (i + 1) (decr st x))
 
   (* x <- x + 0 *)
   | S_Skip: forall program x i opt_lbl instruction st,
@@ -204,16 +199,7 @@ Inductive steps_to : program -> snapshot -> snapshot -> Prop :=
       (get_labeled_instr program l = j) ->
       steps_to program (SNAP i st) (SNAP j st )
 
-  (* 
-     Não há instrução para a linha "i".
-     Seja "n" o tamanho do programa, "i" um número natural e "j" o estado do programa e s = (i, j) a snapshot de um programa de tamanho n. O livro define que:
-
-     1. O valor de "i" está restrito a: 1 <= i <= n + 1 
-     2. Uma snapshot terminal é uma snapshot onde i = n + 1.
-
-    Da forma como está implementado, qualquer snapshot que possua uma linha fora dos limites do programa possuirá como resultado ela mesma. 
-*)
-
+  (* Linha fora dos limites do programa *)
   | S_Out: forall program i st,
       nth_error program i = None ->
       steps_to program (SNAP i st) (SNAP i st).
@@ -221,32 +207,8 @@ Inductive steps_to : program -> snapshot -> snapshot -> Prop :=
 Hint Constructors steps_to : stepdb.
 
 
-(** Definição de uma função para obter o próximo passo usando o a propriedade steps_to como restrição *)
 
-
-(* Primeira tentativa: sem usar refine *)
-
-Definition next_step' (prog : program) (snap1 : snapshot) :
-  {snap2 | steps_to prog snap1 snap2}.
-Proof.
-  destruct snap1. destruct (nth_error prog n) eqn:E.
-  - destruct i. destruct s0.
-    + exists (SNAP (n + 1) (t_incr s v)). eapply S_Incr.
-      ++ exact E.
-      ++ reflexivity.
-    + exists (SNAP (n + 1) (t_decr s v)). eapply S_Decr.
-      ++ exact E.
-      ++ reflexivity.
-    + destruct (s v) eqn:Hsv.
-      ++ exists (SNAP (n + 1) s). eapply S_If_0; eauto.
-      ++ remember (get_labeled_instr prog o0).
-         exists (SNAP n1 s). eapply S_If_S; eauto.
-         +++ intros H. rewrite H in Hsv. discriminate Hsv.
-    + exists (SNAP (n + 1) s). eapply S_Skip; eauto.
-   - exists (SNAP n s). apply S_Out. assumption.
-Defined. 
-
-(** Unicidade do passo *)
+(** Unicidade do Passo de Computação *)
 
 Theorem step_unique : forall p snap1 snap2 snap3,
   steps_to p snap1 snap2 ->
@@ -298,44 +260,14 @@ Proof.
     ++ reflexivity.
 Qed.
 
-
-(** Equivalência entre o passo e a função *)
-
-Theorem next_step_equivalence' :
-  forall p snap1 (H : {snap2 | steps_to p snap1 snap2}) ,
-    (next_step' p snap1) = H <-> steps_to p snap1 (proj1_sig H).
-Proof.
-  intros p snap1 [snap2 proof]. split.
-  (* Ida ==> *)
-  + intros H. simpl. assumption.
-  (* Volta <== *)
-  + simpl. intros H. destruct (next_step' p snap1) as [snap2' proof']. 
-    assert (snap2' = snap2). {eapply step_unique; eassumption. }
-    subst. assert (proof = proof') by apply proof_irrelevance.
-    subst. reflexivity.
-Qed.
-
-
-Theorem next_step_equivalence'':
-  forall p snap1 snap2,
-  (proj1_sig (next_step' p snap1)) = snap2 <-> steps_to p snap1 snap2.
-Proof.
-  intros. split.
-  + intros H. remember (next_step' p snap1). destruct s as [snap' proof].
-    simpl in H. rewrite <- H. assumption.
-  + intros H. remember (next_step' p snap1). destruct s as [snap' proof].
-    simpl. eapply step_unique; eassumption.
-Qed.
-
-
-(* Definição simples e equivalência tradicional. ! *)
+(** Definição Funcional de Passo de Computação . *)
 
 Definition next_step (prog : program) (snap : snapshot) : snapshot :=
   match snap with
   | SNAP n s =>
     match nth_error prog n with
-    | Some ([l] x <- + 1) => SNAP (n + 1) (t_incr s x)
-    | Some ([l] x <- - 1) => SNAP (n + 1) (t_decr s x)
+    | Some ([l] x <- + 1) => SNAP (n + 1) (incr s x)
+    | Some ([l] x <- - 1) => SNAP (n + 1) (decr s x)
     | Some ([l] x <- + 0) => SNAP (n + 1) s
     | Some ([l] IF x GOTO j) =>
         match s x with
@@ -345,6 +277,8 @@ Definition next_step (prog : program) (snap : snapshot) : snapshot :=
     | None => SNAP n s
     end
   end.
+
+(** Prova de Equivalência da Versão Funcional e da Propriedade *)
 
 Theorem next_step_equivalence:
   forall p snap1 snap2,
@@ -367,12 +301,15 @@ Proof.
         +++ reflexivity.
 Qed.
 
+(** Computação : Não é o mesmo conceito de computação do livro, já que não
+    precisamos finalizar na snapshot terminal.
+    Aqui é basicamente uma aplicação sucessiva de next_steps. *)
+
 Fixpoint compute_program (p : program) snap n :=
   match n with
   | S n' => compute_program p ((next_step p snap )) n'
   | O    => snap
   end.
-
 
 Definition HALT (s : state) (p : program) (n : nat) :=
   let inital_snap := SNAP 0 s in 
@@ -382,26 +319,13 @@ Definition HALT (s : state) (p : program) (n : nat) :=
   | SNAP n' _ => n' = (length p) 
   end.
 
-Definition PRG := 
-  <{[ [] Y <- + 1
-    ]}>.
+(** Função Definida pelo Programa:
 
+    L é a lista de variáveis iniciais. A ideia é interpretar o programa como
+   uma função de n variáveis
 
-Theorem prg_halts : exists (t : nat) (s : state),
-  HALT s PRG t.
-Proof.
-  exists 1. exists empty. unfold HALT. simpl. reflexivity.
-Qed.
+   phi_p (x1, x2, x3, x4). *)
 
-
-Theorem prg_halts' : forall (s : state), exists t,
-  HALT s PRG t.
-Proof.
-  intros s.  exists 1. unfold HALT. unfold compute_program. unfold PRG. reflexivity.
-Qed.
-
-
-(* Função definida pelo programa *)
 
 Definition phi (p : program) (l : list nat) (n : nat)
   (halts : (HALT (create_state l) p n)) :=
@@ -409,81 +333,4 @@ Definition phi (p : program) (l : list nat) (n : nat)
   | SNAP _ s => s Y
   end.
 
-
-(* Programa Exemplo: Função Identidade *)
-Definition id_prg := 
-
-  let x := X 0 in
-  let z := Z 0 in
-  let y := Y in
-
-  let a := Some (A 0) in 
-  let b := Some (A 1) in 
-  let e := Some (A 10) in 
-
-  <{[[a] IF x GOTO b;
-     [ ] z <- + 1;
-     [ ] IF z GOTO e;
-     [b] x <- - 1;
-     [ ] y <- + 1;
-     [ ] z <- + 1;
-     [ ] IF z GOTO a]
-    }>.
-
-
-(* O programa para com o número 8 como entrada *)
-Theorem id_prg_halts : exists (n : nat), HALT (create_state [8]) id_prg n.
-Proof.
-  intros. exists 43.
-  cbv (* usar o reflexivity antes pode causar problemas *).  reflexivity. 
-Qed.
-
-(* Agora, o que eu quero provar é que o programa id_prg para, qualquer que seja o valor de x inicial. Porém, é mais fácil provar que o programa para para quaisquer valores de x y z no estado inicial. (poderia provara para todo estado inicial, mas achei mais complicado) *)
-
-(* O programa para para quaisquer que sejam os valores iniciais de x0, y0 e z0 *)
-
-Theorem id_prg_halts' : forall (x0 : nat) (y0 : nat) (z0 : nat),
-  exists (t : nat), HALT
-  (t_update (t_update (t_update empty (X 0) x0) (Z 0) z0) Y y0) id_prg t.
-Proof.
-  intros x0. unfold HALT. induction x0 as [| m]; intros.
-  - exists 3. destruct z0; destruct y0; reflexivity.
-  - destruct IHm with (y0 + 1) (z0 + 1). exists (5 + x). 
-    simpl compute_program. 
-   assert ((t_update (t_update (t_update empty (X 0) m) (Z 0) (z0 + 1)) Y
-              (y0 + 1)) = ((t_incr (t_incr (t_decr (t_update 
-              (t_update (t_update empty (X 0) (S m)) (Z 0) z0) Y y0) (X 0)) Y)
-              (Z 0)))).
-      { apply functional_extensionality. intros x0. unfold t_incr. 
-        unfold t_decr. unfold t_update. rewrite eqb_var_refl. simpl.
-        destruct x0; try (reflexivity); destruct n; try (reflexivity).
-        + rewrite PeanoNat.Nat.sub_0_r. reflexivity. }
-      rewrite <- H0. destruct z0; assumption.
-Qed.
-
-Theorem id_prg_halts'' : forall (x0 : nat),
-  exists (t : nat), HALT (create_state [x0])
-   id_prg t.
-Proof.
-  intros x0. unfold create_state. 
-  assert ((t_update empty (X 0) x0) = 
-  (t_update (t_update (t_update empty (X 0) x0) (Z 0) 0) Y 0)). 
-  { apply functional_extensionality. intros x. unfold t_update. unfold empty.
-    destruct (eqb_var (X 0) x) eqn:E;
-    destruct (eqb_var Y x) eqn:E2; 
-    destruct (eqb_var (Z 0) x) eqn:E3; try(reflexivity).
-    + rewrite var_eqb_eq in E. rewrite var_eqb_eq in E2.
-      subst. discriminate E2.
-    + rewrite var_eqb_eq in E2. rewrite var_eqb_eq in E. subst. discriminate E2.
-    + rewrite var_eqb_eq in E3. rewrite var_eqb_eq in E. subst. discriminate E3.
-   }
-  rewrite H. apply id_prg_halts'.
-Qed.
- 
-
-Theorem id_prg_halts_1000 : exists (t : nat), HALT (create_state [1000])
-  id_prg t.
-Proof.
-  apply id_prg_halts''.
-Qed.
-
+(* ################################################################# *)
