@@ -313,13 +313,7 @@ Definition HALT (s : state) (p : program) (n : nat) :=
   | SNAP n' _ => n' = (length p) 
   end.
 
-(** Função Definida pelo Programa:
-
-    L é a lista de variáveis iniciais. A ideia é interpretar o programa como
-   uma função de n variáveis
-
-   phi_p (x1, x2, x3, x4). *)
-
+(** Função Parcialmente Computável por NatLang *)
 
 Definition get_Y (p : program) (x : nat) (n : nat) :=
   match (compute_program p (SNAP 0 (create_state x)) n) with

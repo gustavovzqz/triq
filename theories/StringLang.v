@@ -93,10 +93,12 @@ Definition program (n : nat)  := list (instruction n).
 
 Definition state (n : nat) := variable -> (string n).
 
-
 Definition empty (n : nat) : (state n) := fun _ => [].
 
 Arguments Instr{n}.
+
+
+(** Auxiliares **)
 
 Definition eqb_var v1 v2 := 
   match v1, v2 with 
@@ -208,12 +210,9 @@ Fixpoint ends_with {n : nat} (l : string n) (h : alphabet n) :=
 
 
 
-(** Propriedade de Passo de Pomputação:
+(** Propriedade de Passo de Computação: *)
 
-    steps_to programa s s' :=
-    O programa de snapshot s possui como próxima snapshot s' *)
-
-Inductive steps_to {n : nat} : (program n) ->
+ Inductive steps_to {n : nat} : (program n) ->
   (snapshot n) -> (snapshot n) -> Prop :=
 
   (* V <- s V *)
@@ -318,17 +317,10 @@ Definition partially_computable (n : nat)
     (f x <> None -> exists (k : nat), HALT (create_state n x) p k /\ 
     Some (get_Y  p x k) = (f x)).
 
-
-(** Exemplos! TODO: Mover para StringLangExamples depois da apresentação! *)
-
-
 Theorem t0_lt_1 : 0 < 1.
 Proof.
   constructor.
 Qed.
 
-
 Definition prg :=
   <{[ Instr None (APPEND (exist _ 0 t0_lt_1) (X 0))]}>.
-
-Check (prg : program 1).
