@@ -163,33 +163,33 @@ Inductive steps_to : program -> snapshot -> snapshot -> Prop :=
   (* x <- x + 1 *)
   | S_Incr : forall program x i opt_lbl instruction st,
       nth_error program i = Some instruction ->
-      instruction = ([opt_lbl] x <- + 1)     ->
+      instruction = <{[opt_lbl] x <- + 1}>    ->
       steps_to program (SNAP i st) (SNAP (i + 1) (incr st x))
 
   (* x <- x - 1 *)
   | S_Decr: forall program x i opt_lbl instruction st,
       nth_error program i = Some instruction ->
-      (instruction = ([opt_lbl] x <- - 1))   ->
+      instruction = <{[opt_lbl] x <- - 1}>  ->
       steps_to program (SNAP i st) (SNAP (i + 1) (decr st x))
 
   (* x <- x + 0 *)
   | S_Skip: forall program x i opt_lbl instruction st,
       nth_error program i = Some instruction ->
-      instruction = ([opt_lbl] x <- + 0 )    ->
+      instruction = <{[opt_lbl] x <- + 0}>   ->
       steps_to program (SNAP i st) (SNAP (i + 1) st)
 
   (* IF X != 0 GOTO l, x = 0 *)
   | S_If_0: forall program x i opt_lbl l instruction st,
       nth_error program i = Some instruction   ->
       st x = 0                                 ->
-      (instruction = ([opt_lbl] IF x GOTO l )) ->
+      instruction = <{[opt_lbl] IF x GOTO l }> ->
       steps_to program (SNAP i st) (SNAP (i + 1) st)
 
   (* IF X != 0 GOTO l, x != 0 *)
   | S_If_S: forall program x i j opt_lbl l instruction st,
       nth_error program i = Some instruction  ->
       st x <> 0                               ->
-      instruction = ([opt_lbl] IF x GOTO l )  ->
+      instruction = <{[opt_lbl] IF x GOTO l}>  ->
       (get_labeled_instr program l = j) ->
       steps_to program (SNAP i st) (SNAP j st )
 

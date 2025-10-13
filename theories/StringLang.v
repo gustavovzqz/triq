@@ -93,9 +93,9 @@ Definition program (n : nat)  := list (instruction n).
 
 Definition state (n : nat) := variable -> (string n).
 
-Definition empty n : (state n) := fun _ => [].
 
-Arguments APPEND{n}.
+Definition empty (n : nat) : (state n) := fun _ => [].
+
 Arguments Instr{n}.
 
 Definition eqb_var v1 v2 := 
@@ -139,6 +139,10 @@ Definition append {n : nat} (h : (alphabet n)) (m : state n ) (x : variable) :=
   let v := m x in 
   update m x (h :: v).
 
+
+Definition create_state (n : nat) x :=
+  update (empty n) (X 0) x.
+
 Search list.
 
 Print removelast.
@@ -151,14 +155,48 @@ Inductive snapshot n :=
   | SNAP : nat -> (state n) -> snapshot n.
 
 Arguments SNAP{n}.
+Arguments APPEND{n}.
 Arguments DEL{n}.
 Arguments SKIP{n}.
 Arguments IF_ENDS_GOTO{n}.
 
 
-Search list.
+Declare Custom Entry com.
+Declare Scope string_lang_scope.
+Declare Custom Entry com_aux.
 
-Print last.
+Notation "<{ e }>" := e (e custom com_aux) : string_lang_scope.
+Notation "e" := e (in custom com_aux at level 0, e custom com) : string_lang_scope.
+Notation "( x )" := x (in custom com, x at level 99) : string_lang_scope.
+Notation "x" := x (in custom com at level 0, x constr at level 0) : string_lang_scope.
+
+Notation "x <- + v" := (APPEND v x)
+  (in custom com at level 50, left associativity).
+
+Notation "x <- -" := (DEL x)
+  (in custom com at level 50, left associativity).
+
+Notation "x <- + 0" := (SKIP x)
+  (in custom com at level 50, left associativity).
+
+
+Notation "'IF' x 'ENDS' k 'GOTO' y " :=
+         (IF_ENDS_GOTO x k y) 
+           (in custom com at level 89, x at level 99,
+            y at level 99) : string_lang_scope.
+
+Notation "[ l ] s " := (Instr (l) s)
+  (at level 0, s custom com at level 200) : string_lang_scope.
+
+Notation "[ ] s " := (Instr None s)
+  (at level 0, s custom com at level 200) : string_lang_scope.
+
+
+Notation "'[ i1 ; .. ; iN ]'" := (cons i1 .. (cons iN nil) ..)
+  (at level 0, i1 custom com, iN custom com) : string_lang_scope.
+
+Open Scope string_lang_scope.
+
 
 
 Fixpoint ends_with {n : nat} (l : string n) (h : alphabet n) :=
@@ -183,7 +221,7 @@ Inductive steps_to {n : nat} : (program n) ->
       (p : program n) (i : nat) (instr : instruction n) (st : state n)
       (x : variable) opt_lbl,
       nth_error p i = Some instr -> 
-      instr = Instr opt_lbl (APPEND h x) ->
+      instr = <{[opt_lbl] x <- + h}> ->
       steps_to p (SNAP i st) (SNAP (i + 1) (append h st x))
 
   (* V <- v- *)
@@ -191,7 +229,7 @@ Inductive steps_to {n : nat} : (program n) ->
       (p : program n) (i : nat) (instr : instruction n) (st : state n)
       (x : variable) opt_lbl,
       nth_error p i = Some instr -> 
-      instr = Instr opt_lbl (DEL x) ->
+      instr = <{[opt_lbl] x <- - }> ->
       steps_to p (SNAP i st) (SNAP (i + 1) (del st x))
 
   (* v <- v *)
@@ -199,7 +237,7 @@ Inductive steps_to {n : nat} : (program n) ->
       (p : program n) (i : nat) (instr : instruction n) (st : state n)
       (x : variable) opt_lbl,
       nth_error p i = Some instr ->
-      instr = Instr opt_lbl (SKIP x ) ->
+      instr = <{[opt_lbl] x <- + 0}> ->
       steps_to p (SNAP i st) (SNAP (i + 1) st)
 
   (* IF V ends s GOTO l -> if = true *)
@@ -207,7 +245,7 @@ Inductive steps_to {n : nat} : (program n) ->
       (p : program n) (i : nat) (instr : instruction n) (st : state n)
       (x : variable) opt_lbl l j,
       nth_error p i = Some instr ->
-      instr = Instr opt_lbl (IF_ENDS_GOTO x h l) ->
+      instr = <{[opt_lbl] IF x ENDS h GOTO l}> ->
       ends_with (st x) h = true ->
       get_labeled_instr p l = j ->
       steps_to p (SNAP i st) (SNAP j st)
@@ -217,7 +255,7 @@ Inductive steps_to {n : nat} : (program n) ->
       (p : program n) (i : nat) (instr : instruction n) (st : state n)
       (x : variable) opt_lbl l,
       nth_error p i = Some instr ->
-      instr = Instr opt_lbl (IF_ENDS_GOTO x h l) ->
+      instr = <{[opt_lbl] IF x ENDS h GOTO l}> ->
       ends_with (st x) h = false ->
       steps_to p (SNAP i st) (SNAP (i + 1) st)
 
@@ -236,10 +274,49 @@ Inductive steps_to {n : nat} : (program n) ->
    f é parcialmente computável em NatLang. *)
 
 
+Definition next_step {n : nat} (p : program n) (snap : snapshot n) :=
+  match snap with 
+  | SNAP n s =>
+      match nth_error p n with 
+      | Some <{[_] x <- + v }> => SNAP (n + 1) (append v s x)
+      | Some <{[_] x <- -   }> => SNAP (n + 1) (del s x)
+      | Some <{[_] x <- + 0 }> => SNAP (n + 1) s 
+      | Some <{[_] IF x ENDS v GOTO l}> =>
+          match (ends_with (s x) v ) with 
+          | true  => SNAP (get_labeled_instr p l) s
+          | false => SNAP (n + 1) s
+          end
+      | None => SNAP n s
+      end
+  end.
+
+Fixpoint compute_program {m : nat} (p : program m ) snap n :=
+  match n with
+  | S n' => compute_program p ((next_step p snap )) n'
+  | O    => snap
+  end.
+
+Definition HALT {m : nat} (s : state m ) (p : program m) (n : nat) :=
+  let inital_snap := SNAP 0 s in 
+  let nth_snap := compute_program p inital_snap n in 
+
+  match nth_snap with 
+  | SNAP n' _ => n' = (length p) 
+  end.
 
 
+Definition get_Y {n : nat} (p : program n ) (x : string n) (k : nat) :=
+  match (compute_program p (SNAP 0 (create_state n x)) n) with
+  | SNAP _ s => s Y
+  end.
 
 
+Definition partially_computable (n : nat) 
+  (f : (string n) -> option (string n)) := 
+  exists (p : program n), forall x,
+    (f x = None -> forall (s : state n) (k : nat), ~ (HALT s p k)) /\ 
+    (f x <> None -> exists (k : nat), HALT (create_state n x) p k /\ 
+    Some (get_Y  p x k) = (f x)).
 
 
 (** Exemplos! TODO: Mover para StringLangExamples depois da apresentação! *)
@@ -252,6 +329,6 @@ Qed.
 
 
 Definition prg :=
-  [ Instr None (APPEND (exist _ 0 t0_lt_1) (X 0))].
+  <{[ Instr None (APPEND (exist _ 0 t0_lt_1) (X 0))]}>.
 
 Check (prg : program 1).
