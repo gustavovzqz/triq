@@ -150,13 +150,8 @@ Inductive snapshot :=
 
 Definition initial_snapshot := SNAP 0 empty.
 
-Definition create_state x_list :=
- let fix aux nat_list s n := 
-   match nat_list with 
-   | h :: t => aux t (update s (X n) h) (n + 1)
-   | []     =>  s
-   end
- in aux x_list empty 0.
+Definition create_state x :=
+  update empty (X 0) x.
 
 
 (** Propriedade de Passo de Pomputação:
@@ -326,10 +321,16 @@ Definition HALT (s : state) (p : program) (n : nat) :=
    phi_p (x1, x2, x3, x4). *)
 
 
-Definition phi (p : program) (l : list nat) (n : nat)
-  (halts : (HALT (create_state l) p n)) :=
-  match (compute_program p (SNAP 0 (create_state l)) n) with
+Definition get_Y (p : program) (x : nat) (n : nat) :=
+  match (compute_program p (SNAP 0 (create_state x)) n) with
   | SNAP _ s => s Y
   end.
+
+Definition partially_computable (f : nat -> option nat) := 
+  exists (p : program), forall x,
+    (f x = None -> forall (s : state) (k : nat), ~ (HALT s p k)) /\ 
+    (f x <> None -> exists (k : nat), HALT (create_state x) p k /\ 
+    Some (get_Y  p x k) = (f x)).
+
 
 (* ################################################################# *)

@@ -167,7 +167,7 @@ Fixpoint ends_with {n : nat} (l : string n) (h : alphabet n) :=
   | [a] => eqb_char a h
   | a :: (_ :: _) as l' => ends_with l' h
   end.
-  
+
 
 
 (** Propriedade de Passo de Pomputação:
@@ -183,43 +183,58 @@ Inductive steps_to {n : nat} : (program n) ->
       (p : program n) (i : nat) (instr : instruction n) (st : state n)
       (x : variable) opt_lbl,
       nth_error p i = Some instr -> 
-      (instr = (Instr opt_lbl (APPEND h x))) ->
-      steps_to p (SNAP i st) (SNAP (i + 1) (append h (st) x))
+      instr = Instr opt_lbl (APPEND h x) ->
+      steps_to p (SNAP i st) (SNAP (i + 1) (append h st x))
 
   (* V <- v- *)
-  | S_Del: forall (h : alphabet n) 
+  | S_Del: forall
       (p : program n) (i : nat) (instr : instruction n) (st : state n)
       (x : variable) opt_lbl,
       nth_error p i = Some instr -> 
-      (instr = (Instr opt_lbl (DEL x))) ->
-      steps_to p (SNAP i st) (SNAP (i + 1) (del (st) x))
-
+      instr = Instr opt_lbl (DEL x) ->
+      steps_to p (SNAP i st) (SNAP (i + 1) (del st x))
 
   (* v <- v *)
-  | S_Skip: forall (h : alphabet n)
+  | S_Skip: forall 
       (p : program n) (i : nat) (instr : instruction n) (st : state n)
       (x : variable) opt_lbl,
       nth_error p i = Some instr ->
-      (instr = (Instr opt_lbl (SKIP x ))) ->
+      instr = Instr opt_lbl (SKIP x ) ->
       steps_to p (SNAP i st) (SNAP (i + 1) st)
 
-  (* IF V ends s GOTO l *)
+  (* IF V ends s GOTO l -> if = true *)
   | S_If_True: forall (h : alphabet n)
       (p : program n) (i : nat) (instr : instruction n) (st : state n)
       (x : variable) opt_lbl l j,
       nth_error p i = Some instr ->
-      (instr = (Instr opt_lbl (IF_ENDS_GOTO x h l))) ->
+      instr = Instr opt_lbl (IF_ENDS_GOTO x h l) ->
       ends_with (st x) h = true ->
       get_labeled_instr p l = j ->
       steps_to p (SNAP i st) (SNAP j st)
 
+  (* IF V ends s GOTO l -> if = false *)
   | S_If_False: forall (h : alphabet n)
       (p : program n) (i : nat) (instr : instruction n) (st : state n)
       (x : variable) opt_lbl l,
       nth_error p i = Some instr ->
-      (instr = (Instr opt_lbl (IF_ENDS_GOTO x h l))) ->
+      instr = Instr opt_lbl (IF_ENDS_GOTO x h l) ->
       ends_with (st x) h = false ->
-      steps_to p (SNAP i st) (SNAP (i + 1) st).
+      steps_to p (SNAP i st) (SNAP (i + 1) st)
+
+  (* Fora dos limites do programa *)
+  | S_Out : forall (p : program n) (i : nat) (st : state n),
+      nth_error p i = None ->
+      steps_to p (SNAP i st) (SNAP i st).
+
+
+
+
+(* f é parcialmente computável em NatLang ->
+   f é parcialmente computável em StringLang n para todo n ->
+   f é computável estritamente por um programa Post-Turing ->
+   f é computável por um programa Post-Turing ->
+   f é parcialmente computável em NatLang. *)
+
 
 
 
