@@ -4,7 +4,6 @@ From Stdlib Require Import Nat.
 From Stdlib Require Import List.
 
 Import ListNotations.
-Require Import Extraction.
 
 (** Elementos Básicos de um Programa *)
 
