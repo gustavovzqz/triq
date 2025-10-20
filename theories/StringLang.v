@@ -1,7 +1,7 @@
 (** * StringLang: Linguagem Simples Baseada em Strings *)
 
-From Stdlib Require Import Nat.
-From Stdlib Require Import List.
+From Coq Require Import Nat.
+From Coq Require Import List.
 
 Import ListNotations.
 
@@ -58,14 +58,6 @@ Definition eqb_char {n : nat} (a : alphabet n) (b : alphabet n) :=
    Alfabeto 9   ->  {}, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, ...,
 
    Não tem o 10! *)
-
-
-(* Definição possível dois: 
-   TODO: Apagar. *)
-
-Inductive alphabet' (n : nat) : Type :=
-  | CHAR : forall k : nat, 
-            k < n -> alphabet' n.
 
 
 Definition string (n : nat) := list (alphabet n).
@@ -266,6 +258,7 @@ Fixpoint ends_with {n : nat} (l : string n) (h : alphabet n) :=
 
 
 
+
 (* f é parcialmente computável em NatLang ->
    f é parcialmente computável em StringLang n para todo n ->
    f é computável estritamente por um programa Post-Turing ->
@@ -288,6 +281,31 @@ Definition next_step {n : nat} (p : program n) (snap : snapshot n) :=
       | None => SNAP n s
       end
   end.
+
+
+(** Prova de Equivalência da Versão Funcional e da Propriedade *)
+
+Theorem next_step_equivalence :
+  forall n (p : program n) snap1 snap2,
+  (next_step p snap1) = snap2 <-> steps_to p snap1 snap2.
+Proof.
+  intros. split.
+  (* -> *)
+  - intros. destruct snap1. simpl in H. destruct (nth_error p n0) eqn:E.
+    + destruct i. destruct s0; subst; try(econstructor); try(eassumption);
+      try(reflexivity).
+      ++ destruct (ends_with (s v) a) eqn:E1.
+         +++ eapply S_If_True; try(reflexivity); try(eassumption).
+         +++ eapply S_If_False; try(reflexivity); try(eassumption).
+    + subst. apply S_Out. assumption.
+  (* <- *)
+  - intros. unfold next_step. inversion H; subst; rewrite H0; try(reflexivity).
+    + rewrite H2. reflexivity.
+    + rewrite H2. reflexivity.
+Qed.
+
+
+
 
 Fixpoint compute_program {m : nat} (p : program m ) snap n :=
   match n with

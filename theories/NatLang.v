@@ -1,7 +1,7 @@
 (** * NatLang: Linguagem Simples Baseada em Naturais *)
 
-From Stdlib Require Import Nat.
-From Stdlib Require Import List.
+From Coq Require Import Nat.
+From Coq Require Import List.
 
 Import ListNotations.
 
