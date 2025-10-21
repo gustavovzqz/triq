@@ -170,7 +170,7 @@ Notation "x <- + v" := (APPEND v x)
 Notation "x <- -" := (DEL x)
   (in custom com at level 50, left associativity).
 
-Notation "x <- + 0" := (SKIP x)
+Notation "x <- 'skip' " := (SKIP x)
   (in custom com at level 50, left associativity).
 
 
@@ -228,7 +228,7 @@ Fixpoint ends_with {n : nat} (l : string n) (h : alphabet n) :=
       (p : program n) (i : nat) (instr : instruction n) (st : state n)
       (x : variable) opt_lbl,
       nth_error p i = Some instr ->
-      instr = <{[opt_lbl] x <- + 0}> ->
+      instr = <{[opt_lbl] x <- skip}> ->
       steps_to p (SNAP i st) (SNAP (i + 1) st)
 
   (* IF V ends s GOTO l -> if = true *)
@@ -272,7 +272,7 @@ Definition next_step {n : nat} (p : program n) (snap : snapshot n) :=
       match nth_error p n with 
       | Some <{[_] x <- + v }> => SNAP (n + 1) (append v s x)
       | Some <{[_] x <- -   }> => SNAP (n + 1) (del s x)
-      | Some <{[_] x <- + 0 }> => SNAP (n + 1) s 
+      | Some <{[_] x <- skip }> => SNAP (n + 1) s 
       | Some <{[_] IF x ENDS v GOTO l}> =>
           match (ends_with (s x) v ) with 
           | true  => SNAP (get_labeled_instr p l) s
