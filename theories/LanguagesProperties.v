@@ -109,12 +109,34 @@ Definition s3 : (StringLang.string 3) :=
 Compute string_to_nat s3.
 Compute nat_to_nat_list 3 209.
 
+Definition get_string_function (n : nat) (f : nat -> option nat) :=
+  fun (s : StringLang.string n)  => 
+  match (f (string_to_nat s)) with
+  | Some k => Some (nat_to_string n k)
+  | None => None
+  end.
+
+Lemma nat_lang_get_y_empty : forall n x, NatLang.get_Y [] x n = 0.
+Proof.
+  intros. unfold NatLang.get_Y. induction n.
+  + reflexivity.
+  + simpl. exact IHn.
+Qed.
 
 
- 
+(* Toda função computável em Nat é computável em String (afabeto 1) *)
+
+Theorem nat_implies_string_1 :
+  forall (f : nat -> option nat),
+  (NatLang.partially_computable f) ->
+  (StringLang.partially_computable 1 (get_string_function 1 f)).
+Proof.
+  intros.
+Abort.
+
 
 
 Theorem nat_implies_string :
-  forall (f : nat -> option nat) (n : nat) (f' 
-  (NatLang.partially_computable f) -> 
-  (StringLang.partially_computable n)
+  forall (f : nat -> option nat) (n : nat),
+  (NatLang.partially_computable f) ->
+  (StringLang.partially_computable n (get_string_function n f)).
