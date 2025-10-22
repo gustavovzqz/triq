@@ -69,8 +69,7 @@ Definition string (n : nat) := list (alphabet n).
 Inductive statement (n : nat) : Type :=
   | APPEND: (alphabet n) -> variable -> statement n
   | DEL : variable -> statement n
-  | IF_ENDS_GOTO   : variable -> (alphabet n) -> option label -> statement n
-  | SKIP : variable -> statement n.
+  | IF_ENDS_GOTO   : variable -> (alphabet n) -> option label -> statement n.
 
 Inductive instruction (n : nat) : Type :=
   | Instr : option label -> statement n -> instruction n.
@@ -131,7 +130,6 @@ Inductive snapshot n :=
 Arguments SNAP{n}.
 Arguments APPEND{n}.
 Arguments DEL{n}.
-Arguments SKIP{n}.
 Arguments IF_ENDS_GOTO{n}.
 
 
@@ -150,8 +148,6 @@ Notation "x <- + v" := (APPEND v x)
 Notation "x <- -" := (DEL x)
   (in custom com at level 50, left associativity).
 
-Notation "x <- 'skip' " := (SKIP x)
-  (in custom com at level 50, left associativity).
 
 
 Notation "'IF' x 'ENDS' k 'GOTO' y " :=
@@ -203,14 +199,6 @@ Fixpoint ends_with {n : nat} (l : string n) (h : alphabet n) :=
       instr = <{[opt_lbl] x <- - }> ->
       steps_to p (SNAP i st) (SNAP (i + 1) (del st x))
 
-  (* v <- v *)
-  | S_Skip: forall 
-      (p : program n) (i : nat) (instr : instruction n) (st : state n)
-      (x : variable) opt_lbl,
-      nth_error p i = Some instr ->
-      instr = <{[opt_lbl] x <- skip}> ->
-      steps_to p (SNAP i st) (SNAP (i + 1) st)
-
   (* IF V ends s GOTO l -> if = true *)
   | S_If_True: forall (h : alphabet n)
       (p : program n) (i : nat) (instr : instruction n) (st : state n)
@@ -252,7 +240,6 @@ Definition next_step {n : nat} (p : program n) (snap : snapshot n) :=
       match nth_error p n with 
       | Some <{[_] x <- + v }> => SNAP (n + 1) (append v s x)
       | Some <{[_] x <- -   }> => SNAP (n + 1) (del s x)
-      | Some <{[_] x <- skip }> => SNAP (n + 1) s 
       | Some <{[_] IF x ENDS v GOTO l}> =>
           match (ends_with (s x) v ) with 
           | true  => SNAP (get_labeled_instr p l) s

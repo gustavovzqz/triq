@@ -12,8 +12,7 @@ Import ListNotations.
 Inductive statement : Type :=
   | INCR : variable -> statement
   | DECR : variable -> statement
-  | IF_GOTO   : variable -> option label -> statement
-  | SKIP : variable -> statement.
+  | IF_GOTO   : variable -> option label -> statement.
 
 Inductive instruction : Type :=
   | Instr : option label -> statement -> instruction.
@@ -38,8 +37,6 @@ Notation "x <- + 1" := (INCR x)
 Notation "x <- - 1" := (DECR x)
   (in custom com at level 50, left associativity).
 
-Notation "x <- + 0" := (SKIP x)
-  (in custom com at level 50, left associativity).
 
 
 Notation "'IF' x 'GOTO' y " :=
@@ -127,12 +124,6 @@ Inductive steps_to : program -> snapshot -> snapshot -> Prop :=
       instruction = <{[opt_lbl] x <- - 1}>  ->
       steps_to program (SNAP i st) (SNAP (i + 1) (decr st x))
 
-  (* x <- x + 0 *)
-  | S_Skip: forall program x i opt_lbl instruction st,
-      nth_error program i = Some instruction ->
-      instruction = <{[opt_lbl] x <- + 0}>   ->
-      steps_to program (SNAP i st) (SNAP (i + 1) st)
-
   (* IF X != 0 GOTO l, x = 0 *)
   | S_If_0: forall program x i opt_lbl l instruction st,
       nth_error program i = Some instruction   ->
@@ -168,40 +159,28 @@ Proof.
   + inversion H0; subst.
     ++ rewrite H4 in H10. inversion H10. reflexivity.
     ++ rewrite H4 in H10. inversion H10. 
-    ++ rewrite H4 in H10. inversion H10. 
-    ++ rewrite H4 in H9.  inversion H9. 
+    ++ rewrite H4 in H9. inversion H9. 
     ++ rewrite H4 in H9.  inversion H9. 
     ++ rewrite H4 in H11. inversion H11. 
   + inversion H0; subst.
     ++ rewrite H4 in H10. inversion H10. 
     ++ rewrite H4 in H10. inversion H10. reflexivity.
-    ++ rewrite H4 in H10. inversion H10. 
-    ++ rewrite H4 in H9.  inversion H9. 
-    ++ rewrite H4 in H9.  inversion H9. 
-    ++ rewrite H4 in H11. inversion H11. 
-  + inversion H0; subst.
-    ++ rewrite H4 in H10. inversion H10. 
-    ++ rewrite H4 in H10. inversion H10. 
-    ++ rewrite H4 in H10. inversion H10. reflexivity.
-    ++ rewrite H4 in H9.  inversion H9. 
+    ++ rewrite H4 in H9. inversion H9. 
     ++ rewrite H4 in H9.  inversion H9. 
     ++ rewrite H4 in H11. inversion H11. 
   + inversion H0; subst.
-    ++ rewrite H3 in H11. inversion H11. 
     ++ rewrite H3 in H11. inversion H11. 
     ++ rewrite H3 in H11. inversion H11. 
     ++ rewrite H3 in H10. inversion H10. reflexivity.
-    ++ rewrite H3 in H10. inversion H10. subst. apply H11 in H5. destruct H5.
-    ++ rewrite H3 in H12. inversion H12.
+    ++ rewrite H3 in H10.  inversion H10. subst. apply H11 in H5. destruct H5.
+    ++ rewrite H3 in H12.  inversion H12. 
   + inversion H0; subst.
     ++ rewrite H3 in H12. inversion H12. 
     ++ rewrite H3 in H12. inversion H12. 
-    ++ rewrite H3 in H12. inversion H12. 
-    ++ rewrite H3 in H11. inversion H11. subst. apply H4 in H13. destruct H13.
+    ++ rewrite H3 in H11. inversion H11.  subst. apply H4 in H13. destruct H13.
     ++ rewrite H3 in H11. inversion H11. reflexivity.
-    ++ rewrite H3 in H13. inversion H13. 
+    ++ rewrite H3 in H13. inversion H13.
   + inversion H0; subst.
-    ++ rewrite H5 in H9. inversion H9. 
     ++ rewrite H5 in H9. inversion H9. 
     ++ rewrite H5 in H9. inversion H9. 
     ++ rewrite H5 in H8. inversion H8. 
@@ -217,7 +196,6 @@ Definition next_step (prog : program) (snap : snapshot) : snapshot :=
     match nth_error prog n with
     | Some ([l] x <- + 1) => SNAP (n + 1) (incr s x)
     | Some ([l] x <- - 1) => SNAP (n + 1) (decr s x)
-    | Some ([l] x <- + 0) => SNAP (n + 1) s
     | Some ([l] IF x GOTO j) =>
         match s x with
         | S m => SNAP (get_labeled_instr prog j) s
