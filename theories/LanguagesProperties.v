@@ -131,27 +131,11 @@ Proof.
 Defined.
 
 
-(** Se eu consegur fazer dessa forma, vai ser muito bom! *)
+(** Se eu conseguir fazer dessa forma, vai ser muito bom! *)
 Definition get_string_program (p : NatLang.program) :
   ({p' | program_equivalence p p'}).
 Proof.
-  induction p.
-  + exists []. admit.
-  + destruct a0. destruct IHp as [p'  prf]. destruct s.
-    ++ exists (StringLang.Instr None 
-       (** Falta arrumar quem será a label e a variável
-          exatamente. Unificar facilita? Provavelmente sim! *)
-       (StringLang.APPEND (zero_prf) StringLang.Y) :: p').
-       unfold program_equivalence. intros f. 
-       unfold NatLang.partially_computable_by_p. intros H_part_nat.
-       unfold StringLang.partially_computable_by_p. intros s. split.
-       +++ unfold get_string_function. 
-           destruct H_part_nat with (string_to_nat s). 
-           destruct (f (string_to_nat s)) eqn:E.
-           * intros false. discriminate false.
-           * intros useless. clear H_part_nat useless. pose proof (H eq_refl).
 Abort.
-
 
 (* Tentar quebrar a prova em pedaços menores. *)
   
