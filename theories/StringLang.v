@@ -335,6 +335,16 @@ Definition partially_computable (n : nat)
     (f x <> None -> exists (k : nat), HALT (create_state n x) p k /\ 
     Some (get_Y  p x k) = (f x)).
 
+
+Definition partially_computable_by_p (n : nat) 
+  (f : (string n) -> option (string n)) (p : program n) := 
+    forall x,
+    (f x = None -> forall (s : state n) (k : nat), ~ (HALT s p k)) /\ 
+    (f x <> None -> exists (k : nat), HALT (create_state n x) p k /\ 
+    Some (get_Y  p x k) = (f x)).
+
+
+
 Theorem t0_lt_1 : 0 < 1.
 Proof.
   constructor.

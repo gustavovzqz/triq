@@ -327,4 +327,12 @@ Definition partially_computable (f : nat -> option nat) :=
     Some (get_Y  p x k) = (f x)).
 
 
+Definition partially_computable_by_p (f : nat -> option nat) p := 
+    forall x,
+    (f x = None -> forall (s : state) (k : nat), ~ (HALT s p k)) /\ 
+    (f x <> None -> exists (k : nat), HALT (create_state x) p k /\ 
+    Some (get_Y  p x k) = (f x)).
+
+
+
 (* ################################################################# *)

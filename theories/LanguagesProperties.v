@@ -116,27 +116,47 @@ Definition get_string_function (n : nat) (f : nat -> option nat) :=
   | None => None
   end.
 
-Lemma nat_lang_get_y_empty : forall n x, NatLang.get_Y [] x n = 0.
-Proof.
-  intros. unfold NatLang.get_Y. induction n.
-  + reflexivity.
-  + simpl. exact IHn.
-Qed.
 
 
-(* Toda função computável em Nat é computável em String (afabeto 1) *)
 
-Theorem nat_implies_string_1 :
+(* Versão fraca, falta indexar por n *)
+Definition program_equivalence p1 (p2 : StringLang.program 1) :=
   forall (f : nat -> option nat),
-  (NatLang.partially_computable f) ->
-  (StringLang.partially_computable 1 (get_string_function 1 f)).
+  (NatLang.partially_computable_by_p f p1) ->
+  (StringLang.partially_computable_by_p 1 (get_string_function 1 f) p2).
+
+Definition zero_prf : StringLang.alphabet 1.
 Proof.
-  intros.
+  exists 0.  constructor.
+Defined.
+
+
+(** Se eu consegur fazer dessa forma, vai ser muito bom! *)
+Definition get_string_program (p : NatLang.program) :
+  ({p' | program_equivalence p p'}).
+Proof.
+  induction p.
+  + exists []. admit.
+  + destruct a0. destruct IHp as [p'  prf]. destruct s.
+    ++ exists (StringLang.Instr None 
+       (** Falta arrumar quem será a label e a variável
+          exatamente. Unificar facilita? Provavelmente sim! *)
+       (StringLang.APPEND (zero_prf) StringLang.Y) :: p').
+       unfold program_equivalence. intros f. 
+       unfold NatLang.partially_computable_by_p. intros H_part_nat.
+       unfold StringLang.partially_computable_by_p. intros s. split.
+       +++ unfold get_string_function. 
+           destruct H_part_nat with (string_to_nat s). 
+           destruct (f (string_to_nat s)) eqn:E.
+           * intros false. discriminate false.
+           * intros useless. clear H_part_nat useless. pose proof (H eq_refl).
 Abort.
 
 
+(* Tentar quebrar a prova em pedaços menores. *)
+  
 
-Theorem nat_implies_string :
-  forall (f : nat -> option nat) (n : nat),
-  (NatLang.partially_computable f) ->
-  (StringLang.partially_computable n (get_string_function n f)).
+
+
+
+
