@@ -1,4 +1,6 @@
 -Q theories Triq
 
+theories/LanguagesUtils.v
 theories/NatLang.v
 theories/StringLang.v
+

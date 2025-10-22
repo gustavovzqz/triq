@@ -2,6 +2,7 @@
 
 From Coq Require Import Nat.
 From Coq Require Import List.
+From Triq Require Export LanguagesUtils.
 
 Import ListNotations.
 
@@ -64,13 +65,6 @@ Definition string (n : nat) := list (alphabet n).
 
 (** Elementos de um Programa: *)
 
-Inductive variable : Type :=
-  | X : nat -> variable  (* input  *)
-  | Z : nat -> variable  (* local  *)
-  | Y : variable.        (* output *)
-
-Inductive label : Type :=
-  | A : nat -> label.
 
 Inductive statement (n : nat) : Type :=
   | APPEND: (alphabet n) -> variable -> statement n
@@ -91,20 +85,6 @@ Arguments Instr{n}.
 
 
 (** Auxiliares **)
-
-Definition eqb_var v1 v2 := 
-  match v1, v2 with 
-  | X a, X b => a =? b
-  | Z a, Z b => a =? b
-  | Y, Y  => true
-  | _, _ => false
-  end.
-
-
-Definition eqb_lbl l1 l2 :=
-  match l1, l2 with 
-  | A a, A b => a =? b
-  end.
 
 Definition eq_inst_label {n : nat} (instr : instruction n ) (opt_lbl : option label) :=
   match instr, opt_lbl with 
