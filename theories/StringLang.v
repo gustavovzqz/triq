@@ -38,11 +38,11 @@ Import ListNotations.
 
 
 
-(* Definição possível um: *)
 
-(* Conjunto com n dígitos *)
+(* Conjunto com com os dígitos [0, ..., n] *)
 
-Definition alphabet n := {k : nat | k < n}.
+Definition alphabet n := {k : nat | k <= n}.
+
 
 Definition eqb_char {n : nat} (a : alphabet n) (b : alphabet n) :=
   proj1_sig a =? proj1_sig b.
@@ -311,11 +311,4 @@ Definition partially_computable_by_p (n : nat)
     Some (get_Y  p x k) = (f x)).
 
 
-
-Theorem t0_lt_1 : 0 < 1.
-Proof.
-  constructor.
-Qed.
-
-Definition prg :=
-  <{[ Instr None (APPEND (exist _ 0 t0_lt_1) (X 0))]}>.
+(* ################################################################# *)
