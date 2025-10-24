@@ -13,9 +13,6 @@ Search nat.
 (** Conversão de String para Nat *)
 
 
-  
-
-(* Será que vou precisar usar? ... *)
 (* n = 2
   [0, 1, 2] -> 3 elementos
    [1, 0, 0, 2, 1]
@@ -28,10 +25,6 @@ Definition string_to_nat {n : nat} (s : StringLang.string n) :=
   | []  => 0
   end
    in aux s (length s - 1).
-
-
-
-
 
 
 (** Conversão de Nat para String *)
@@ -125,8 +118,25 @@ Definition get_string_function (n : nat) (f : nat -> option nat) :=
   end.
 
 
+(** ATÉ AQUI TUDO OK! AGORA É EXPERIMENTOS E TESTES *)
 
+(** Começo dos pensamentos, tentando ver como ficaria o enunciado do teorema
+    principal *)
 
+Definition partially_computable_equiv p1 (p2 : StringLang.program 1) :=
+  forall (f : nat -> option nat),
+  (NatLang.partially_computable_by_p f p1) ->
+  (StringLang.partially_computable_by_p 1 (get_string_function 1 f) p2).
+
+(** Criaria o simulador e a prova ao mesmo tempo *)
+
+Definition get_string_program (p : NatLang.program) :
+  ({p' | partially_computable_equiv p p'}).
+Proof.
+Abort.
+
+(** Achei difícil de quebrar em pedaços. Buscando um caminho mais
+    construtivo *)
 
 (** Ideia:
   1. Construir o conceito de programa simulado. Um programa em NatLang
@@ -142,58 +152,63 @@ Definition get_string_function (n : nat) (f : nat -> option nat) :=
    2. Se p entra em loop, p' entra em loop.
 
    Talvez seja interessante atrasar a 2. para simplificar, por enquanto,
-   trantado só de funções computáveis.
+   tratando só de funções computáveis.
 *)
+
+
+(** Vendo como ficaria a função de obter a macro em um dos casos *)
 
 Lemma Sn_leq_n'_implies_n_leq_n' : forall n n', S n <= n' -> n <= n'.
 Proof.
   lia.
 Qed.
 
+
 (* [opt_lbl] IF x GOTO l *)
 Definition get_if_macro (n : nat) (opt_lbl : option label)
   (x : variable) (l : option label) : (StringLang.program n).
-
 Proof.
-  unshelve refine( 
+  refine( 
     let fix aux (k : nat) (k_leq_n : k <= n) :=
       ((match k as eq return (k = eq) -> _ with 
-    | S n' => fun _ => let statement := StringLang.IF_ENDS_GOTO x _ l in 
+    | S n' => fun _ => 
+              let statement := 
+                 StringLang.IF_ENDS_GOTO x (exist _ k k_leq_n) l in 
               (StringLang.Instr opt_lbl) statement :: aux n' _
-    | 0 =>  fun _ => []
-    end) _ )
-    in aux (n) _ ).
-    + exists k. exact k_leq_n.
-      + assert (S n' <= n). { rewrite <- e. exact k_leq_n. }
+    | 0 =>  fun _ => let statement := 
+              StringLang.IF_ENDS_GOTO x (exist _ k k_leq_n) l in 
+              [(StringLang.Instr opt_lbl) statement]
+    end) eq_refl )
+    in aux (n) (le_n n )).
+    + assert (S n' <= n). { rewrite <- e. exact k_leq_n. }
         apply Sn_leq_n'_implies_n_leq_n', H.
-      + reflexivity.
-      + constructor.
-Defined.  
+Defined.
 
+Extraction get_if_macro.
+
+(* [] IF Y != 0 GOTO E *)
 
 Compute get_if_macro 3 None Y None.
 
+(* O programa é feio. Usar a definição indutiva de alfabeto
+   torna o programa mais legível. Imagino que todo o resto ficará parecido,
+   com a diferença que a prova seria obtida com inversion se eu
+   precisasse ...
+    1. Importa? Tem algum prejuízo?
+*)
 
 
+(** RESUMO do que eu pensei:
 
-(* Versão fraca, falta indexar por n *)
-Definition partially_computable_equiv p1 (p2 : StringLang.program 1) :=
-  forall (f : nat -> option nat),
-  (NatLang.partially_computable_by_p f p1) ->
-  (StringLang.partially_computable_by_p 1 (get_string_function 1 f) p2).
+  1. Definir propriedade de programas simulados
+      Inductive equivalentes p p' ...
 
+  2. Provar as propriedaes dos programas simulados (retornam a mesma coisa,
+      se um para o outro para...
 
+  3. Criar a função que retorna p' usando a propriedade 1.
 
-(** Se eu conseguir fazer dessa forma, vai ser muito bom! *)
-Definition get_string_program (p : NatLang.program) :
-  ({p' | partially_computable_equiv p p'}).
-Proof.
-Abort.
-
-(* Tentar quebrar a prova em pedaços menores. *)
-  
-
-
+*)
 
 
 
