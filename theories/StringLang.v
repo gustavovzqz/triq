@@ -298,7 +298,7 @@ Definition get_Y {n : nat} (p : program n ) (x : string n) (k : nat) :=
 Definition partially_computable (n : nat) 
   (f : (string n) -> option (string n)) := 
   exists (p : program n), forall x,
-    (f x = None -> forall (s : state n) (k : nat), ~ (HALT s p k)) /\ 
+    (f x = None -> forall (k : nat), ~ (HALT (create_state n x) p k)) /\ 
     (f x <> None -> exists (k : nat), HALT (create_state n x) p k /\ 
     Some (get_Y  p x k) = (f x)).
 
@@ -306,7 +306,7 @@ Definition partially_computable (n : nat)
 Definition partially_computable_by_p (n : nat) 
   (f : (string n) -> option (string n)) (p : program n) := 
     forall x,
-    (f x = None -> forall (s : state n) (k : nat), ~ (HALT s p k)) /\ 
+    (f x = None -> forall (k : nat), ~ (HALT (create_state n x) p k)) /\ 
     (f x <> None -> exists (k : nat), HALT (create_state n x) p k /\ 
     Some (get_Y  p x k) = (f x)).
 

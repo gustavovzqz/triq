@@ -255,14 +255,14 @@ Definition get_Y (p : program) (x : nat) (n : nat) :=
 
 Definition partially_computable (f : nat -> option nat) := 
   exists (p : program), forall x,
-    (f x = None -> forall (s : state) (k : nat), ~ (HALT s p k)) /\ 
+    (f x = None -> forall (k : nat), ~ (HALT (create_state x) p k)) /\ 
     (f x <> None -> exists (k : nat), HALT (create_state x) p k /\ 
     Some (get_Y  p x k) = (f x)).
 
 
 Definition partially_computable_by_p (f : nat -> option nat) p := 
     forall x,
-    (f x = None -> forall (s : state) (k : nat), ~ (HALT s p k)) /\ 
+    (f x = None -> forall (k : nat), ~ (HALT (create_state x) p k)) /\ 
     (f x <> None -> exists (k : nat), HALT (create_state x) p k /\ 
     Some (get_Y  p x k) = (f x)).
 
