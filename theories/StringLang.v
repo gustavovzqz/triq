@@ -280,9 +280,16 @@ Fixpoint compute_program {m : nat} (p : program m ) snap n :=
   | O    => snap
   end.
 
+
+Definition get_state {k : nat} (p : program k ) n :=
+  let initial_snapshot := SNAP 0 (empty k) in 
+  match (compute_program p initial_snapshot n) with 
+  | SNAP _ s => s
+  end.
+
 Definition HALT {m : nat} (s : state m ) (p : program m) (n : nat) :=
-  let inital_snap := SNAP 0 s in 
-  let nth_snap := compute_program p inital_snap n in 
+  let initial_snap := SNAP 0 s in 
+  let nth_snap := compute_program p initial_snap n in 
 
   match nth_snap with 
   | SNAP n' _ => n' = (length p) 

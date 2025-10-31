@@ -100,6 +100,8 @@ Definition decr (m : state ) (x : variable) :=
 Inductive snapshot :=
   | SNAP : nat -> state -> snapshot.
 
+(* Veja que uma snapshot inicial de um programa possivelmente possuirá
+  valores de x1, x2, x3... inicialmente atribuídos *)
 Definition initial_snapshot := SNAP 0 empty.
 
 Definition create_state x :=
@@ -238,6 +240,16 @@ Fixpoint compute_program (p : program) snap n :=
   | O    => snap
   end.
 
+
+(* TODO: Vou fazer com o estado inicial por enquanto, mas provavelmente vai ser
+   necessário trocar para receber um valor de X como entrada *)
+
+Definition get_state (p : program) n :=
+  match (compute_program p initial_snapshot n) with 
+  | SNAP _ s => s
+  end.
+
+
 Definition HALT (s : state) (p : program) (n : nat) :=
   let inital_snap := SNAP 0 s in 
   let nth_snap := compute_program p inital_snap n in 
@@ -245,6 +257,7 @@ Definition HALT (s : state) (p : program) (n : nat) :=
   match nth_snap with 
   | SNAP n' _ => n' = (length p) 
   end.
+
 
 (** Função Parcialmente Computável por NatLang *)
 
@@ -269,3 +282,14 @@ Definition partially_computable_by_p (f : nat -> option nat) p :=
 
 
 (* ################################################################# *)
+
+(** Passar para outro lugar... Tudo em Language Properties *)
+Lemma nat_compute_program_empty : forall n snap, 
+  compute_program <{[]}> snap n = snap.
+Proof.
+  induction n; intros.
+  + reflexivity.
+  + unfold compute_program. assert (next_step <{[]}> snap = snap). 
+    { unfold next_step. destruct snap. rewrite nth_error_nil. reflexivity. }
+    rewrite H. simpl. fold compute_program. apply IHn.
+Qed.
