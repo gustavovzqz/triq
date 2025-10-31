@@ -2,7 +2,7 @@
 
 From Coq Require Import Nat.
 From Coq Require Import List.
-From Triq Require Export LanguagesUtils.
+From Triq Require Export LanguagesCommon.
 
 Import ListNotations.
 

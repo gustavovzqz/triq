@@ -1,5 +1,4 @@
 From Coq Require Import Nat.
-
 From Coq Require Import List.
 
 Search (nat).
@@ -51,4 +50,3 @@ Proof.
     + apply var_eqb_eq in Heq. contradiction. 
     + reflexivity.
 Qed.
-
