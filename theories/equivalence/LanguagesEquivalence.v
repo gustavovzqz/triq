@@ -1,5 +1,7 @@
 From Triq Require NatLang.
+From Triq Require NatLangProperties.
 From Triq Require StringLang.
+From Triq Require StringLangProperties.
 From Triq Require Import LanguagesCommon.
 From Triq Require Import LanguagesUtils.
 From Coq Require Import Nat.
@@ -75,28 +77,6 @@ Proof.
   cbv. intros. assumption.
 Qed.
 
-Lemma nat_compute_program_empty : forall n snap,
-  NatLang.compute_program [] snap n = snap.
-Proof.
-  induction n; intros.
-  + reflexivity.
-  + unfold NatLang.compute_program. assert (NatLang.next_step [] snap = snap).
-    { unfold NatLang.next_step. destruct snap. rewrite nth_error_nil. reflexivity. }
-    rewrite H. simpl. fold NatLang.compute_program. apply IHn.
-Qed.
-
-Lemma string_compute_program_empty :
-  forall {k : nat} n (snap : StringLang.snapshot k),
-  StringLang.compute_program [] snap n = snap.
-Proof.
-  induction n; intros.
-  + reflexivity.
-  + unfold StringLang.compute_program. assert (StringLang.next_step [] snap = snap).
-    { unfold StringLang.next_step. destruct snap. rewrite nth_error_nil. reflexivity. }
-    rewrite H. apply IHn.
-Qed.
-
-
 
 
 Lemma state_equiv_nil_nil: forall {k : nat} n n' p_nat (p_str : StringLang.program k),
@@ -107,14 +87,15 @@ Proof.
   intros. subst. unfold state_equiv. intros.
   (* Reduzindo a expressão do goal *)
   unfold StringLang.get_state. 
-  pose proof (string_compute_program_empty n'(StringLang.SNAP 0 (StringLang.empty k))).
+  pose proof (StringLangProperties.compute_program_empty n'
+  (StringLang.SNAP 0 (StringLang.empty k))).
   rewrite H0. cbv.
   (* Reduzindo a expressão Nat *)
   unfold NatLang.get_state in H. 
-  pose proof (nat_compute_program_empty n NatLang.initial_snapshot).
+  pose proof (NatLangProperties.compute_program_empty n
+  NatLang.initial_snapshot).
   rewrite H1 in H. cbv in H. assumption.
 Qed.
-
 
 
 

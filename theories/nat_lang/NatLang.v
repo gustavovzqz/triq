@@ -283,13 +283,4 @@ Definition partially_computable_by_p (f : nat -> option nat) p :=
 
 (* ################################################################# *)
 
-(** Passar para outro lugar... Tudo em Language Properties *)
-Lemma nat_compute_program_empty : forall n snap, 
-  compute_program <{[]}> snap n = snap.
-Proof.
-  induction n; intros.
-  + reflexivity.
-  + unfold compute_program. assert (next_step <{[]}> snap = snap). 
-    { unfold next_step. destruct snap. rewrite nth_error_nil. reflexivity. }
-    rewrite H. simpl. fold compute_program. apply IHn.
-Qed.
+

@@ -133,37 +133,37 @@ Arguments DEL{n}.
 Arguments IF_ENDS_GOTO{n}.
 
 
-Declare Custom Entry com.
+Declare Custom Entry com'.
 Declare Scope string_lang_scope.
-Declare Custom Entry com_aux.
+Declare Custom Entry com_aux'.
 
-Notation "<{ e }>" := e (e custom com_aux) : string_lang_scope.
-Notation "e" := e (in custom com_aux at level 0, e custom com) : string_lang_scope.
-Notation "( x )" := x (in custom com, x at level 99) : string_lang_scope.
-Notation "x" := x (in custom com at level 0, x constr at level 0) : string_lang_scope.
+Notation "<{ e }>" := e (e custom com_aux') : string_lang_scope.
+Notation "e" := e (in custom com_aux' at level 0, e custom com') : string_lang_scope.
+Notation "( x )" := x (in custom com', x at level 99) : string_lang_scope.
+Notation "x" := x (in custom com' at level 0, x constr at level 0) : string_lang_scope.
 
 Notation "x <- + v" := (APPEND v x)
-  (in custom com at level 50, left associativity).
+  (in custom com' at level 50, left associativity).
 
 Notation "x <- -" := (DEL x)
-  (in custom com at level 50, left associativity).
+  (in custom com' at level 50, left associativity).
 
 
 
 Notation "'IF' x 'ENDS' k 'GOTO' y " :=
          (IF_ENDS_GOTO x k y) 
-           (in custom com at level 89, x at level 99,
+           (in custom com' at level 89, x at level 99,
             y at level 99) : string_lang_scope.
 
 Notation "[ l ] s " := (Instr (l) s)
-  (at level 0, s custom com at level 200) : string_lang_scope.
+  (at level 0, s custom com' at level 200) : string_lang_scope.
 
 Notation "[ ] s " := (Instr None s)
-  (at level 0, s custom com at level 200) : string_lang_scope.
+  (at level 0, s custom com' at level 200) : string_lang_scope.
 
 
 Notation "'[ i1 ; .. ; iN ]'" := (cons i1 .. (cons iN nil) ..)
-  (at level 0, i1 custom com, iN custom com) : string_lang_scope.
+  (at level 0, i1 custom com', iN custom com') : string_lang_scope.
 
 Open Scope string_lang_scope.
 
