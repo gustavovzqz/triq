@@ -82,34 +82,6 @@ Fixpoint string_to_nat_list {n : nat} (s : StringLang.string n) :=
   | [] => []
   end.
 
-Compute nat_to_string 2 5.
-
-Definition nat_to_nat_list a b := (string_to_nat_list (nat_to_string a b)).
-Compute nat_to_nat_list 1 5.
-
-
-
-Definition a: (StringLang.alphabet 2).
-Proof.
-  exists 0; repeat (constructor).
-Defined.
-
-Definition b: (StringLang.alphabet 2).
-Proof. 
-  exists 1; repeat (constructor).
-Defined.
-
-Definition c: (StringLang.alphabet 2).
-Proof. 
-  exists 2; repeat (constructor).
-Defined.
-
-Definition s3 : (StringLang.string 2) :=
-   [b; a; a; c; b].
-
-Compute string_to_nat s3.
-Compute nat_to_nat_list 2 209.
-
 Definition get_string_function (n : nat) (f : nat -> option nat) :=
   fun (s : StringLang.string n)  => 
   match (f (string_to_nat s)) with
@@ -117,5 +89,131 @@ Definition get_string_function (n : nat) (f : nat -> option nat) :=
   | None => None
   end.
 
+
+(** MACROS **)
+
+(** LEMAS E AUXILIARES **)
+
+Lemma Sn_leq_n'_implies_n_leq_n' : forall n n', S n <= n' -> n <= n'.
+Proof.
+  lia.
+Qed.
+
+(* [opt_lbl] IF X ENDS Si GOTO Ai ( 0 <= i <= n) *)
+
+
+(* TODO: Possivelmente vou ter que tomar cuidado com as labels.
+         Preciso garantir que as labels usadas pelas macros auxiliares
+         nunca ocorram dentro de p_nat. Uma opção é criar uma nova letra,
+         B, onde o programa em nat só usa A 1, A 2, A 3... E o programa
+         em strings pode usar B 1, ... B 2 livremente. *)
+
+Definition get_if_ends_macro (n : nat) (opt_lbl : option label)
+  (x : variable) : (StringLang.program n).
+Proof.
+  refine( 
+    let fix aux (k : nat) (k_leq_n : k <= n) :=
+      ((match k as eq return (k = eq) -> _ with 
+    | S n' => fun _ => 
+              let statement := 
+                 StringLang.IF_ENDS_GOTO x (exist _ k k_leq_n) (Some (A n)) in 
+              (StringLang.Instr opt_lbl) statement :: aux n' _
+    | 0 =>  fun _ => let statement := 
+              StringLang.IF_ENDS_GOTO x (exist _ k k_leq_n) (Some (A n)) in 
+              [(StringLang.Instr opt_lbl) statement]
+    end) eq_refl )
+    in aux (n) (le_n n )).
+    + assert (S n' <= n). { rewrite <- e. exact k_leq_n. }
+        apply Sn_leq_n'_implies_n_leq_n', H.
+Defined.
+
+
+(** PRINCIPAIS **)
+
+(* [opt_lbl] IF x GOTO l *)
+
+Definition get_if_macro (n : nat) (opt_lbl : option label)
+  (x : variable) (l : option label) : (StringLang.program n).
+Proof.
+  refine( 
+    let fix aux (k : nat) (k_leq_n : k <= n) :=
+      ((match k as eq return (k = eq) -> _ with 
+    | S n' => fun _ => 
+              let statement := 
+                 StringLang.IF_ENDS_GOTO x (exist _ k k_leq_n) l in 
+              (StringLang.Instr opt_lbl) statement :: aux n' _
+    | 0 =>  fun _ => let statement := 
+              StringLang.IF_ENDS_GOTO x (exist _ k k_leq_n) l in 
+              [(StringLang.Instr opt_lbl) statement]
+    end) eq_refl )
+    in aux (n) (le_n n )).
+    + assert (S n' <= n). { rewrite <- e. exact k_leq_n. }
+        apply Sn_leq_n'_implies_n_leq_n', H.
+Defined.
+
+(* [B0] x <- + 1 *)
+
+(* [B0]  IF X ENDS si GOTO Ai    (1 <= i <= n)
+        GOTO E 
+
+   [Ai] X <- X-       }
+        Y <- Si-1 Y    } (i < i <= n)
+        GOTO C        }
+
+   [A1] X <- X-
+        IF X != 0 GOTO C2
+        GOTO E
+
+   [C2] Y <- Sn Y
+        GOTO B
+
+   [C1] IF X ENDS Si GOTO Di     (i <= i <= n)
+        GOTO E
+
+   [Di] X <- X-       }
+        Y <- Si Y      } (i <= i <= n)
+        GOTO C        }                         *)
+
+
+
+Definition get_incr_macro (n : nat) (opt_lbl : option label)
+  (x : variable) : (StringLang.program n).
+Proof.
+Admitted.
+
+(* [opt_lbl] x <- - 1 *)
+
+Definition get_decr_macro (n : nat) (opt_lbl : option label)
+  (x : variable)  : (StringLang.program n).
+Proof.
+Admitted.
+
+
+Lemma list_eq_last_init : forall {A: Type} (l: list A),
+  l <> [] -> exists init last, l = init ++ [last].
+Proof.
+  intros A l H.
+  induction l as [|h t IH].
+  - contradiction.
+  - destruct t as [|h' t'].
+    + exists [], h.  reflexivity.
+    + assert (h' :: t' <> []).
+      intros falso. inversion falso.
+      apply IH in  H0. destruct H0 as [init last].
+      destruct last.
+      exists (h :: init). exists x. rewrite <- app_comm_cons. f_equal.
+      assumption.
+Qed.
+
+
+(** Obter macros. Por enquanto está incompleta, falta definir INCR e o DECR *)
+
+Definition get_str_macro (k : nat) (i_nat : NatLang.instruction) :
+  (StringLang.program k) := 
+  match i_nat with 
+  | NatLang.Instr opt_lbl (NatLang.INCR x) => get_incr_macro k opt_lbl x
+  | NatLang.Instr opt_lbl (NatLang.DECR x) =>  get_decr_macro k opt_lbl x
+  | NatLang.Instr opt_lbl (NatLang.IF_GOTO x l) => get_if_macro k opt_lbl x l
+  end.
 
 
