@@ -30,21 +30,8 @@ Definition string_to_nat {n : nat} (s : StringLang.string n) :=
 (** Conversão de Nat para String *)
 
 
-(* Resumo da Função de Incremento:
+(* Função de Incremento *)
 
-   1. Se o alfabeto for vazio, o resultado sempre será a string vazia.
-   2. Trabalharemos com a lista invertida.
-      [a, b, c, d] -> [d, c, b, a]
-   3. Veja o elemento d. Se ainda puder ser incrementado, incremente-o. Se
-   Estiver no limite, troque-o por zero e incremente c recursivamente.
-
-   Exemplo: Alfabeto = 2, entrada = [1, 0, 1, 1]
-   1. Alfabeto diferente de zero.
-   2. Inverter lista: [1, 0, 1, 1] -> [1, 1, 0, 1]
-   3. [0, 1, 0 1] -> [0, 0, 0, 1] -> [0, 0, 1, 1]
-   4. Desinverter a lista: [0, 0, 1, 1] -> [1, 1, 0 0] *)
-
-(* Revisar mudei coisas *)
 Definition incr_string {n : nat} (s : StringLang.string n) : (StringLang.string n). Proof.
   destruct n eqn:E.
   + exact [].
@@ -67,7 +54,7 @@ Definition incr_string {n : nat} (s : StringLang.string n) : (StringLang.string 
 Defined.
 
 
-(** Nat para String, basta usar o incremento n vezes *)
+(* Nat para String, basta usar o incremento n vezes *)
 
 Fixpoint nat_to_string (k : nat) (n : nat) : (StringLang.string k)  :=
     match n with
@@ -75,12 +62,15 @@ Fixpoint nat_to_string (k : nat) (n : nat) : (StringLang.string k)  :=
     | 0 => []
     end.
 
+(* Facilitar visibilidade *)
 
 Fixpoint string_to_nat_list {n : nat} (s : StringLang.string n) :=
   match s with 
   | h :: t => (proj1_sig h) :: (string_to_nat_list t)
   | [] => []
   end.
+
+(* Função equivalente para strings *) 
 
 Definition get_string_function (n : nat) (f : nat -> option nat) :=
   fun (s : StringLang.string n)  => 
@@ -153,8 +143,42 @@ Defined.
 
 (* [B0] x <- + 1 *)
 
-(* [B0]  IF X ENDS si GOTO Ai    (1 <= i <= n)
-        GOTO E 
+(* [B0] IF X ENDS si GOTO Ai    (1 <= i <= n)
+        Y <- s1 Y
+        GOTO E
+
+   [Ai] X <- X-       }
+        Y <- Si+1 Y    } (1 <= i <= n)
+        GOTO C1       }
+
+   [An] X <- X-
+        Y <- s1 Y
+        GOTO B0
+
+   [C1] IF X ENDS Si GOTO Di     (i <= i <= n)
+        GOTO E
+
+   [Di] X <- X-       }
+        Y <- Si Y      } (i <= i <= n)
+        GOTO C1       }                         *)
+
+
+Definition get_incr_macro (n : nat) (opt_lbl : option label)
+  (x : variable) : (StringLang.program n).
+Proof.
+    refine (
+    let if_x_ends_si_goto_ai := get_if_ends_macro n opt_lbl x
+    
+    in []
+    ).
+Defined.
+Admitted.
+
+(* [opt_lbl] x <- - 1 *)
+
+
+(* [B0] IF X ENDS si GOTO Ai    (1 <= i <= n) 
+        GOTO E
 
    [Ai] X <- X-       }
         Y <- Si-1 Y    } (i < i <= n)
@@ -165,7 +189,7 @@ Defined.
         GOTO E
 
    [C2] Y <- Sn Y
-        GOTO B
+        GOTO B0
 
    [C1] IF X ENDS Si GOTO Di     (i <= i <= n)
         GOTO E
@@ -175,13 +199,6 @@ Defined.
         GOTO C        }                         *)
 
 
-
-Definition get_incr_macro (n : nat) (opt_lbl : option label)
-  (x : variable) : (StringLang.program n).
-Proof.
-Admitted.
-
-(* [opt_lbl] x <- - 1 *)
 
 Definition get_decr_macro (n : nat) (opt_lbl : option label)
   (x : variable)  : (StringLang.program n).
@@ -215,5 +232,4 @@ Definition get_str_macro (k : nat) (i_nat : NatLang.instruction) :
   | NatLang.Instr opt_lbl (NatLang.DECR x) =>  get_decr_macro k opt_lbl x
   | NatLang.Instr opt_lbl (NatLang.IF_GOTO x l) => get_if_macro k opt_lbl x l
   end.
-
 
