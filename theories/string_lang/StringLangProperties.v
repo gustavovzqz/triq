@@ -1,11 +1,13 @@
 From Triq Require StringLang.
 From Coq Require Import Nat.
 From Coq Require Import List.
+From Coq Require Import Lia.
 Import ListNotations.
 
 
 
-Lemma compute_program_empty :
+
+Theorem compute_program_empty :
   forall {k : nat} n (snap : StringLang.snapshot k),
   StringLang.compute_program [] snap n = snap.
 Proof.
@@ -17,4 +19,14 @@ Proof.
 Qed.
 
 
+Theorem compute_program_append :
+  forall {k : nat} n n' (p : StringLang.program k) (p' : StringLang.program k) snap,
+  StringLang.compute_program (p ++ p') snap  (n' + n) =
+  StringLang.compute_program p (StringLang.compute_program p' snap n') n.
+Proof.
+  induction n'; intros.
+  + simpl. admit.
+  + simpl.
+  
+  
 
