@@ -172,7 +172,6 @@ Proof.
     in []
     ).
 Defined.
-Admitted.
 
 (* [opt_lbl] x <- - 1 *)
 

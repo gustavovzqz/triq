@@ -27,6 +27,6 @@ Proof.
   induction n'; intros.
   + simpl. admit.
   + simpl.
-  
+Admitted.
   
 
