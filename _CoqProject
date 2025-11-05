@@ -1,9 +1,11 @@
 -Q theories Triq
 
 theories/common/LanguagesCommon.v
+
 theories/equivalence/LanguagesUtils.v
+
 theories/nat_lang/NatLang.v
 theories/nat_lang/NatLangProperties.v
+
 theories/string_lang/StringLang.v
 theories/string_lang/StringLangProperties.v
-

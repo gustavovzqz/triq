@@ -12,8 +12,6 @@ Import ListNotations.
 
 
 
-(** O programa p_nat é simulado pelo prorgama p_str *)
-
 
 Definition zero_prf : StringLang.alphabet 0.
 Proof.
@@ -39,36 +37,24 @@ Definition get_str_macro0 (i_nat : NatLang.instruction) :
   | NatLang.Instr opt_lbl (NatLang.IF_GOTO x l) => get_if_macro_0 opt_lbl x l
   end.
 
-Inductive simulated_by : NatLang.program -> StringLang.program 0 -> Prop :=
-  | Simulated_Instr :
-      forall (i_nat : NatLang.instruction),
-        simulated_by [i_nat] (get_str_macro0 i_nat)
-  | Simulated_Empty :
-        simulated_by [] [] 
-  | Simulated_App :
-      forall h_nat t_nat (h_str t_str : StringLang.program 0),
-        simulated_by h_nat h_str ->
-        simulated_by t_nat t_str ->
-        simulated_by (h_nat ++ t_nat) (h_str ++ t_str).
-
-Definition get_str_prg nat_prg : {str_prg | simulated_by nat_prg str_prg}.
-Proof.
-  induction nat_prg.
-  + exists []. apply Simulated_Empty.
-  + destruct IHnat_prg as [str_prg equiv_nat_str]. 
-    exists ((get_str_macro0 a) ++ str_prg).
-    assert (a :: nat_prg = [a] ++ nat_prg) as cons_app_equiv by reflexivity.
-    rewrite cons_app_equiv. apply Simulated_App.
-    ++ apply Simulated_Instr.
-    ++ assumption.
-Defined.
-
 Fixpoint get_str_prg_plain (nat_prg : NatLang.program) 
                           : StringLang.program 0 :=
   match nat_prg with
   | [] => []
   | i_nat :: rest =>
       (get_str_macro0 i_nat) ++ (get_str_prg_plain rest)
+  end.
+
+Definition equiv_pos 
+  (p_nat : NatLang.program)
+  (n : nat)
+  (p_str : StringLang.program 0)
+  (n' : nat) :=
+  let nth_program_str := skipn n' p_str in
+  match nth_error p_nat n with
+  | None => nth_error p_str n' = None 
+  | Some h => exists t_prog,
+              nth_program_str = (get_str_macro0 h) ++ t_prog
   end.
 
 
@@ -88,8 +74,10 @@ Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state 0) :=
     | [] => []
     | h_nat :: t_nat => (get_str_macro h) ++ t_str *)
 
-Definition snap_equiv
+Definition prog_equiv
+  (p_nat : NatLang.program)
   (snap_nat : NatLang.snapshot)
+  (p_str : StringLang.program 0)
   (snap_str : StringLang.snapshot 0) :=
 
   match snap_nat with
@@ -97,34 +85,49 @@ Definition snap_equiv
 
   match snap_str with 
   | StringLang.SNAP n' state_str =>
-  state_equiv state_nat state_str 
+  state_equiv state_nat state_str /\ 
+  equiv_pos p_nat n p_str n'
+
   (* Adicionar segunda parte da equivalência *)
   end
   (**)
   end.
 
 
+
 Definition get_equiv_state nat_state : (StringLang.state 0) :=
   (fun x => nat_to_string 0 (nat_state x)).
 
-
-
-
-Theorem nat_implies_string : 
+Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
          (state_nat : NatLang.state),
+
   exists (p_str : StringLang.program 0)
          (state_str : StringLang.state 0), 
+
   forall (n : nat),
   exists (n' : nat),
-  snap_equiv (NatLang.compute_program p_nat (NatLang.SNAP 0 state_nat) n)
+  prog_equiv p_nat
+             (NatLang.compute_program p_nat (NatLang.SNAP 0 state_nat) n)
+             p_str
              (StringLang.compute_program p_str (StringLang.SNAP 0 state_str) n').
 Proof.
    intros p_nat state_nat. exists (get_str_prg_plain p_nat).
-   exists (get_equiv_state state_nat). intros n.
-   induction p_nat using rev_ind.
+   exists (get_equiv_state state_nat). induction n.
    + admit.
-   + destruct IHp_nat. exists n.
+   + destruct IHn. unfold prog_equiv in H.
+     destruct (NatLang.compute_program p_nat (NatLang.SNAP 0 state_nat)).
+     destruct (StringLang.compute_program (get_str_prg_plain p_nat)
+      (StringLang.SNAP 0 (get_equiv_state state_nat)) x) eqn:E.
+      destruct H. unfold equiv_pos in H0.
+      unfold NatLang.compute_program. 
+      (* Intuição
+         1. Preciso mostrar que compute_program (S n) initial_snap prg
+         é o mesmo que compute_program 1 (compute_program n initial_snap prg) prg).
+      ++ admit.
+      ++ admit.
 
 
   (* rev_ind *)
+
+
