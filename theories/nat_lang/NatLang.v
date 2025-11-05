@@ -236,9 +236,11 @@ Qed.
 
 Fixpoint compute_program (p : program) snap n :=
   match n with
-  | S n' => compute_program p ((next_step p snap )) n'
+  | S n' => next_step p (compute_program p snap n')
   | O    => snap
   end.
+
+
 
 
 (* TODO: Vou fazer com o estado inicial por enquanto, mas provavelmente vai ser

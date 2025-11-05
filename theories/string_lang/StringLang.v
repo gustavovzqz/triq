@@ -273,10 +273,9 @@ Qed.
 
 
 
-
 Fixpoint compute_program {m : nat} (p : program m ) snap n :=
   match n with
-  | S n' => compute_program p ((next_step p snap )) n'
+  | S n' => next_step p (compute_program p snap n')
   | O    => snap
   end.
 
