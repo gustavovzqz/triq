@@ -165,10 +165,10 @@ Proof.
   - destruct IHn as [n']. (* Obtendo n' *)
     (* Vendo os valores da snap1 e snap2 *)
     destruct (NatLang.compute_program p_nat (NatLang.SNAP 0 state_nat) n)
-    as [k s] eqn:snap_nat. (* A próxima linha de p_nat é k *)
+    as [k S]. (* A próxima linha de p_nat é k *)
     destruct (StringLang.compute_program p_str (StringLang.SNAP 0 
-    (get_equiv_state state_nat)) n') as [k' s'] eqn:snap_str. 
-    (* A próxima linha de p_str é k' *)
+    (get_equiv_state state_nat)) n') as [k' S']. (* A próxima linha de p_str
+                                                    é k' *)
     destruct H. (* Quebramos a hipótese de indução em duas afirmações:
                    1) Os estados após a computação são equivalentes.
                    2) A próxima linha a ser executada em p_nat é ...
@@ -180,48 +180,16 @@ Proof.
 
     unfold equiv_pos in H0. 
     destruct (nth_error p_nat k) eqn:E. (* Quem é a próxima instrução de nat? *)
-    (* nth_error p_nat k = Some i *)
-    (* Aqui, temos que nth_error p_str k' é Some (get_str_macro0 i).
-       No caso genérico, a alternativa que pensei é a seguinte:
-       1. skipn k' = [get_str_macro0 i] ++ algo, daí podemos
+    +  (* nth_error p_nat k = Some i *)
+          Aqui, temos que nth_error p_str k' é Some (get_str_macro0 i).
+          No caso genérico, podemos ter algumas alternativas:
+          1. skipn k' = [get_str_macro0 i] ++ algo, daí podemos
           derivar que nth_error k' + 1 ... Até o tamanho total da macro.
 
           Aqui está o lemma útil:
 
             nth_error_skipn:
               forall [A : Type] (n : nat) (l : list A) (i : nat),
-              nth_error (skipn n l) i = nth_error l (n + i)  *)
-    (* Qual a instrução e o statement? *)
-    + destruct i as [opt_lbl statement]. destruct statement.
-      (* x <- x + 1*)
-      ++ exists (S (n')).
-         (* Eu poderia colocar logo como `exists k' + num exec macro *)
-         unfold prog_equiv. simpl. rewrite snap_nat.
-         unfold NatLang.next_step. rewrite E. rewrite snap_str.
-         unfold StringLang.next_step. rewrite H0. simpl.
-         split.
-         +++ admit. (* Caso que a gente precisa ter a equivalência da
-                       macro para a instrução básica *)
-         +++ admit.
-             (* Um lemma auxiliar resolve. Provavelmente usando skipn
-                é mais intuitivo *)
-      (* x <- x - 1*)
-      ++ exists (S (n')).
-         unfold prog_equiv. simpl. rewrite snap_nat.
-         unfold NatLang.next_step. rewrite E. rewrite snap_str.
-         unfold StringLang.next_step. rewrite H0. simpl.
-         split.
-         +++ admit. (* Basta provar equivalência ... *)
-         +++ admit. (* mesmo lema que o anterior *)
-      (* if x != 0 goto l*)
-      ++ exists (S (n')).
-         unfold prog_equiv. simpl. rewrite snap_nat.
-         unfold NatLang.next_step. rewrite E. rewrite snap_str.
-         unfold StringLang.next_step. simpl in H0. rewrite H0. simpl.
-         (* Essa parte está do IF está um pouco diferente. Na verdade,
-            todas as partes anteriores estão simplificando as macros,
-            e as equivalências pendentes estão nas instruções. Preciso
-            adaptar a finalização da prova para ficar dependendo das 
-            macros serem equivalenetes, não as instruções finais *)
-Abort.
-           
+              nth_error (skipn n l) i = nth_error l (n + i) *)
+      destruct i. simpl in H0.
+
