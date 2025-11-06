@@ -96,14 +96,58 @@ Definition prog_equiv
 Definition get_equiv_state nat_state : (StringLang.state 0) :=
   (fun x => nat_to_string 0 (nat_state x)).
 
-
-Lemma simulated_empty_left : forall h t,  simulated_by [] (h :: t)-> False.
+Lemma app_not_nil : forall A (l1 : list A) l2, l1 ++ l2 <> [] ->
+  l1 <> [] \/ l2 <> [].
 Proof.
-Admitted.
+  intros A l1 l2 app. destruct l1; destruct l2.
+  + simpl in app. exfalso. exact (app eq_refl).
+  + right. intros H. discriminate H.
+  + left. intros H. discriminate H.
+  + right. intros H. discriminate H.
+Qed.
+ 
+Lemma simulated_empty_left_aux : forall p_nat p_str ,  (p_nat = []) ->
+  (p_str <> []) ->
+  simulated_by p_nat p_str -> False.  
+Proof.
+  intros p_nat p_str p_nat_zero p_str_zero sim. induction sim.
+  + exact (p_str_zero eq_refl).
+  + discriminate p_nat_zero.
+  + apply app_eq_nil in p_nat_zero. destruct p_nat_zero.
+    apply app_not_nil in p_str_zero. destruct p_str_zero.
+    ++ apply IHsim1; assumption.
+    ++ apply IHsim2; assumption.
+Qed.
+
+Theorem simulated_empty_left : forall h t,  simulated_by [] (h :: t)-> False.
+Proof.
+  intros h t sim. apply simulated_empty_left_aux with [] (h :: t).
+  + reflexivity.
+  + intros H; discriminate H.
+  + assumption.
+Qed.
+
+
+Lemma simulated_empty_right_aux : forall p_nat p_str ,  (p_nat <> []) ->
+  (p_str = []) ->
+  simulated_by p_nat p_str -> False.  
+Proof.
+  intros p_nat p_str p_nat_zero p_str_zero sim. induction sim.
+  + exact (p_nat_zero eq_refl).
+  + discriminate p_str_zero.
+  + apply app_eq_nil in p_str_zero. destruct p_str_zero.
+    apply app_not_nil in p_nat_zero. destruct p_nat_zero.
+    ++ apply IHsim1; assumption.
+    ++ apply IHsim2; assumption.
+Qed.
 
 Lemma simulated_empty_right : forall h t,  simulated_by (h :: t) [] -> False.
 Proof.
-Admitted.
+intros h t sim. apply simulated_empty_right_aux with  (h :: t) [].
+  + intros H; discriminate H.
+  + reflexivity.
+  + assumption.
+Qed.
 
 
 Lemma equiv_pos_simulated_0 : forall p_nat p_str, 
@@ -152,8 +196,7 @@ Proof.
   - exists 0. (* n' = 0 *)
     split. (* Dividir a prova em 1) e 2) *)
     + admit. (* Criar lemma dizendo que get_equiv_state funciona como o esperado *)
-    + apply equiv_pos_simulated_0, simulated_prf. (* Completar lema, versão
-                                                     funcional pode ajudar. *)
+    + apply equiv_pos_simulated_0, simulated_prf. 
 
 
   (* Passo da Indução:
@@ -194,7 +237,7 @@ Proof.
     (* Qual a instrução e o statement? *)
     + destruct i as [opt_lbl statement]. destruct statement.
       (* x <- x + 1*)
-      ++ exists (S (n')).
+      ++ exists (S n').
          (* Eu poderia colocar logo como `exists k' + num exec macro *)
          unfold prog_equiv. simpl. rewrite snap_nat.
          unfold NatLang.next_step. rewrite E. rewrite snap_str.

@@ -1,1 +1,3 @@
 - [ ] A mudança na definição de computação vai causar problemas nos exemplos, mas vai facilitar as provas dos teoremas. TODO: Mudar Exemplos / Criar equivalência da versão antiga para a nova? ... 
+- [ ] Lema do get_equiv_state
+- [ ] admits de cada equivalência.
