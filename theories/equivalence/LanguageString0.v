@@ -254,8 +254,7 @@ Proof.
          unfold NatLang.next_step. rewrite E. rewrite snap_str.
          unfold StringLang.next_step. rewrite H0. simpl.
          split.
-         +++ admit. (* Caso que a gente precisa ter a equivalência da
-                       macro para a instrução básica *)
+         +++ admit.
          +++ admit.
              (* Um lemma auxiliar resolve. Provavelmente usando skipn
                 é mais intuitivo *)
