@@ -164,6 +164,17 @@ Proof.
     ++ exfalso. apply simulated_empty_right with i h_nat. assumption.
 Qed.
 
+
+
+Lemma get_equiv_state_correct : forall state_nat,
+  state_equiv state_nat (get_equiv_state state_nat).
+Proof.
+  intros state_nat. unfold get_equiv_state. unfold state_equiv.
+  intros x v state_x_eq_v. destruct (state_nat x) eqn:E.
+  + simpl. rewrite <- state_x_eq_v. reflexivity.
+  + rewrite <- state_x_eq_v. apply string_to_nat_correct.
+Qed.
+
 (** Teorema principal *)
 Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
@@ -195,7 +206,7 @@ Proof.
      *)
   - exists 0. (* n' = 0 *)
     split. (* Dividir a prova em 1) e 2) *)
-    + admit. (* Criar lemma dizendo que get_equiv_state funciona como o esperado *)
+    + apply get_equiv_state_correct. 
     + apply equiv_pos_simulated_0, simulated_prf. 
 
 

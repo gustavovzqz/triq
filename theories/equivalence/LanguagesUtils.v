@@ -33,9 +33,7 @@ Definition string_to_nat {n : nat} (s : StringLang.string n) :=
 (* Função de Incremento *)
 
 Definition incr_string {n : nat} (s : StringLang.string n) : (StringLang.string n). Proof.
-  destruct n eqn:E.
-  + exact [].
-  + refine (let k := rev s in 
+  refine (
   let fix aux l :=
   match l with 
   | h :: t => ((match (proj1_sig h <? (n) ) as eq return 
@@ -45,10 +43,10 @@ Definition incr_string {n : nat} (s : StringLang.string n) : (StringLang.string 
               end) _)
   | [] =>  [exist _ 0 _]
   end 
-  in rev (aux k)).
+  in rev (aux (rev s))).
   ++ apply PeanoNat.Nat.le_0_l. 
-  ++ rewrite PeanoNat.Nat.ltb_lt in e. rewrite E in e. 
-     unfold lt in e. rewrite PeanoNat.Nat.add_1_r. apply e.
+  ++ rewrite PeanoNat.Nat.ltb_lt in e. unfold lt in e. 
+     rewrite PeanoNat.Nat.add_comm. simpl. exact e.
   ++ apply PeanoNat.Nat.le_0_l.
   ++ reflexivity.
 Defined.
@@ -78,6 +76,18 @@ Definition get_string_function (n : nat) (f : nat -> option nat) :=
   | Some k => Some (nat_to_string n k)
   | None => None
   end.
+
+  (* TODO: Não é trivial! Principalmente por causa das inversões nas
+     listas. Atrasar a prova e pensar de forma mais cuidadosa depois. *)
+Lemma string_to_nat_correct : forall k n, string_to_nat (nat_to_string k (n)) =
+  n.
+Proof.
+  induction n.
+  + reflexivity.
+  + simpl.
+Admitted.
+
+
 
 
 (** MACROS **)
