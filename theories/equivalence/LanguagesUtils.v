@@ -77,18 +77,6 @@ Definition get_string_function (n : nat) (f : nat -> option nat) :=
   | None => None
   end.
 
-  (* TODO: Não é trivial! Principalmente por causa das inversões nas
-     listas. Atrasar a prova e pensar de forma mais cuidadosa depois. *)
-Lemma string_to_nat_correct : forall k n, string_to_nat (nat_to_string k (n)) =
-  n.
-Proof.
-  induction n.
-  + reflexivity.
-  + simpl.
-Admitted.
-
-
-
 
 (** MACROS **)
 

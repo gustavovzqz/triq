@@ -75,8 +75,8 @@ Inductive simulated_by : NatLang.program -> StringLang.program 0 -> Prop :=
 
 Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state 0) :=
   (* Se s_nat x = v, então string_to_nat (s_str x) também retorna v *)
-  forall (x : variable) (v : nat),
-  s_nat x = v -> string_to_nat (s_str x) = v.
+  forall (x : variable) (v : StringLang.string 0),
+  nat_to_string 0 (s_nat x) = v -> s_str x = v.
 
 Definition prog_equiv
   (p_nat    : NatLang.program)
@@ -172,7 +172,7 @@ Proof.
   intros state_nat. unfold get_equiv_state. unfold state_equiv.
   intros x v state_x_eq_v. destruct (state_nat x) eqn:E.
   + simpl. rewrite <- state_x_eq_v. reflexivity.
-  + rewrite <- state_x_eq_v. apply string_to_nat_correct.
+  + rewrite <- state_x_eq_v. reflexivity.
 Qed.
 
 (** Teorema principal *)

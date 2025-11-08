@@ -12,34 +12,36 @@ Import ListNotations.
 
 
 
-(** O programa p_nat é simulado pelo prorgama p_str *)
+(** Propriedade: Ser simulado por
+     O programa em p_nat é simulado pelo programa em p_str *)
 
 Inductive simulated_by {k : nat} : NatLang.program -> StringLang.program k -> Prop :=
-  | Simulated_Instr :
+  | Simulated_Empty : (* O programa vazio simula o programa vazio *)
+      simulated_by [] []
+
+  | Simulated_Instr : (* As macros simulam as instruções correspondentes *)
       forall (i_nat : NatLang.instruction),
         simulated_by [i_nat] (get_str_macro k i_nat)
-  | Simulated_App :
+  | Simulated_App : (* Podemos construir programas simulados simplesmente
+                       juntando macros que simulam instruções *)
       forall h_nat t_nat (h_str t_str : StringLang.program k),
         simulated_by h_nat h_str ->
         simulated_by t_nat t_str ->
         simulated_by (h_nat ++ t_nat) (h_str ++ t_str).
 
 
-(* Se retorna algo em p_nat, retorna o mesmo em p_str (em string)) *)
 
-Definition state_equiv {k} (s_nat : NatLang.state) (s_str : StringLang.state k) :=
+(** Propriedade: Equivalência de estados
+    Um estado s_nat é equivalente a um estado s_string se, ao converter
+   o resultado de s_nat para strings, tamos o resultado de s_str.
+*)
+
+Definition state_equiv  (s_nat : NatLang.state) {k} (s_str : StringLang.state k) :=
   (* Se s_nat x = v, então string_to_nat (s_str x) também retorna v *)
-  forall (x : variable) (v : nat),
-  s_nat x = v -> string_to_nat (s_str x) = v.
+  forall (x : variable) (v : StringLang.string k),
+  (nat_to_string k (s_nat x)) = v -> s_str x = v.
 
 
-(* Os programas p_nat e p_str são equivalentes em SNAPSHOT significa que:
-    snapshot (S, i) de nat e (S', i') de str
-    1. Os estados são equivalentes
-    2. Se o programa da i-ésima instrução em diante em p_nat é (...),
-                                              então o de str é (...):
-    | [] => []
-    | h_nat :: t_nat => (get_str_macro h) ++ t_str *)
 
 Definition snap_equiv {k} (p_nat : NatLang.program) (snap_nat : NatLang.snapshot)
   (p_str : StringLang.program k) (snap_str : StringLang.snapshot k) :=
