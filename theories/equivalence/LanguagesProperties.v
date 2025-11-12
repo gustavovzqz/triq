@@ -154,7 +154,7 @@ Admitted.
 
    Também existe uma versão mais forte desse teorema que precisará ser provada, 
    uma que diz:
-   "Se estava em uma linha n e p_nat e em uma linha n' em p_nat, equivalentes
+   "Se estava em uma linha n em p_nat e em uma linha n' em p_str, equivalentes
    em posição, a linha (n + 1) e (n' + k) também são equivalentes, onde k é o
    tamanho da macro da linha n'" *)
 
@@ -203,10 +203,8 @@ Theorem nat_implies_string :
          (state_nat : NatLang.state)
          {k : nat}
          (p_str : StringLang.program k),
-  simulated_by p_nat p_str ->
-
+         simulated_by p_nat p_str ->
   exists (state_str : StringLang.state k), 
-
   forall (n : nat),
   exists (n' : nat),
   prog_equiv p_nat
@@ -251,9 +249,10 @@ Proof.
                    2) A próxima linha a ser executada em p_nat é ...
                       e em p_str é ... *)
 
-    (* Para esse caso, o número de passos para o programa
+    (* Para o caso string 0, o número de passos para o programa
        de strings sera S n' para o passo da indução,  mas, em
-       casos genéricos, precisamos primeiro ver quem é a nth_error k de p_nat. *)
+       casos genéricos, precisamos primeiro ver quem é a nth_error k de p_nat. (instrução) *)
+  
 
     unfold equiv_pos in H0. 
     destruct (nth_error p_nat i) eqn:E. (* Quem é a próxima instrução de nat? *)
@@ -280,6 +279,20 @@ Proof.
                              passos dos n' passos *)
          unfold prog_equiv. simpl. rewrite snap_nat.
          unfold NatLang.next_step. rewrite E.
+         rewrite StringLangProperties.compute_program_add.
+         rewrite snap_str. unfold StringLang.compute_program.
+         simpl.
 Abort.
 
-           
+(*
+  
+  exist t, skipn i p_str = [macro] ++ t ->
+  equiv_state s s' ->
+
+  match StringLang.compute_program p_str (StringLang.SNAP i' s') n with
+  | StringLang.SNAP n'0 state_str =>
+      state_equiv (NatLang.incr s v) state_str /\
+      equiv_pos p_nat (i + 1) p_str n'0
+  end
+*)
+

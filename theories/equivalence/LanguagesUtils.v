@@ -51,6 +51,8 @@ Definition incr_string {n : nat} (s : StringLang.string n) : (StringLang.string 
   ++ reflexivity.
 Defined.
 
+Extraction incr_string.
+
 
 (* Nat para String, basta usar o incremento n vezes *)
 

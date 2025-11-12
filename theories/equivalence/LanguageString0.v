@@ -15,7 +15,7 @@ Import ListNotations.
 
 Definition zero_prf : StringLang.alphabet 0.
 Proof.
-  exists 0. constructor.
+  exists 0.  apply PeanoNat.Nat.le_0_l.
 Defined.
 
 Definition get_incr_macro_0 opt_lbl x :=
@@ -35,7 +35,7 @@ Definition get_str_macro0 (i_nat : NatLang.instruction) :
   | NatLang.Instr opt_lbl (NatLang.INCR x) => get_incr_macro_0 opt_lbl x
   | NatLang.Instr opt_lbl (NatLang.DECR x) =>  get_decr_macro_0 opt_lbl x
   | NatLang.Instr opt_lbl (NatLang.IF_GOTO x l) => get_if_macro_0 opt_lbl x l
-  end.
+end.
 
 Fixpoint get_str_prg (nat_prg : NatLang.program) 
                           : StringLang.program 0 :=
@@ -254,7 +254,12 @@ Proof.
          unfold NatLang.next_step. rewrite E. rewrite snap_str.
          unfold StringLang.next_step. rewrite H0. simpl.
          split.
-         +++ admit.
+         +++ unfold state_equiv. intros x v0.
+             unfold StringLang.append.
+             unfold NatLang.incr.
+             unfold NatLang.update.
+             unfold StringLang.update.
+             admit.
          +++ admit.
              (* Um lemma auxiliar resolve. Provavelmente usando skipn
                 é mais intuitivo *)
@@ -275,6 +280,6 @@ Proof.
             todas as partes anteriores estão simplificando as macros,
             e as equivalências pendentes estão nas instruções. Preciso
             adaptar a finalização da prova para ficar dependendo das 
-            macros serem equivalenetes, não as instruções finais *)
+            macros serem equivalentes , não as instruções finais *)
 Abort.
            
