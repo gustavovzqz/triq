@@ -18,6 +18,9 @@ Proof.
   exists 0.  apply PeanoNat.Nat.le_0_l.
 Defined.
 
+Definition incr_string0 (s : StringLang.string 0) :=
+  zero_prf :: s.
+
 Definition get_incr_macro_0 opt_lbl x :=
   StringLang.Instr opt_lbl (StringLang.APPEND zero_prf x).
 
@@ -71,12 +74,19 @@ Inductive simulated_by : NatLang.program -> StringLang.program 0 -> Prop :=
         simulated_by (h_nat ++ t_nat) (h_str ++ t_str).
 
 
+Fixpoint nat_to_string0 n := 
+  match n with
+  | 0 => []
+  | S n' => incr_string0 (nat_to_string0 n')
+  end.
+
+
 (* Se retorna algo em p_nat, retorna o mesmo em p_str (em string)) *)
 
 Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state 0) :=
   (* Se s_nat x = v, então string_to_nat (s_str x) também retorna v *)
   forall (x : variable) (v : StringLang.string 0),
-  nat_to_string 0 (s_nat x) = v -> s_str x = v.
+  nat_to_string0 (s_nat x) = v -> s_str x = v.
 
 Definition prog_equiv
   (p_nat    : NatLang.program)
@@ -94,7 +104,7 @@ Definition prog_equiv
   
 
 Definition get_equiv_state nat_state : (StringLang.state 0) :=
-  (fun x => nat_to_string 0 (nat_state x)).
+  (fun x => nat_to_string0 (nat_state x)).
 
 Lemma app_not_nil : forall A (l1 : list A) l2, l1 ++ l2 <> [] ->
   l1 <> [] \/ l2 <> [].
@@ -259,7 +269,13 @@ Proof.
              unfold NatLang.incr.
              unfold NatLang.update.
              unfold StringLang.update.
-             admit.
+             destruct (eqb_var v x) eqn:eqb_var_v_x.
+             ** rewrite PeanoNat.Nat.add_comm. simpl.
+                unfold incr_string0. unfold state_equiv in H.
+                intros H2. remember (nat_to_string0 (s v)).
+                rewrite <- H2. pose proof (H v l). f_equal.
+                apply H1. rewrite Heql. reflexivity.
+             ** intros H1. apply H, H1.
          +++ admit.
              (* Um lemma auxiliar resolve. Provavelmente usando skipn
                 é mais intuitivo *)

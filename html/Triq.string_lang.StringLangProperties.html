@@ -1,0 +1,48 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>Triq.string_lang.StringLangProperties</title>
+</head>
+
+<body>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<h1 class="libtitle">Library Triq.string_lang.StringLangProperties</h1>
+
+<div class="code">
+<span class="id" title="keyword">From</span> <span class="id" title="var">Triq</span> <span class="id" title="keyword">Require</span> <a class="idref" href="Triq.string_lang.StringLang.html#"><span class="id" title="library">StringLang</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Coq</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Nat</span>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Coq</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">List</span>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Coq</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Lia</span>.<br/>
+<span class="id" title="keyword">Import</span> <span class="id" title="module">ListNotations</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Theorem</span> <a id="compute_program_add" class="idref" href="#compute_program_add"><span class="id" title="lemma">compute_program_add</span></a> : <span class="id" title="keyword">∀</span> <br/>
+&nbsp;&nbsp;{<a id="k:1" class="idref" href="#k:1"><span class="id" title="binder">k</span></a>} (<a id="p_str:2" class="idref" href="#p_str:2"><span class="id" title="binder">p_str</span></a> : <a class="idref" href="Triq.string_lang.StringLang.html#program"><span class="id" title="definition">StringLang.program</span></a> <a class="idref" href="Triq.string_lang.StringLangProperties.html#k:1"><span class="id" title="variable">k</span></a>) <a id="n:3" class="idref" href="#n:3"><span class="id" title="binder">n</span></a> <a id="n':4" class="idref" href="#n':4"><span class="id" title="binder">n'</span></a> <a id="snap:5" class="idref" href="#snap:5"><span class="id" title="binder">snap</span></a>, <br/>
+&nbsp;&nbsp;<a class="idref" href="Triq.string_lang.StringLang.html#compute_program"><span class="id" title="definition">StringLang.compute_program</span></a> <a class="idref" href="Triq.string_lang.StringLangProperties.html#p_str:2"><span class="id" title="variable">p_str</span></a> <a class="idref" href="Triq.string_lang.StringLangProperties.html#snap:5"><span class="id" title="variable">snap</span></a> (<a class="idref" href="Triq.string_lang.StringLangProperties.html#n:3"><span class="id" title="variable">n</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Nat.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> <a class="idref" href="Triq.string_lang.StringLangProperties.html#n':4"><span class="id" title="variable">n'</span></a>) <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Triq.string_lang.StringLang.html#compute_program"><span class="id" title="definition">StringLang.compute_program</span></a> <a class="idref" href="Triq.string_lang.StringLangProperties.html#p_str:2"><span class="id" title="variable">p_str</span></a> (<a class="idref" href="Triq.string_lang.StringLang.html#compute_program"><span class="id" title="definition">StringLang.compute_program</span></a> <a class="idref" href="Triq.string_lang.StringLangProperties.html#p_str:2"><span class="id" title="variable">p_str</span></a> <a class="idref" href="Triq.string_lang.StringLangProperties.html#snap:5"><span class="id" title="variable">snap</span></a> <a class="idref" href="Triq.string_lang.StringLangProperties.html#n':4"><span class="id" title="variable">n'</span></a>) <a class="idref" href="Triq.string_lang.StringLangProperties.html#n:3"><span class="id" title="variable">n</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">k</span> <span class="id" title="var">p_str</span>. <span class="id" title="tactic">induction</span> <span class="id" title="var">n</span>; <span class="id" title="tactic">intros</span> <span class="id" title="var">n'</span> <span class="id" title="var">snap</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">rewrite</span> <span class="id" title="var">IHn</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+</div>
+</div>
+
+<div id="footer">
+<hr/><a href="index.html">Index</a><hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>
