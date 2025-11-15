@@ -35,7 +35,11 @@ nra.cache
 native_compute_profile_*.data
 
 Makefile.coq
+Makefile.conf
 Makefile.coq.conf
+CoqMakefile.conf
+Makefile
+.Makefile.d
 
 # generated timing files
 *.timing.diff
