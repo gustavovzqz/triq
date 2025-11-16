@@ -1,13 +1,50 @@
 (** * NatLang: Linguagem Simples Baseada em Naturais *)
 
+(** O objetivo desse arquivo é definir uma linguagem extremamente simples
+    que lida com naturais. A linguagem é baseada na linguagem simples de 
+    três instruções apresentada no livro _Computability, Complexity and Languages_.
+
+    Apesar de simples, a linguagem possui diversas propriedades interessantes e já
+    se trata de uma linguagem _Turing Completa_.
+
+    Para prosseguir com a definição da linguagem, usaremos o arquivo [LanguagesCommon]
+    que possui algumas definições úteis como [variable] e [label], comuns a outras 
+    linguagens *)
+
 From Coq Require Import Nat.
 From Coq Require Import List.
-From Triq Require Export LanguagesCommon.
-
-
 Import ListNotations.
 
-(** Elementos Básicos de um Programa *)
+From Triq Require Export LanguagesCommon.
+
+(** * Elementos Básicos de um Programa *)
+
+(** A linguagem básica nos naturais possui apenas três instruções:
+
+     - Incrementar o valor de uma variável em um (x <- x + 1);
+     - Decrementar o valor de uma variável em um (x <- x - 1);
+     - Pulo direcional para uma instrução com certa label, dependendo
+         do valor da variável. (IF X != 0 GOTO A).
+
+   Cada instrução pode ou não possuir uma label. Confira o exemplo abaixo:
+
+     - [A0] X0 <- X0 + 1
+     - [  ] X1 <- X1 - 1 (* Não possui label *)
+     - [B1] IF X0 != 0 GOTO A
+
+   Conversaremos mais sobre os detalhes de cada instrução quando definirmos
+   o significado de computação. *)
+
+(** ** Statement e Instruction *)
+
+(** Como cada instrução pode ou não possuir uma label, nós separamos o conceito
+    de [statement] e de [instruction]. Um [statement] é simplesmente o _corpo_
+    da instrução, e a instrução de fato é a junção com a informação da label.
+
+    Veja que o IF GOTO também recebe uma [option label] como argumento. O razão
+    disso é para que exista a possibilidade de have um GOTO para nenhuma
+    instrução. Veremos posteriormente que isso fará com que o programa
+    termine. *)
 
 Inductive statement : Type :=
   | INCR : variable -> statement
@@ -19,7 +56,11 @@ Inductive instruction : Type :=
 
 Definition program := list instruction.
 
-(** Notações. Adaptadas de: 
+(** ** Notações *)
+
+(** As notações abaixo simplificarão um pouco nossos trabalhos na escrita de
+    programas para teste. As notações foram extraídas com pequenas adaptações
+    de um exemplo em: 
     https://softwarefoundations.cis.upenn.edu/lf-current/Imp.html *)
 
 Declare Custom Entry com.
@@ -56,31 +97,12 @@ Notation "'[ i1 ; .. ; iN ]'" := (cons i1 .. (cons iN nil) ..)
 
 Open Scope nat_lang_scope.
 
-(** Decidibilidade e Auxiliares Envolvendo Igualdades *)
 
+(** ** Estado de um Programa *)
 
-Definition eq_inst_label (instr : instruction ) (opt_lbl : option label) :=
-  match instr, opt_lbl with 
-  | Instr (Some lbl_a) _, Some lbl_b => eqb_lbl lbl_a lbl_b
-  | _, _                => false
-  end.
-
-(** Função para encontrar a posição da primeira instrução com certa label 
-    em um programa *)
-
-Definition get_labeled_instr (p : program) (lbl : option label) :=
-  let fix aux l n :=
-    match l with 
-    | h :: t => match (eq_inst_label h lbl) with 
-                | true => n
-                | false => aux t (n + 1)
-                end
-    | []     => n 
-    end
-  in aux p 0.
-
-
-(** Estado de um Programa *)
+(** Para representar o estado do programa, precisamos de um _mapa_ que
+    associa cada variável a um valor nos naturais. Como representação
+    simples, podemos simplesmente *)
 
 Definition state := variable -> nat.
 
@@ -106,6 +128,31 @@ Definition initial_snapshot := SNAP 0 empty.
 
 Definition create_state x :=
   update empty (X 0) x.
+
+
+(** Decidibilidade e Auxiliares Envolvendo Igualdades *)
+
+
+Definition eq_inst_label (instr : instruction ) (opt_lbl : option label) :=
+  match instr, opt_lbl with 
+  | Instr (Some lbl_a) _, Some lbl_b => eqb_lbl lbl_a lbl_b
+  | _, _                => false
+  end.
+
+(** Função para encontrar a posição da primeira instrução com certa label 
+    em um programa *)
+
+Definition get_labeled_instr (p : program) (lbl : option label) :=
+  let fix aux l n :=
+    match l with 
+    | h :: t => match (eq_inst_label h lbl) with 
+                | true => n
+                | false => aux t (n + 1)
+                end
+    | []     => n 
+    end
+  in aux p 0.
+
 
 
 (** Propriedade de Passo de Pomputação:

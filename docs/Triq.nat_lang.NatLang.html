@@ -24,22 +24,95 @@
 <div class="doc">
 <a id="lab1"></a><h1 class="section">NatLang: Linguagem Simples Baseada em Naturais</h1>
 
+<div class="paragraph"> </div>
+
+ O objetivo desse arquivo é definir uma linguagem extremamente simples
+    que lida com naturais. A linguagem é baseada na linguagem simples de 
+    três instruções apresentada no livro <i>Computability, Complexity and Languages</i>.
+
+<div class="paragraph"> </div>
+
+    Apesar de simples, a linguagem possui diversas propriedades interessantes e já
+    se trata de uma linguagem <i>Turing Completa</i>.
+
+<div class="paragraph"> </div>
+
+    Para prosseguir com a definição da linguagem, usaremos o arquivo <span class="inlinecode"><span class="id" title="library">LanguagesCommon</span></span>
+    que possui algumas definições úteis como <span class="inlinecode"><a class="idref" href="Triq.common.LanguagesCommon.html#variable"><span class="id" title="inductive">variable</span></a></span> e <span class="inlinecode"><a class="idref" href="Triq.common.LanguagesCommon.html#label"><span class="id" title="inductive">label</span></a></span>, comuns a outras 
+    linguagens 
 </div>
 <div class="code">
 
 <br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Coq</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Nat</span>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Coq</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">List</span>.<br/>
-<span class="id" title="keyword">From</span> <span class="id" title="var">Triq</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Triq.common.LanguagesCommon.html#"><span class="id" title="library">LanguagesCommon</span></a>.<br/>
+<span class="id" title="keyword">Import</span> <span class="id" title="module">ListNotations</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Import</span> <span class="id" title="module">ListNotations</span>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Triq</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Triq.common.LanguagesCommon.html#"><span class="id" title="library">LanguagesCommon</span></a>.<br/>
 
 <br/>
 </div>
 
 <div class="doc">
-Elementos Básicos de um Programa 
+<a id="lab2"></a><h1 class="section">Elementos Básicos de um Programa</h1>
+
+<div class="paragraph"> </div>
+
+ A linguagem básica nos naturais possui apenas três instruções:
+
+<div class="paragraph"> </div>
+
+<ul class="doclist">
+<li> Incrementar o valor de uma variável em um (x &lt;- x + 1);
+
+</li>
+<li> Decrementar o valor de uma variável em um (x &lt;- x - 1);
+
+</li>
+<li> Pulo direcional para uma instrução com certa label, dependendo
+         do valor da variável. (IF X != 0 GOTO A).
+
+</li>
+</ul>
+
+<div class="paragraph"> </div>
+
+   Cada instrução pode ou não possuir uma label. Confira o exemplo abaixo:
+
+<div class="paragraph"> </div>
+
+<ul class="doclist">
+<li> <span class="inlinecode"><span class="id" title="var">A0</span></span> X0 &lt;- X0 + 1
+
+</li>
+<li> <span class="inlinecode"></span>  <span class="inlinecode"></span> X1 &lt;- X1 - 1 
+</li>
+<li> <span class="inlinecode"><span class="id" title="var">B1</span></span> IF X0 != 0 GOTO A
+
+</li>
+</ul>
+
+<div class="paragraph"> </div>
+
+   Conversaremos mais sobre os detalhes de cada instrução quando definirmos
+   o significado de computação. 
+<div class="paragraph"> </div>
+
+<a id="lab3"></a><h2 class="section">Statement e Instruction</h2>
+
+<div class="paragraph"> </div>
+
+ Como cada instrução pode ou não possuir uma label, nós separamos o conceito
+    de <span class="inlinecode"><a class="idref" href="Triq.string_lang.StringLang.html#statement"><span class="id" title="inductive">statement</span></a></span> e de <span class="inlinecode"><a class="idref" href="Triq.string_lang.StringLang.html#instruction"><span class="id" title="inductive">instruction</span></a></span>. Um <span class="inlinecode"><a class="idref" href="Triq.string_lang.StringLang.html#statement"><span class="id" title="inductive">statement</span></a></span> é simplesmente o <i>corpo</i>
+    da instrução, e a instrução de fato é a junção com a informação da label.
+
+<div class="paragraph"> </div>
+
+    Veja que o IF GOTO também recebe uma <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a></span> <span class="inlinecode"><a class="idref" href="Triq.common.LanguagesCommon.html#label"><span class="id" title="inductive">label</span></a></span> como argumento. O razão
+    disso é para que exista a possibilidade de have um GOTO para nenhuma
+    instrução. Veremos posteriormente que isso fará com que o programa
+    termine. 
 </div>
 <div class="code">
 
@@ -60,7 +133,13 @@ Elementos Básicos de um Programa
 </div>
 
 <div class="doc">
-Notações. Adaptadas de: 
+<a id="lab4"></a><h2 class="section">Notações</h2>
+
+<div class="paragraph"> </div>
+
+ As notações abaixo simplificarão um pouco nossos trabalhos na escrita de
+    programas para teste. As notações foram extraídas com pequenas adaptações
+    de um exemplo em: 
     https://softwarefoundations.cis.upenn.edu/lf-current/Imp.html 
 </div>
 <div class="code">
@@ -109,13 +188,58 @@ Notações. Adaptadas de:
 </div>
 
 <div class="doc">
+<a id="lab5"></a><h2 class="section">Estado de um Programa</h2>
+
+<div class="paragraph"> </div>
+
+ Para representar o estado do programa, precisamos de um <i>mapa</i> que
+    associa cada variável a um valor nos naturais. Como representação
+    simples, podemos simplesmente 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="state" class="idref" href="#state"><span class="id" title="definition">state</span></a> := <a class="idref" href="Triq.common.LanguagesCommon.html#variable"><span class="id" title="inductive">variable</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="empty" class="idref" href="#empty"><span class="id" title="definition">empty</span></a> : <a class="idref" href="Triq.nat_lang.NatLang.html#state"><span class="id" title="definition">state</span></a> := (<span class="id" title="keyword">fun</span> <span class="id" title="var">_</span> ⇒ 0).<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="update" class="idref" href="#update"><span class="id" title="definition">update</span></a> (<a id="m:5" class="idref" href="#m:5"><span class="id" title="binder">m</span></a> : <a class="idref" href="Triq.nat_lang.NatLang.html#state"><span class="id" title="definition">state</span></a> ) (<a id="x:6" class="idref" href="#x:6"><span class="id" title="binder">x</span></a> : <a class="idref" href="Triq.common.LanguagesCommon.html#variable"><span class="id" title="inductive">variable</span></a>) (<a id="v:7" class="idref" href="#v:7"><span class="id" title="binder">v</span></a> : <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">fun</span> <a id="x':8" class="idref" href="#x':8"><span class="id" title="binder">x'</span></a> ⇒ <span class="id" title="keyword">if</span> <a class="idref" href="Triq.common.LanguagesCommon.html#eqb_var"><span class="id" title="definition">eqb_var</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x:6"><span class="id" title="variable">x</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x':8"><span class="id" title="variable">x'</span></a> <span class="id" title="keyword">then</span> <a class="idref" href="Triq.nat_lang.NatLang.html#v:7"><span class="id" title="variable">v</span></a> <span class="id" title="keyword">else</span> <a class="idref" href="Triq.nat_lang.NatLang.html#m:5"><span class="id" title="variable">m</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x':8"><span class="id" title="variable">x'</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="incr" class="idref" href="#incr"><span class="id" title="definition">incr</span></a> (<a id="m:9" class="idref" href="#m:9"><span class="id" title="binder">m</span></a> : <a class="idref" href="Triq.nat_lang.NatLang.html#state"><span class="id" title="definition">state</span></a> ) (<a id="x:10" class="idref" href="#x:10"><span class="id" title="binder">x</span></a> : <a class="idref" href="Triq.common.LanguagesCommon.html#variable"><span class="id" title="inductive">variable</span></a>) :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">let</span> <a id="v:11" class="idref" href="#v:11"><span class="id" title="binder">v</span></a> := <a class="idref" href="Triq.nat_lang.NatLang.html#m:9"><span class="id" title="variable">m</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x:10"><span class="id" title="variable">x</span></a> <span class="id" title="tactic">in</span> <br/>
+&nbsp;&nbsp;<a class="idref" href="Triq.nat_lang.NatLang.html#update"><span class="id" title="definition">update</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#m:9"><span class="id" title="variable">m</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x:10"><span class="id" title="variable">x</span></a> (<a class="idref" href="Triq.nat_lang.NatLang.html#v:11"><span class="id" title="variable">v</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Nat.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> 1).<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="decr" class="idref" href="#decr"><span class="id" title="definition">decr</span></a> (<a id="m:12" class="idref" href="#m:12"><span class="id" title="binder">m</span></a> : <a class="idref" href="Triq.nat_lang.NatLang.html#state"><span class="id" title="definition">state</span></a> ) (<a id="x:13" class="idref" href="#x:13"><span class="id" title="binder">x</span></a> : <a class="idref" href="Triq.common.LanguagesCommon.html#variable"><span class="id" title="inductive">variable</span></a>) :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">let</span> <a id="v:14" class="idref" href="#v:14"><span class="id" title="binder">v</span></a> := <a class="idref" href="Triq.nat_lang.NatLang.html#m:12"><span class="id" title="variable">m</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x:13"><span class="id" title="variable">x</span></a> <span class="id" title="tactic">in</span> <br/>
+&nbsp;&nbsp;<a class="idref" href="Triq.nat_lang.NatLang.html#update"><span class="id" title="definition">update</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#m:12"><span class="id" title="variable">m</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x:13"><span class="id" title="variable">x</span></a> (<a class="idref" href="Triq.nat_lang.NatLang.html#v:14"><span class="id" title="variable">v</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Nat.html#::nat_scope:x_'-'_x"><span class="id" title="notation">-</span></a> 1).<br/>
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <a id="snapshot" class="idref" href="#snapshot"><span class="id" title="definition, inductive"><span id="snapshot_rect" class="id"><span id="snapshot_ind" class="id"><span id="snapshot_rec" class="id"><span id="snapshot_sind" class="id">snapshot</span></span></span></span></span></a> :=<br/>
+&nbsp;&nbsp;| <a id="SNAP" class="idref" href="#SNAP"><span class="id" title="constructor">SNAP</span></a> : <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#state"><span class="id" title="definition">state</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#snapshot:15"><span class="id" title="inductive">snapshot</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="initial_snapshot" class="idref" href="#initial_snapshot"><span class="id" title="definition">initial_snapshot</span></a> := <a class="idref" href="Triq.nat_lang.NatLang.html#SNAP"><span class="id" title="constructor">SNAP</span></a> 0 <a class="idref" href="Triq.nat_lang.NatLang.html#empty"><span class="id" title="definition">empty</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="create_state" class="idref" href="#create_state"><span class="id" title="definition">create_state</span></a> <a id="x:17" class="idref" href="#x:17"><span class="id" title="binder">x</span></a> :=<br/>
+&nbsp;&nbsp;<a class="idref" href="Triq.nat_lang.NatLang.html#update"><span class="id" title="definition">update</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#empty"><span class="id" title="definition">empty</span></a> (<a class="idref" href="Triq.common.LanguagesCommon.html#X"><span class="id" title="constructor">X</span></a> 0) <a class="idref" href="Triq.nat_lang.NatLang.html#x:17"><span class="id" title="variable">x</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
 Decidibilidade e Auxiliares Envolvendo Igualdades 
 </div>
 <div class="code">
 
 <br/>
-<span class="id" title="keyword">Definition</span> <a id="eq_inst_label" class="idref" href="#eq_inst_label"><span class="id" title="definition">eq_inst_label</span></a> (<a id="instr:5" class="idref" href="#instr:5"><span class="id" title="binder">instr</span></a> : <a class="idref" href="Triq.nat_lang.NatLang.html#instruction"><span class="id" title="inductive">instruction</span></a> ) (<a id="opt_lbl:6" class="idref" href="#opt_lbl:6"><span class="id" title="binder">opt_lbl</span></a> : <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Triq.common.LanguagesCommon.html#label"><span class="id" title="inductive">label</span></a>) :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Triq.nat_lang.NatLang.html#instr:5"><span class="id" title="variable">instr</span></a>, <a class="idref" href="Triq.nat_lang.NatLang.html#opt_lbl:6"><span class="id" title="variable">opt_lbl</span></a> <span class="id" title="keyword">with</span> <br/>
+<span class="id" title="keyword">Definition</span> <a id="eq_inst_label" class="idref" href="#eq_inst_label"><span class="id" title="definition">eq_inst_label</span></a> (<a id="instr:18" class="idref" href="#instr:18"><span class="id" title="binder">instr</span></a> : <a class="idref" href="Triq.nat_lang.NatLang.html#instruction"><span class="id" title="inductive">instruction</span></a> ) (<a id="opt_lbl:19" class="idref" href="#opt_lbl:19"><span class="id" title="binder">opt_lbl</span></a> : <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Triq.common.LanguagesCommon.html#label"><span class="id" title="inductive">label</span></a>) :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Triq.nat_lang.NatLang.html#instr:18"><span class="id" title="variable">instr</span></a>, <a class="idref" href="Triq.nat_lang.NatLang.html#opt_lbl:19"><span class="id" title="variable">opt_lbl</span></a> <span class="id" title="keyword">with</span> <br/>
 &nbsp;&nbsp;| <a class="idref" href="Triq.nat_lang.NatLang.html#Instr"><span class="id" title="constructor">Instr</span></a> (<a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <span class="id" title="var">lbl_a</span>) <span class="id" title="var">_</span>, <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <span class="id" title="var">lbl_b</span> ⇒ <a class="idref" href="Triq.common.LanguagesCommon.html#eqb_lbl"><span class="id" title="definition">eqb_lbl</span></a> <span class="id" title="var">lbl_a</span> <span class="id" title="var">lbl_b</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">_</span>, <span class="id" title="var">_</span>                ⇒ <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
@@ -130,55 +254,16 @@ Função para encontrar a posição da primeira instrução com certa label
 <div class="code">
 
 <br/>
-<span class="id" title="keyword">Definition</span> <a id="get_labeled_instr" class="idref" href="#get_labeled_instr"><span class="id" title="definition">get_labeled_instr</span></a> (<a id="p:9" class="idref" href="#p:9"><span class="id" title="binder">p</span></a> : <a class="idref" href="Triq.nat_lang.NatLang.html#program"><span class="id" title="definition">program</span></a>) (<a id="lbl:10" class="idref" href="#lbl:10"><span class="id" title="binder">lbl</span></a> : <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Triq.common.LanguagesCommon.html#label"><span class="id" title="inductive">label</span></a>) :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">let</span> <span class="id" title="keyword">fix</span> <a id="aux:15" class="idref" href="#aux:15"><span class="id" title="binder">aux</span></a> <a id="l:11" class="idref" href="#l:11"><span class="id" title="binder">l</span></a> <a id="n:12" class="idref" href="#n:12"><span class="id" title="binder">n</span></a> :=<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Triq.nat_lang.NatLang.html#l:11"><span class="id" title="variable">l</span></a> <span class="id" title="keyword">with</span> <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">h</span> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">t</span> ⇒ <span class="id" title="keyword">match</span> (<a class="idref" href="Triq.nat_lang.NatLang.html#eq_inst_label"><span class="id" title="definition">eq_inst_label</span></a> <span class="id" title="var">h</span> <a class="idref" href="Triq.nat_lang.NatLang.html#lbl:10"><span class="id" title="variable">lbl</span></a>) <span class="id" title="keyword">with</span> <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> ⇒ <a class="idref" href="Triq.nat_lang.NatLang.html#n:12"><span class="id" title="variable">n</span></a><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> ⇒ <a class="idref" href="Triq.nat_lang.NatLang.html#aux:13"><span class="id" title="variable">aux</span></a> <span class="id" title="var">t</span> (<a class="idref" href="Triq.nat_lang.NatLang.html#n:12"><span class="id" title="variable">n</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Nat.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> 1)<br/>
+<span class="id" title="keyword">Definition</span> <a id="get_labeled_instr" class="idref" href="#get_labeled_instr"><span class="id" title="definition">get_labeled_instr</span></a> (<a id="p:22" class="idref" href="#p:22"><span class="id" title="binder">p</span></a> : <a class="idref" href="Triq.nat_lang.NatLang.html#program"><span class="id" title="definition">program</span></a>) (<a id="lbl:23" class="idref" href="#lbl:23"><span class="id" title="binder">lbl</span></a> : <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Triq.common.LanguagesCommon.html#label"><span class="id" title="inductive">label</span></a>) :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">let</span> <span class="id" title="keyword">fix</span> <a id="aux:28" class="idref" href="#aux:28"><span class="id" title="binder">aux</span></a> <a id="l:24" class="idref" href="#l:24"><span class="id" title="binder">l</span></a> <a id="n:25" class="idref" href="#n:25"><span class="id" title="binder">n</span></a> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Triq.nat_lang.NatLang.html#l:24"><span class="id" title="variable">l</span></a> <span class="id" title="keyword">with</span> <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">h</span> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">t</span> ⇒ <span class="id" title="keyword">match</span> (<a class="idref" href="Triq.nat_lang.NatLang.html#eq_inst_label"><span class="id" title="definition">eq_inst_label</span></a> <span class="id" title="var">h</span> <a class="idref" href="Triq.nat_lang.NatLang.html#lbl:23"><span class="id" title="variable">lbl</span></a>) <span class="id" title="keyword">with</span> <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> ⇒ <a class="idref" href="Triq.nat_lang.NatLang.html#n:25"><span class="id" title="variable">n</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> ⇒ <a class="idref" href="Triq.nat_lang.NatLang.html#aux:26"><span class="id" title="variable">aux</span></a> <span class="id" title="var">t</span> (<a class="idref" href="Triq.nat_lang.NatLang.html#n:25"><span class="id" title="variable">n</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Nat.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> 1)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="notation">[]</span>     ⇒ <a class="idref" href="Triq.nat_lang.NatLang.html#n:12"><span class="id" title="variable">n</span></a> <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="notation">[]</span>     ⇒ <a class="idref" href="Triq.nat_lang.NatLang.html#n:25"><span class="id" title="variable">n</span></a> <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
-&nbsp;&nbsp;<span class="id" title="tactic">in</span> <a class="idref" href="Triq.nat_lang.NatLang.html#aux:15"><span class="id" title="variable">aux</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#p:9"><span class="id" title="variable">p</span></a> 0.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-Estado de um Programa 
-</div>
-<div class="code">
-
-<br/>
-<span class="id" title="keyword">Definition</span> <a id="state" class="idref" href="#state"><span class="id" title="definition">state</span></a> := <a class="idref" href="Triq.common.LanguagesCommon.html#variable"><span class="id" title="inductive">variable</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>.<br/>
-
-<br/>
-<span class="id" title="keyword">Definition</span> <a id="empty" class="idref" href="#empty"><span class="id" title="definition">empty</span></a> : <a class="idref" href="Triq.nat_lang.NatLang.html#state"><span class="id" title="definition">state</span></a> := (<span class="id" title="keyword">fun</span> <span class="id" title="var">_</span> ⇒ 0).<br/>
-
-<br/>
-<span class="id" title="keyword">Definition</span> <a id="update" class="idref" href="#update"><span class="id" title="definition">update</span></a> (<a id="m:16" class="idref" href="#m:16"><span class="id" title="binder">m</span></a> : <a class="idref" href="Triq.nat_lang.NatLang.html#state"><span class="id" title="definition">state</span></a> ) (<a id="x:17" class="idref" href="#x:17"><span class="id" title="binder">x</span></a> : <a class="idref" href="Triq.common.LanguagesCommon.html#variable"><span class="id" title="inductive">variable</span></a>) (<a id="v:18" class="idref" href="#v:18"><span class="id" title="binder">v</span></a> : <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">fun</span> <a id="x':19" class="idref" href="#x':19"><span class="id" title="binder">x'</span></a> ⇒ <span class="id" title="keyword">if</span> <a class="idref" href="Triq.common.LanguagesCommon.html#eqb_var"><span class="id" title="definition">eqb_var</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x:17"><span class="id" title="variable">x</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x':19"><span class="id" title="variable">x'</span></a> <span class="id" title="keyword">then</span> <a class="idref" href="Triq.nat_lang.NatLang.html#v:18"><span class="id" title="variable">v</span></a> <span class="id" title="keyword">else</span> <a class="idref" href="Triq.nat_lang.NatLang.html#m:16"><span class="id" title="variable">m</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x':19"><span class="id" title="variable">x'</span></a>.<br/>
-
-<br/>
-<span class="id" title="keyword">Definition</span> <a id="incr" class="idref" href="#incr"><span class="id" title="definition">incr</span></a> (<a id="m:20" class="idref" href="#m:20"><span class="id" title="binder">m</span></a> : <a class="idref" href="Triq.nat_lang.NatLang.html#state"><span class="id" title="definition">state</span></a> ) (<a id="x:21" class="idref" href="#x:21"><span class="id" title="binder">x</span></a> : <a class="idref" href="Triq.common.LanguagesCommon.html#variable"><span class="id" title="inductive">variable</span></a>) :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">let</span> <a id="v:22" class="idref" href="#v:22"><span class="id" title="binder">v</span></a> := <a class="idref" href="Triq.nat_lang.NatLang.html#m:20"><span class="id" title="variable">m</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x:21"><span class="id" title="variable">x</span></a> <span class="id" title="tactic">in</span> <br/>
-&nbsp;&nbsp;<a class="idref" href="Triq.nat_lang.NatLang.html#update"><span class="id" title="definition">update</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#m:20"><span class="id" title="variable">m</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x:21"><span class="id" title="variable">x</span></a> (<a class="idref" href="Triq.nat_lang.NatLang.html#v:22"><span class="id" title="variable">v</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Nat.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> 1).<br/>
-
-<br/>
-<span class="id" title="keyword">Definition</span> <a id="decr" class="idref" href="#decr"><span class="id" title="definition">decr</span></a> (<a id="m:23" class="idref" href="#m:23"><span class="id" title="binder">m</span></a> : <a class="idref" href="Triq.nat_lang.NatLang.html#state"><span class="id" title="definition">state</span></a> ) (<a id="x:24" class="idref" href="#x:24"><span class="id" title="binder">x</span></a> : <a class="idref" href="Triq.common.LanguagesCommon.html#variable"><span class="id" title="inductive">variable</span></a>) :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">let</span> <a id="v:25" class="idref" href="#v:25"><span class="id" title="binder">v</span></a> := <a class="idref" href="Triq.nat_lang.NatLang.html#m:23"><span class="id" title="variable">m</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x:24"><span class="id" title="variable">x</span></a> <span class="id" title="tactic">in</span> <br/>
-&nbsp;&nbsp;<a class="idref" href="Triq.nat_lang.NatLang.html#update"><span class="id" title="definition">update</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#m:23"><span class="id" title="variable">m</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#x:24"><span class="id" title="variable">x</span></a> (<a class="idref" href="Triq.nat_lang.NatLang.html#v:25"><span class="id" title="variable">v</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Nat.html#::nat_scope:x_'-'_x"><span class="id" title="notation">-</span></a> 1).<br/>
-
-<br/>
-<span class="id" title="keyword">Inductive</span> <a id="snapshot" class="idref" href="#snapshot"><span class="id" title="definition, inductive"><span id="snapshot_rect" class="id"><span id="snapshot_ind" class="id"><span id="snapshot_rec" class="id"><span id="snapshot_sind" class="id">snapshot</span></span></span></span></span></a> :=<br/>
-&nbsp;&nbsp;| <a id="SNAP" class="idref" href="#SNAP"><span class="id" title="constructor">SNAP</span></a> : <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#state"><span class="id" title="definition">state</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#snapshot:26"><span class="id" title="inductive">snapshot</span></a>.<br/>
-
-<br/>
-<span class="id" title="keyword">Definition</span> <a id="initial_snapshot" class="idref" href="#initial_snapshot"><span class="id" title="definition">initial_snapshot</span></a> := <a class="idref" href="Triq.nat_lang.NatLang.html#SNAP"><span class="id" title="constructor">SNAP</span></a> 0 <a class="idref" href="Triq.nat_lang.NatLang.html#empty"><span class="id" title="definition">empty</span></a>.<br/>
-
-<br/>
-<span class="id" title="keyword">Definition</span> <a id="create_state" class="idref" href="#create_state"><span class="id" title="definition">create_state</span></a> <a id="x:28" class="idref" href="#x:28"><span class="id" title="binder">x</span></a> :=<br/>
-&nbsp;&nbsp;<a class="idref" href="Triq.nat_lang.NatLang.html#update"><span class="id" title="definition">update</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#empty"><span class="id" title="definition">empty</span></a> (<a class="idref" href="Triq.common.LanguagesCommon.html#X"><span class="id" title="constructor">X</span></a> 0) <a class="idref" href="Triq.nat_lang.NatLang.html#x:28"><span class="id" title="variable">x</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">in</span> <a class="idref" href="Triq.nat_lang.NatLang.html#aux:28"><span class="id" title="variable">aux</span></a> <a class="idref" href="Triq.nat_lang.NatLang.html#p:22"><span class="id" title="variable">p</span></a> 0.<br/>
 
 <br/>
 </div>
