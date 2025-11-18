@@ -142,17 +142,15 @@ Definition eq_inst_label (instr : instruction ) (opt_lbl : option label) :=
 (** Função para encontrar a posição da primeira instrução com certa label 
     em um programa *)
 
-Definition get_labeled_instr (p : program) (lbl : option label) :=
-  let fix aux l n :=
-    match l with 
-    | h :: t => match (eq_inst_label h lbl) with 
-                | true => n
-                | false => aux t (n + 1)
-                end
-    | []     => n 
-    end
-  in aux p 0.
 
+Fixpoint get_labeled_instr (p : list instruction) (lbl : option label) : nat :=
+  match p with
+  | [] => 0
+  | h :: t =>
+      if eq_inst_label h lbl
+      then 0
+      else 1 + get_labeled_instr t lbl
+  end.
 
 
 (** Propriedade de Passo de Pomputação:

@@ -92,17 +92,14 @@ Definition eq_inst_label {n : nat} (instr : instruction n ) (opt_lbl : option la
   end.
 
 
-Definition get_labeled_instr {n : nat} (p : program n) (lbl : option label) :=
-  let fix aux l n :=
-    match l with 
-    | h :: t => match (eq_inst_label h lbl) with 
-                | true => n
-                | false => aux t (n + 1)
-                end
-    | []     => n 
-    end
-  in aux p 0.
-
+Fixpoint get_labeled_instr {n : nat} (p : program n) (lbl : option label) : nat :=
+  match p with
+  | [] => 0
+  | h :: t =>
+      if eq_inst_label h lbl
+      then 0
+      else 1 + get_labeled_instr t lbl
+  end.
 
 
 Definition update {n : nat} (m : state n) (x : variable) (v : string n) :=
