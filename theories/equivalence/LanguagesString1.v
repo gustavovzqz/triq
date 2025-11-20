@@ -1,10 +1,8 @@
-(** * Prova de Equivalência do programa dos naturais para o programa de alfabeto com apenas um dígito *)
+(** * Prova de Equivalência do programa dos naturais para o programa de alfabeto com dois dígitos *)
 
 (** O objetivo deste arquivo é provar a equivalência entre o programa dos naturais
-    para o programa de strings, no caso especial em que este possui apenas um
-    símbolo. Veremos que, apesar de parecer muito simples, já que existe uma
-    associação direta das instruções nos naturais para as em strings, diversos
-    detalhes de implementação dificultam o progresso da prova. *)
+    para o programa de strings, no caso especial em que este possui apenas dois
+    símbolos.  *)
 
 From Triq Require NatLang.
 From Triq Require NatLangProperties.
@@ -21,41 +19,51 @@ Import ListNotations.
 
 (** * Definições Básicas para a Equivalência *)
 
-(** Para não lidar com a complexidade do caso genérico, as definições foram adaptadas
-    para contemplar as especificidades do caso de string 0. As macros possuem apenas
-    uma instrução e as definições de equivalência podem ser simplificadas *)
+(** Diferente do caso string0, não conseguimos nos aproveitar de alguma
+    propriedade para construir um algoritmo mais simples de incremento.
+    Assim, a função incr_string usada será a genérica, e simplificaremos
+    apenas a construção das macros. *)
 
-Definition zero_prf : StringLang.alphabet 0.
-Proof.
-exists 0.  apply PeanoNat.Nat.le_0_l.
-Defined.
 
-Definition incr_string0 (s : StringLang.string 0) :=
-  zero_prf :: s.
 
-Definition get_incr_macro_0 opt_lbl x :=
-  StringLang.Instr opt_lbl (StringLang.APPEND zero_prf x).
+(* [B0] x <- + 1 *)
 
-Definition get_decr_macro_0 opt_lbl x : (StringLang.instruction 0) :=
-  StringLang.Instr opt_lbl (StringLang.DEL x).
+(* [B0] IF X ENDS a GOTO A1
+        IF X ENDS b GOTO A2
+        Y <- a Y
+        GOTO E
 
-Definition get_if_macro_0 opt_lbl x l :=
-StringLang.Instr opt_lbl (StringLang.IF_ENDS_GOTO x zero_prf l).
+   [A1] X <- X-
+        Y <- b Y
+        GOTO C1
 
-Definition get_str_macro0 (i_nat : NatLang.instruction) :
-  (StringLang.instruction 0 ) := 
-  match i_nat with 
-  | NatLang.Instr opt_lbl (NatLang.INCR x) => get_incr_macro_0 opt_lbl x
-  | NatLang.Instr opt_lbl (NatLang.DECR x) =>  get_decr_macro_0 opt_lbl x
-  | NatLang.Instr opt_lbl (NatLang.IF_GOTO x l) => get_if_macro_0 opt_lbl x l
-end.
+   [A2] X <- X-
+        Y <- a Y
+        GOTO B0
+
+   [C1] IF X ENDS a GOTO D1
+        IF X ENDS b GOTO D2
+        GOTO E
+
+   [D1] X <- X-
+        Y <- S1 Y
+        GOTO C1 
+
+   [D2] X <- X-
+        Y <- S2 Y
+        GOTO C1 
+*)
+
+
+
+
 
 Fixpoint get_str_prg (nat_prg : NatLang.program) 
                           : StringLang.program 0 :=
   match nat_prg with
   | [] => []
   | i_nat :: rest =>
-      (get_str_macro0 i_nat) :: (get_str_prg rest)
+      (get_str_macro1 i_nat) :: (get_str_prg rest)
   end.
 
 
@@ -69,27 +77,12 @@ Fixpoint get_str_prg (nat_prg : NatLang.program)
 
 
 
-(* Para o caso genérico, ou de 2 digitos, preciso contar 
-   a macro para conseguir obter a posição da instrução *)
-
-
-Fixpoint get_equiv_simulated_position p_nat n :=
-  match n with
-  | S n' => match p_nat with 
-            | h :: t => length [get_str_macro0 h]
-                        + get_equiv_simulated_position t n'
-            | []     => 1
-            end
-  | O    => 0
-  end.
-
 Definition equiv_pos 
   (p_nat : NatLang.program)
   (n : nat)
   (p_str : StringLang.program 0)
   (n' : nat) :=
-  (* n' = get_equiv_simulated_position p_nat n *)
-  n = n'.
+  n' = get_equiv_str_position p_nat n.
 
 
 (** Para obter o programa simulado, basta executar a função de obter a macro equivalente
@@ -121,10 +114,10 @@ Fixpoint nat_to_string0 n :=
 
 Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state 0) :=
   (* Se s_nat x = v, então string_to_nat (s_str x) também retorna v *)
-  forall (x : variable) (v : StringLang.string 0),
+  forall (x : variable) (v : StringLang.string 1),
   nat_to_string0 (s_nat x) = v -> s_str x = v.
 
-Definition snap_equiv
+Definition prog_equiv
   (p_nat    : NatLang.program)
   (snap_nat : NatLang.snapshot)
   (p_str    : StringLang.program 0) 
@@ -171,7 +164,7 @@ Proof.
   induction p_nat as [|h t IH]; intros n i H; simpl in *.
   - rewrite nth_error_nil in H; inversion H.
   - destruct n.
-    + simpl. inversion H. reflexivity.
+    + inversion H. reflexivity.
     + simpl in H. simpl.
       apply IH. exact H.
 Qed.
@@ -306,7 +299,7 @@ Qed.
    s é equivalente à s' e k é igual à k'.
 
    Para mostrar que vale para (S n), precisamos executar um passo em cada programa e 
-   mostrar que as propriedades se mantêm. 
+   mostrar que as propriedades se mantém. 
 
    Seja instr a k-ésima instrução de k (a próxima a ser executada). Temos três casos
 
@@ -321,23 +314,23 @@ Qed.
    equivalência das operações no estado e observar que teremos (k + 1) e (k + 1)
    como próxima instrução de cada programa (equivalentes). 
 
-   Para o caso do IF. veja que, o estado sempre se mantém e a posição também, já
+   Para o caso do IF. veja que, o estado sempre se mantem e a posição também, já
    que a posição da primeira instrução com a label em p_str é a mesma da nos nat.
    E se não pular para a label, os dois seguem em frente (k + 1) = (k + 1) *)
 
 Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
-         (initial_state_nat : NatLang.state),
+         (state_nat : NatLang.state),
 
   exists (p_str : StringLang.program 0)
-         (initial_state_str : StringLang.state 0),
+         (state_str : StringLang.state 0),
 
   forall (n : nat),
   exists (n' : nat),
-  snap_equiv p_nat
-             (NatLang.compute_program p_nat (NatLang.SNAP 0 initial_state_nat) n)
+  prog_equiv p_nat
+             (NatLang.compute_program p_nat (NatLang.SNAP 0 state_nat) n)
              p_str
-             (StringLang.compute_program p_str (StringLang.SNAP 0 initial_state_str) n').
+             (StringLang.compute_program p_str (StringLang.SNAP 0 state_str) n').
 Proof.
   intros p_nat state_nat. exists (get_simulated_program p_nat). 
   exists (get_equiv_state state_nat). intros n. exists n. 
@@ -357,7 +350,7 @@ Proof.
     destruct IHn. unfold equiv_pos in H0. rewrite <- H0 in *. clear H0.
     destruct (nth_error p_nat k) eqn:E. 
     + apply nat_nth_implies_string in E as E1.
-      unfold snap_equiv. simpl. rewrite snap_nat.
+      unfold prog_equiv. simpl. rewrite snap_nat.
          unfold NatLang.next_step. rewrite E. rewrite snap_str.
          unfold StringLang.next_step. rewrite <- Heqp_str in E1. 
          rewrite E1. simpl. destruct i as [opt_lbl statement].
