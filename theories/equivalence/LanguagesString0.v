@@ -1,9 +1,8 @@
-(** * Prova de Equivalência do programa dos naturais para o programa de alfabeto com
-      apenas um dígito *)
+(** * Prova de Equivalência do programa dos naturais para o programa de alfabeto com apenas um dígito *)
 
 (** O objetivo deste arquivo é provar a equivalência entre o programa dos naturais
     para o programa de strings, no caso especial em que este possui apenas um
-caractere. Veremos que, apesar de parecer muito simples, já que existe uma
+    símbolo. Veremos que, apesar de parecer muito simples, já que existe uma
     associação direta das instruções nos naturais para as em strings, diversos
     detalhes de implementação dificultam o progresso da prova. *)
 
@@ -18,8 +17,6 @@ From Coq Require Import List.
 From Coq Require Extraction.
 From Coq Require Import Lia.
 Import ListNotations.
-
-
 
 
 (** * Definições Básicas para a Equivalência *)
@@ -39,10 +36,8 @@ Definition incr_string0 (s : StringLang.string 0) :=
 Definition get_incr_macro_0 opt_lbl x :=
   StringLang.Instr opt_lbl (StringLang.APPEND zero_prf x).
 
-
 Definition get_decr_macro_0 opt_lbl x : (StringLang.instruction 0) :=
   StringLang.Instr opt_lbl (StringLang.DEL x).
-
 
 Definition get_if_macro_0 opt_lbl x l :=
 StringLang.Instr opt_lbl (StringLang.IF_ENDS_GOTO x zero_prf l).
@@ -67,7 +62,7 @@ Fixpoint get_str_prg (nat_prg : NatLang.program)
 
 (** * Noções Principais de Equivalência *)
 
-(** A ideia da prova consiste acompanhar cada passo de cada programa. Como as o passo
+(** A ideia da prova consiste em acompanhar cada passo de cada programa. Como o passo
     em p_nat sempre acompanha o passo em p_str, as instruções e as macros sempre estarão
     lado a lado. A ideia de equivalência em posição é _suficiente_ para obter a instrução
     equivalente em p_str. *)
@@ -89,7 +84,6 @@ Fixpoint get_simulated_program p_nat :=
   | [] => []
   end.
 
-
 (** A conversão pode ser simplificada já que incrementar no programa de string0 
     é o mesmo que adicionar um elemento ao final. *)
 
@@ -99,9 +93,8 @@ Fixpoint nat_to_string0 n :=
   | S n' => incr_string0 (nat_to_string0 n')
   end.
 
-
-(** A propriedade que queremos mostrar que se mantém para cada passo de computação é a 
-    seguinte:
+(** A propriedade que queremos mostrar que se mantém para cada passo de computação são as
+    seguintes:
      - Os estados são equivalentes;
      - As posições são equivalentes.
 
@@ -127,7 +120,7 @@ Definition prog_equiv
       state_equiv state_nat state_str  /\ equiv_pos p_nat n p_str n'
       end)
   end.
-  
+
 (** Para obter o estado equivalente, basta acoplar uma função de conversão ao resultado
     do estado original *)
 
@@ -159,15 +152,10 @@ Lemma nat_nth_implies_string : forall p_nat n i,
   nth_error (get_simulated_program p_nat) n = Some (get_str_macro0 i).
 Proof.
   induction p_nat as [|h t IH]; intros n i H; simpl in *.
-  - (* caso p_nat = [] *)
-    rewrite nth_error_nil in H; inversion H.
-  - (* caso p_nat = h :: t *)
-    destruct n.
-    + (* n = 0 *)
-      simpl in H. inversion H. reflexivity.
-    + (* n = S n *)
-      simpl in H.
-      simpl.
+  - rewrite nth_error_nil in H; inversion H.
+  - destruct n.
+    + inversion H. reflexivity.
+    + simpl in H. simpl.
       apply IH. exact H.
 Qed.
 
@@ -177,13 +165,10 @@ Lemma nat_nth_implies_string_none : forall p_nat n,
   nth_error (get_simulated_program p_nat) n = None.
 Proof.
   induction p_nat as [|h t IH]; intros n H; simpl in *.
-  - (* lista vazia *)
-    rewrite nth_error_nil. reflexivity.
+  - rewrite nth_error_nil. reflexivity.
   - destruct n.
-    + (* n = 0 *)
-      simpl in H. discriminate.
-    + (* n = S n *)
-      simpl. apply IH. exact H.
+    + simpl in H. discriminate.
+    + simpl. apply IH. exact H.
 Qed.
 
 
@@ -202,21 +187,13 @@ Lemma label_equal_nat_str :
     = StringLang.get_labeled_instr p_str l.
 Proof.
   induction p_nat as [|h t IH]; intros p_str l Hsim.
-  - (* p_nat = [] *)
-    simpl. rewrite Hsim. simpl. reflexivity.
-
-  - (* p_nat = h :: t *)
-    rewrite Hsim. simpl.
+  - simpl. rewrite Hsim. simpl. reflexivity.
+  - rewrite Hsim. simpl.
     unfold NatLang.get_labeled_instr, StringLang.get_labeled_instr.
-    simpl.
-
-    (* alinhar o eq_inst_label *)
-    rewrite <- eq_inst_label_nat_str.
+    simpl. rewrite <- eq_inst_label_nat_str.
     destruct (NatLang.eq_inst_label h l) eqn:HL.
-    + (* label aparece na cabeça *)
-      reflexivity.
-    + (* label não está na cabeça, continua com a cauda *)
-      simpl. remember (get_simulated_program t).
+    + reflexivity.
+    + simpl. remember (get_simulated_program t).
       pose proof (IH l0 l). pose proof (H eq_refl).
       simpl. unfold NatLang.get_labeled_instr in H0.
       unfold StringLang.get_labeled_instr in H0.
@@ -227,7 +204,7 @@ Qed.
 
 (** * Executar uma Instrução e a Macro mantém as propriedades *)
 
-(** * x <- x + 1 *)
+(** ** x <- x + 1 *)
 
 Lemma incr_state_equiv: forall s s' v, 
   state_equiv s s' ->
@@ -242,7 +219,7 @@ Proof.
   + apply H.
 Qed.
 
-(** * x <- x - 1 *)
+(** ** x <- x - 1 *)
 
 
 Lemma remove_last_equiv: forall n, removelast (nat_to_string0 (S n)) = 
@@ -273,7 +250,7 @@ Proof.
 Qed.
 
 
-(** * if x != 0 goto l *)
+(** ** if x != 0 goto l *)
 
 Lemma ends_with_Sn_true: forall n, 
   (StringLang.ends_with (nat_to_string0 (S n)) zero_prf) = true.
@@ -294,7 +271,8 @@ Qed.
     Como estamos no caso string0, podemos dizer de imediato que o n em strings é
     exatamente o mesmo do em nat. Assim, façamos indução em n.
 
-   CASO BASE : n = 0, n' = n = 0.
+  *CASO BASE* : n = 0, n' = n = 0.
+
 
    Como temos zero passos, basta mostrar que a noção de equivalência se aplica ao
    programa no estado inicial, ou seja, com a snap (s, 0) em nat e (s', 0) em string.
@@ -303,7 +281,8 @@ Qed.
    função de obter estados equivalentes (que já foi mostrada correta). Assim, vale para
    n = 0.
 
-   PASSO DA INDUÇÃO : Suponha que vale para n, vamos mostrar que vale para S n.
+  *PASSO DA INDUÇÃO* : Suponha que vale para n, vamos mostrar que vale para S n.
+
 
    Seja (s, k) a snapshot do programa nos naturais após as execução dos n passos e 
    seja (s', k') a snapshot do programa de strings após n passos. Temos, pela HI, que
@@ -396,5 +375,8 @@ Proof.
       ++ exact H.
       ++ reflexivity.
 Qed.
+
+Print Assumptions nat_implies_string.
+
 
 

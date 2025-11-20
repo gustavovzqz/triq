@@ -22,14 +22,13 @@
 </div>
 
 <div class="doc">
-<a id="lab1"></a><h1 class="section">Prova de Equivalência do programa dos naturais para o programa de alfabeto com</h1>
+<a id="lab1"></a><h1 class="section">Prova de Equivalência do programa dos naturais para o programa de alfabeto com apenas um dígito</h1>
 
-      apenas um dígito 
 <div class="paragraph"> </div>
 
  O objetivo deste arquivo é provar a equivalência entre o programa dos naturais
     para o programa de strings, no caso especial em que este possui apenas um
-caractere. Veremos que, apesar de parecer muito simples, já que existe uma
+    símbolo. Veremos que, apesar de parecer muito simples, já que existe uma
     associação direta das instruções nos naturais para as em strings, diversos
     detalhes de implementação dificultam o progresso da prova. 
 </div>
@@ -110,7 +109,7 @@ caractere. Veremos que, apesar de parecer muito simples, já que existe uma
 
 <div class="paragraph"> </div>
 
- A ideia da prova consiste acompanhar cada passo de cada programa. Como as o passo
+ A ideia da prova consiste em acompanhar cada passo de cada programa. Como o passo
     em p_nat sempre acompanha o passo em p_str, as instruções e as macros sempre estarão
     lado a lado. A ideia de equivalência em posição é <i>suficiente</i> para obter a instrução
     equivalente em p_str. 
@@ -161,8 +160,8 @@ A conversão pode ser simplificada já que incrementar no programa de string0
 </div>
 
 <div class="doc">
-A propriedade que queremos mostrar que se mantém para cada passo de computação é a 
-    seguinte:
+A propriedade que queremos mostrar que se mantém para cada passo de computação são as
+    seguintes:
 <ul class="doclist">
 <li> Os estados são equivalentes;
 
@@ -250,15 +249,10 @@ Em algum momento da prova, obteremos a k-ésima instrução em p_nat. Fato é qu
 &nbsp;&nbsp;<span class="id" title="definition">nth_error</span> (<a class="idref" href="Triq.equivalence.LanguagesString0.html#get_simulated_program"><span class="id" title="definition">get_simulated_program</span></a> <a class="idref" href="Triq.equivalence.LanguagesString0.html#p_nat:37"><span class="id" title="variable">p_nat</span></a>) <a class="idref" href="Triq.equivalence.LanguagesString0.html#n:38"><span class="id" title="variable">n</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> (<a class="idref" href="Triq.equivalence.LanguagesString0.html#get_str_macro0"><span class="id" title="definition">get_str_macro0</span></a> <a class="idref" href="Triq.equivalence.LanguagesString0.html#i:39"><span class="id" title="variable">i</span></a>).<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">p_nat</span> <span class="id" title="keyword">as</span> [|<span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">IH</span>]; <span class="id" title="tactic">intros</span> <span class="id" title="var">n</span> <span class="id" title="var">i</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> ×.<br/>
-&nbsp;&nbsp;- <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">nth_error_nil</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">inversion</span> <span class="id" title="var">H</span>.<br/>
-&nbsp;&nbsp;- <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">n</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;+ <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>. <span class="id" title="tactic">inversion</span> <span class="id" title="var">H</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;+ <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">nth_error_nil</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">inversion</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">destruct</span> <span class="id" title="var">n</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">inversion</span> <span class="id" title="var">H</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>. <span class="id" title="tactic">simpl</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="var">IH</span>. <span class="id" title="tactic">exact</span> <span class="id" title="var">H</span>.<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 
@@ -268,13 +262,10 @@ Em algum momento da prova, obteremos a k-ésima instrução em p_nat. Fato é qu
 &nbsp;&nbsp;<span class="id" title="definition">nth_error</span> (<a class="idref" href="Triq.equivalence.LanguagesString0.html#get_simulated_program"><span class="id" title="definition">get_simulated_program</span></a> <a class="idref" href="Triq.equivalence.LanguagesString0.html#p_nat:40"><span class="id" title="variable">p_nat</span></a>) <a class="idref" href="Triq.equivalence.LanguagesString0.html#n:41"><span class="id" title="variable">n</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">p_nat</span> <span class="id" title="keyword">as</span> [|<span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">IH</span>]; <span class="id" title="tactic">intros</span> <span class="id" title="var">n</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> ×.<br/>
-&nbsp;&nbsp;- <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">nth_error_nil</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">nth_error_nil</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">destruct</span> <span class="id" title="var">n</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;+ <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>. <span class="id" title="tactic">discriminate</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;+ <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">IH</span>. <span class="id" title="tactic">exact</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>. <span class="id" title="tactic">discriminate</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">IH</span>. <span class="id" title="tactic">exact</span> <span class="id" title="var">H</span>.<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
@@ -292,22 +283,13 @@ Em algum momento da prova, obteremos a k-ésima instrução em p_nat. Fato é qu
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Triq.string_lang.StringLang.html#get_labeled_instr"><span class="id" title="definition">StringLang.get_labeled_instr</span></a> <a class="idref" href="Triq.equivalence.LanguagesString0.html#p_str:45"><span class="id" title="variable">p_str</span></a> <a class="idref" href="Triq.equivalence.LanguagesString0.html#l:46"><span class="id" title="variable">l</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">p_nat</span> <span class="id" title="keyword">as</span> [|<span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">IH</span>]; <span class="id" title="tactic">intros</span> <span class="id" title="var">p_str</span> <span class="id" title="var">l</span> <span class="id" title="var">Hsim</span>.<br/>
-&nbsp;&nbsp;- <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hsim</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;- <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hsim</span>. <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hsim</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hsim</span>. <span class="id" title="tactic">simpl</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="Triq.nat_lang.NatLang.html#get_labeled_instr"><span class="id" title="definition">NatLang.get_labeled_instr</span></a>, <a class="idref" href="Triq.string_lang.StringLang.html#get_labeled_instr"><span class="id" title="definition">StringLang.get_labeled_instr</span></a>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> &lt;- <a class="idref" href="Triq.equivalence.LanguagesString0.html#eq_inst_label_nat_str"><span class="id" title="lemma">eq_inst_label_nat_str</span></a>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">rewrite</span> &lt;- <a class="idref" href="Triq.equivalence.LanguagesString0.html#eq_inst_label_nat_str"><span class="id" title="lemma">eq_inst_label_nat_str</span></a>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Triq.nat_lang.NatLang.html#eq_inst_label"><span class="id" title="definition">NatLang.eq_inst_label</span></a> <span class="id" title="var">h</span> <span class="id" title="var">l</span>) <span class="id" title="var">eqn</span>:<span class="id" title="var">HL</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;+ <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">reflexivity</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;+ <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="var">remember</span> (<a class="idref" href="Triq.equivalence.LanguagesString0.html#get_simulated_program"><span class="id" title="definition">get_simulated_program</span></a> <span class="id" title="var">t</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">simpl</span>. <span class="id" title="var">remember</span> (<a class="idref" href="Triq.equivalence.LanguagesString0.html#get_simulated_program"><span class="id" title="definition">get_simulated_program</span></a> <span class="id" title="var">t</span>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<span class="id" title="var">IH</span> <span class="id" title="var">l0</span> <span class="id" title="var">l</span>). <span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<span class="id" title="var">H</span> <a class="idref" href="http://coq.inria.fr/doc/V9.0.0/stdlib//Corelib.Init.Logic.html#eq_refl"><span class="id" title="constructor">eq_refl</span></a>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">unfold</span> <a class="idref" href="Triq.nat_lang.NatLang.html#get_labeled_instr"><span class="id" title="definition">NatLang.get_labeled_instr</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">H0</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="Triq.string_lang.StringLang.html#get_labeled_instr"><span class="id" title="definition">StringLang.get_labeled_instr</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">H0</span>.<br/>
@@ -322,7 +304,7 @@ Em algum momento da prova, obteremos a k-ésima instrução em p_nat. Fato é qu
 
 <div class="paragraph"> </div>
 
-<a id="lab5"></a><h1 class="section">x &lt;- x + 1</h1>
+<a id="lab5"></a><h2 class="section">x &lt;- x + 1</h2>
 
 </div>
 <div class="code">
@@ -345,7 +327,7 @@ Em algum momento da prova, obteremos a k-ésima instrução em p_nat. Fato é qu
 </div>
 
 <div class="doc">
-<a id="lab6"></a><h1 class="section">x &lt;- x - 1</h1>
+<a id="lab6"></a><h2 class="section">x &lt;- x - 1</h2>
 
 </div>
 <div class="code">
@@ -383,7 +365,7 @@ Em algum momento da prova, obteremos a k-ésima instrução em p_nat. Fato é qu
 </div>
 
 <div class="doc">
-<a id="lab7"></a><h1 class="section">if x != 0 goto l</h1>
+<a id="lab7"></a><h2 class="section">if x != 0 goto l</h2>
 
 </div>
 <div class="code">
@@ -418,7 +400,7 @@ Em algum momento da prova, obteremos a k-ésima instrução em p_nat. Fato é qu
 
 <div class="paragraph"> </div>
 
-   CASO BASE : n = 0, n' = n = 0.
+  *CASO BASE* : n = 0, n' = n = 0.
 
 <div class="paragraph"> </div>
 
@@ -433,7 +415,7 @@ Em algum momento da prova, obteremos a k-ésima instrução em p_nat. Fato é qu
 
 <div class="paragraph"> </div>
 
-   PASSO DA INDUÇÃO : Suponha que vale para n, vamos mostrar que vale para S n.
+  *PASSO DA INDUÇÃO* : Suponha que vale para n, vamos mostrar que vale para S n.
 
 <div class="paragraph"> </div>
 
@@ -542,6 +524,9 @@ Em algum momento da prova, obteremos a k-ésima instrução em p_nat. Fato é qu
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;++ <span class="id" title="tactic">exact</span> <span class="id" title="var">H</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;++ <span class="id" title="tactic">reflexivity</span>.<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="keyword">Assumptions</span> <a class="idref" href="Triq.equivalence.LanguagesString0.html#nat_implies_string"><span class="id" title="lemma">nat_implies_string</span></a>.<br/>
 
 <br/>
 </div>
