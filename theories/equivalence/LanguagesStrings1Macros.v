@@ -143,6 +143,7 @@ End decr_prog.
 Section incr_macro.
 
 Variable (x : variable).
+Variable (lbl : option label). (* label da instrução original *)
 Variable (n : nat). (* n é o valor da maior label que aparece em p_nat *)
 Variable (n': nat). (* n' é o valor da maior label que aparece em p_str *)
 Variable (k : nat). (* k é o valor da maior variável Z que aparece em p_nat *)
@@ -167,7 +168,7 @@ Let goto l := [ ] IF aux ENDS a GOTO l.
 
 Definition incr_macro_1:=
   <{[
-      [ ] aux <- + a;
+      [lbl] aux <- + a;
       [B] IF x ENDS a GOTO A1;
       [ ] IF x ENDS b GOTO A2;
       [ ] z <- + a;
@@ -210,13 +211,17 @@ Definition incr_macro_1:=
 
 End incr_macro.
 
-Compute (StringLang.get (X 0) (incr_macro_1 (X 0) 0 0 0 0) ([b]) 80).
+Compute (StringLang.get (X 0) (incr_macro_1 (X 0) None 0 0 0 0) ([b]) 80).
 
 Section decr_macro.
 
 
 Variable (x : variable).
-Variables (n n' k k' : nat).
+Variable (lbl : option label). (* label da instrução original *)
+Variable (n : nat). (* n é o valor da maior label que aparece em p_nat *)
+Variable (n': nat). (* n' é o valor da maior label que aparece em p_str *)
+Variable (k : nat). (* k é o valor da maior variável Z que aparece em p_nat *)
+Variable (k': nat). (* k' é o valor da maior variável Z que aparece em p_str *)
 
 Let z := Z (1 + k + k').
 Let aux := Z (2 + k + k').
@@ -236,7 +241,7 @@ Let goto l := [ ] IF aux ENDS a GOTO l.
 
 Definition decr_macro_1 :=
   <{[
-      [ ] aux <- + a;
+      [lbl] aux <- + a;
       [B] IF x ENDS a GOTO A1;
       [ ] IF x ENDS b GOTO A2;
           goto K0;
@@ -280,7 +285,7 @@ Definition decr_macro_1 :=
 
 End decr_macro.
 
-Compute (StringLang.get (X 0) (decr_macro_1 (X 0) 0 0 0 0) ([b; b]) 100).
+Compute (StringLang.get (X 0) (decr_macro_1 (X 0) None 0 0 0 0) ([b; b]) 100).
 
 Section if_macro.
 
