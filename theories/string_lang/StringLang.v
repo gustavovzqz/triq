@@ -292,9 +292,9 @@ Definition HALT {m : nat} (s : state m ) (p : program m) (n : nat) :=
   end.
 
 
-Definition get_Y {n : nat} (p : program n ) (x : string n) (k : nat) :=
-  match (compute_program p (SNAP 0 (create_state n x)) n) with
-  | SNAP _ s => s Y
+Definition get (y : variable) {n : nat} (p : program n ) (x : string n) (k : nat) :=
+  match (compute_program p (SNAP 0 (create_state n x)) k) with
+  | SNAP _ s => s y
   end.
 
 
@@ -303,7 +303,7 @@ Definition partially_computable (n : nat)
   exists (p : program n), forall x,
     (f x = None -> forall (k : nat), ~ (HALT (create_state n x) p k)) /\ 
     (f x <> None -> exists (k : nat), HALT (create_state n x) p k /\ 
-    Some (get_Y  p x k) = (f x)).
+    Some (get Y  p x k) = (f x)).
 
 
 Definition partially_computable_by_p (n : nat) 
@@ -311,7 +311,7 @@ Definition partially_computable_by_p (n : nat)
     forall x,
     (f x = None -> forall (k : nat), ~ (HALT (create_state n x) p k)) /\ 
     (f x <> None -> exists (k : nat), HALT (create_state n x) p k /\ 
-    Some (get_Y  p x k) = (f x)).
+    Some (get Y  p x k) = (f x)).
 
 
 (* ################################################################# *)
