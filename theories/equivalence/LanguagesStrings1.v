@@ -238,3 +238,32 @@ Definition get_str_prg (nat_prg : NatLang.program) : StringLang.program 1 :=
   end
   in get_str_prg_rec nat_prg 0 0.
 
+Fixpoint get_equiv_simulated_position p_nat n :=
+  match n with
+  | S n' => match p_nat with 
+            | h :: t => let '(macro, _, _) := get_str_macro1 h 0 0 0 0 in 
+                        length macro 
+                        + get_equiv_simulated_position t n'
+            | []     => 1
+            end
+  | O    => 0
+  end.
+
+Definition equiv_pos 
+  (p_nat : NatLang.program)
+  (n : nat)
+  (p_str : StringLang.program 0)
+  (n' : nat) :=
+   n' = get_equiv_simulated_position p_nat n.
+
+Definition incr_string1 (s : StringLang.string 1) : (StringLang.string 1) :=
+  let fix incr_rec l :=
+    match l with
+    | [] => [a]
+    | h :: t => if (proj1_sig h =? 0) 
+                (* h = a *) then b :: t
+                (* h = b *) else (a :: (incr_rec t))
+    end
+  in rev (incr_rec (rev s)).
+
+Compute (incr_string1 [b; b]).
