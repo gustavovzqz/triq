@@ -205,19 +205,20 @@ Definition max_label_nat (nat_prg : NatLang.program) : nat :=
       end
   in get_max_label nat_prg 0.
 
-Definition max_label_str (str_prg : StringLang.program 1) : nat :=
-  let fix get_max_label (l : StringLang.program 1) (k : nat) : nat :=
+Definition max_z_nat (nat_prg : NatLang.program) : nat :=
+  let fix get_max_z (l : NatLang.program) (k : nat) : nat :=
       match l with
       | [] => k
-      | StringLang.Instr opt_lbl _ :: t =>
-          match opt_lbl with
-          | None => get_max_label t k
-          | Some (A n) =>
-              if ltb k n then get_max_label t n
-                       else get_max_label t k
-          end
+      | NatLang.Instr opt_lbl (NatLang.INCR (Z n))  :: t 
+      | NatLang.Instr opt_lbl (NatLang.DECR (Z n))  :: t 
+      | NatLang.Instr opt_lbl (NatLang.IF_GOTO (Z n) _ )  :: t 
+        => if ltb k n then get_max_z t n
+                      else get_max_z t k
+      | _ :: t => get_max_z t k
       end
-  in get_max_label str_prg 0.
+  in get_max_z nat_prg 0.
+
+
 
 Definition get_str_macro1 (i_nat : NatLang.instruction) (n n' k k' : nat) := 
   match i_nat with 
@@ -229,7 +230,7 @@ end.
 
 Definition get_str_prg (nat_prg : NatLang.program) : StringLang.program 1 :=
   let n := max_label_nat nat_prg in
-  let k := max_label_nat nat_prg in
+  let k := max_z_nat nat_prg in
   let fix get_str_prg_rec l n' k' :=
   match l with
   | [] => []
