@@ -17,11 +17,20 @@ From Coq Require Import Lia.
 Import ListNotations.
 
 
-
 Definition a : StringLang.alphabet 1.
 Proof.
   exists 0. constructor. constructor.
 Defined.
+
+Definition a' : StringLang.alphabet 1.
+Proof.
+  exists 0. lia.
+Defined.
+
+Theorem aa'_eq : a = a'.
+Proof.
+  unfold a. unfold a'.
+Abort.
 
 Definition b : StringLang.alphabet 1. 
 Proof.
@@ -35,12 +44,9 @@ Variable (lbl : option label). (* label da instrução original *)
 Variable (n : nat). (* n é o valor da maior label que aparece em p_nat *)
 Variable (n': nat). (* n' é o valor da maior label que aparece em p_str *)
 Variable (k : nat). (* k é o valor da maior variável Z que aparece em p_nat *)
-Variable (k': nat). (* k' é o valor da maior variável Z que aparece em p_str *)
 
-
-
-Let z := Z (k + k' + 1).
-Let aux := Z (k + k' + 2).
+Let z := Z (k + 1).
+Let aux := Z (k + 2).
 
 
 Let B  := Some (A (n + n' + 1)).
@@ -91,15 +97,12 @@ Definition incr_macro_1:=
       [  ] x <- +b;
 
       [K0] IF z ENDS a GOTO K1;
-      [  ] IF z ENDS b GOTO K2;
-      [  ] aux <- -
-
-
+      [  ] IF z ENDS b GOTO K2
     ]}>.
 
 End incr_macro.
 
-Compute (StringLang.get (X 0) (incr_macro_1 (X 0) None 0 0 0 0) ([b]) 80).
+Compute (StringLang.get (X 0) (incr_macro_1 (X 0) None 0 0 0) ([b]) 80).
 
 Section decr_macro.
 
@@ -109,10 +112,9 @@ Variable (lbl : option label). (* label da instrução original *)
 Variable (n : nat). (* n é o valor da maior label que aparece em p_nat *)
 Variable (n': nat). (* n' é o valor da maior label que aparece em p_str *)
 Variable (k : nat). (* k é o valor da maior variável Z que aparece em p_nat *)
-Variable (k': nat). (* k' é o valor da maior variável Z que aparece em p_str *)
 
-Let z := Z (1 + k + k').
-Let aux := Z (2 + k + k').
+Let z := Z (1 + k).
+Let aux := Z (2 + k).
 
 Let B  := Some (A (1  + n + n')).
 Let A1 := Some (A (2  + n + n')).
@@ -167,13 +169,12 @@ Definition decr_macro_1 :=
       [  ] x <- +b;
 
       [K0] IF z ENDS a GOTO K1;
-      [  ] IF z ENDS b GOTO K2;
-      [  ] aux <- -
+      [  ] IF z ENDS b GOTO K2
     ]}>.
 
 End decr_macro.
 
-Compute (StringLang.get (X 0) (decr_macro_1 (X 0) None 0 0 0 0) ([b; b]) 100).
+Compute (StringLang.get (X 0) (decr_macro_1 (X 0) None 0 0 0) ([b; b]) 100).
 
 Section if_macro.
 
@@ -187,9 +188,6 @@ Definition if_macro_1 :=
     ]}>.
 
 End if_macro.
-
-
-
 
 Definition max_label_nat (nat_prg : NatLang.program) : nat :=
   let fix get_max_label (l : NatLang.program) (k : nat) : nat :=
@@ -220,29 +218,29 @@ Definition max_z_nat (nat_prg : NatLang.program) : nat :=
 
 
 
-Definition get_str_macro1 (i_nat : NatLang.instruction) (n n' k k' : nat) := 
+Definition get_str_macro1 (i_nat : NatLang.instruction) (n n' k : nat) := 
   match i_nat with 
-  | NatLang.Instr opt_lbl (NatLang.INCR x) => (incr_macro_1 x opt_lbl n n' k k', 9, 2)
-  | NatLang.Instr opt_lbl (NatLang.DECR x) =>  (decr_macro_1 x opt_lbl n n' k k', 10, 2)
-  | NatLang.Instr opt_lbl (NatLang.IF_GOTO x l) => (if_macro_1 x opt_lbl l, 0, 0)
+  | NatLang.Instr opt_lbl (NatLang.INCR x) => (incr_macro_1 x opt_lbl n n' k , 9)
+  | NatLang.Instr opt_lbl (NatLang.DECR x) =>  (decr_macro_1 x opt_lbl n n' k, 10)
+  | NatLang.Instr opt_lbl (NatLang.IF_GOTO x l) => (if_macro_1 x opt_lbl l, 0)
 end.
 
 
-Definition get_str_prg (nat_prg : NatLang.program) : StringLang.program 1 :=
+Definition get_simulated_program (nat_prg : NatLang.program) : StringLang.program 1 :=
   let n := max_label_nat nat_prg in
   let k := max_z_nat nat_prg in
-  let fix get_str_prg_rec l n' k' :=
+  let fix get_str_prg_rec l n'  :=
   match l with
   | [] => []
-  | i_nat :: t => let '(macro, max_n, max_z) := get_str_macro1 i_nat n n' k k' in 
-                    macro ++ (get_str_prg_rec t (n' + max_n) (k' + max_z))
+  | i_nat :: t => let (macro, max_n) := get_str_macro1 i_nat n n' k  in 
+                    macro ++ (get_str_prg_rec t (n' + max_n))
   end
-  in get_str_prg_rec nat_prg 0 0.
+  in get_str_prg_rec nat_prg 0.
 
 Fixpoint get_equiv_simulated_position p_nat n :=
   match n with
   | S n' => match p_nat with 
-            | h :: t => let '(macro, _, _) := get_str_macro1 h 0 0 0 0 in 
+            | h :: t => let (macro, _) := get_str_macro1 h 0 0 0 in 
                         length macro 
                         + get_equiv_simulated_position t n'
             | []     => 1
@@ -253,7 +251,7 @@ Fixpoint get_equiv_simulated_position p_nat n :=
 Definition equiv_pos 
   (p_nat : NatLang.program)
   (n : nat)
-  (p_str : StringLang.program 0)
+  (p_str : StringLang.program 1)
   (n' : nat) :=
    n' = get_equiv_simulated_position p_nat n.
 
@@ -261,10 +259,48 @@ Definition incr_string1 (s : StringLang.string 1) : (StringLang.string 1) :=
   let fix incr_rec l :=
     match l with
     | [] => [a]
-    | h :: t => if (proj1_sig h =? 0) 
+    | h :: t => if (get_char h =? 0) 
                 (* h = a *) then b :: t
                 (* h = b *) else (a :: (incr_rec t))
     end
   in rev (incr_rec (rev s)).
 
 Compute (incr_string1 [b; b]).
+
+Fixpoint nat_to_string1 n :=
+  match n with
+  | 0 => []
+  | S n' => incr_string1 (nat_to_string1 n')
+  end.
+
+Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state 1) :=
+  forall (x : variable) (v : StringLang.string 1),
+  nat_to_string1 (s_nat x) = v -> s_str x = v.
+
+Definition snap_equiv
+  (p_nat    : NatLang.program)
+  (snap_nat : NatLang.snapshot)
+  (p_str    : StringLang.program 1)
+  (snap_str : StringLang.snapshot 1) :=
+  match snap_nat with
+  | NatLang.SNAP n state_nat => (
+      match snap_str with
+      | StringLang.SNAP n' state_str =>
+      state_equiv state_nat state_str  /\ equiv_pos p_nat n p_str n'
+      end)
+  end.
+
+Definition get_equiv_state nat_state : (StringLang.state 1) :=
+  (fun x => nat_to_string1 (nat_state x)).
+
+
+Lemma get_equiv_state_correct : forall state_nat,
+  state_equiv state_nat (get_equiv_state state_nat).
+Proof.
+  intros state_nat. unfold get_equiv_state. unfold state_equiv.
+  intros x v state_x_eq_v. destruct (state_nat x) eqn:E.
+  + simpl. rewrite <- state_x_eq_v. reflexivity.
+  + rewrite <- state_x_eq_v. reflexivity.
+Qed.
+
+

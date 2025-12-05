@@ -16,6 +16,6 @@ Qed.
 
 
 Definition prg :=
-  <{[ Instr None (APPEND (exist _ 0 t0_le_1) (X 0))]}>.
+  <{[ Instr None (APPEND (Char _ 0 t0_le_1) (X 0))]}>.
 
 Check (prg : program 1).

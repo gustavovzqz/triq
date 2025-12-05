@@ -27,7 +27,7 @@ Import ListNotations.
 
 Definition zero_prf : StringLang.alphabet 0.
 Proof.
-exists 0.  apply PeanoNat.Nat.le_0_l.
+exists 0. apply PeanoNat.Nat.le_0_l.
 Defined.
 
 Definition incr_string0 (s : StringLang.string 0) :=

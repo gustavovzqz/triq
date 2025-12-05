@@ -10,6 +10,9 @@ Import ListNotations.
 
 Search nat.
 
+Definition get_char {n : nat} (m : StringLang.alphabet n)
+  := StringLang.get_char_value m.
+
 (** Conversão de String para Nat *)
 
 
@@ -21,7 +24,7 @@ Search nat.
 Definition string_to_nat {n : nat} (s : StringLang.string n) :=
   let fix aux l k {struct l}:=
   match l with 
-  | h :: t => ((proj1_sig h + 1) * ((n + 1) ^ k)) + aux t (k - 1)
+  | h :: t => ((get_char h + 1) * ((n + 1) ^ k)) + aux t (k - 1)
   | []  => 0
   end
    in aux s (length s - 1).
@@ -36,12 +39,12 @@ Definition incr_string {n : nat} (s : StringLang.string n) : (StringLang.string 
   refine (
   let fix aux l :=
   match l with 
-  | h :: t => ((match (proj1_sig h <? (n) ) as eq return 
-               ((proj1_sig h <? (n) = eq)) -> _ with
-              | true  => fun _ => ((exist _ ((proj1_sig h) + 1) _) :: t)
-              | false => fun _ => (exist _ 0 _) :: (aux t)
+  | h :: t => ((match (get_char h <? (n) ) as eq return 
+               ((get_char h <? (n) = eq)) -> _ with
+              | true  => fun _ => ((StringLang.Char _ ((get_char h) + 1) _) :: t)
+              | false => fun _ => (StringLang.Char _ 0 _) :: (aux t)
               end) _)
-  | [] =>  [exist _ 0 _]
+  | [] =>  [StringLang.Char _ 0 _]
   end 
   in rev (aux (rev s))).
   ++ apply PeanoNat.Nat.le_0_l. 
@@ -67,7 +70,7 @@ Fixpoint nat_to_string (k : nat) (n : nat) : (StringLang.string k)  :=
 
 Fixpoint string_to_nat_list {n : nat} (s : StringLang.string n) :=
   match s with 
-  | h :: t => (proj1_sig h) :: (string_to_nat_list t)
+  | h :: t => (get_char h) :: (string_to_nat_list t)
   | [] => []
   end.
 
@@ -107,10 +110,10 @@ Proof.
       ((match k as eq return (k = eq) -> _ with 
     | S n' => fun _ => 
               let statement := 
-                 StringLang.IF_ENDS_GOTO x (exist _ k k_leq_n) (Some (A n)) in 
+                 StringLang.IF_ENDS_GOTO x (StringLang.Char _ k k_leq_n) (Some (A n)) in 
               (StringLang.Instr opt_lbl) statement :: aux n' _
     | 0 =>  fun _ => let statement := 
-              StringLang.IF_ENDS_GOTO x (exist _ k k_leq_n) (Some (A n)) in 
+              StringLang.IF_ENDS_GOTO x (StringLang.Char _ k k_leq_n) (Some (A n)) in 
               [(StringLang.Instr opt_lbl) statement]
     end) eq_refl )
     in aux (n) (le_n n )).
@@ -131,10 +134,10 @@ Proof.
       ((match k as eq return (k = eq) -> _ with 
     | S n' => fun _ => 
               let statement := 
-                 StringLang.IF_ENDS_GOTO x (exist _ k k_leq_n) l in 
+                 StringLang.IF_ENDS_GOTO x (StringLang.Char _ k k_leq_n) l in 
               (StringLang.Instr opt_lbl) statement :: aux n' _
     | 0 =>  fun _ => let statement := 
-              StringLang.IF_ENDS_GOTO x (exist _ k k_leq_n) l in 
+              StringLang.IF_ENDS_GOTO x (StringLang.Char _ k k_leq_n) l in 
               [(StringLang.Instr opt_lbl) statement]
     end) eq_refl )
     in aux (n) (le_n n )).

@@ -37,15 +37,53 @@ Import ListNotations.
   3. É útil atribuir uma ordem aos elementos do conjunto! *)
 
 
+(* 
+Inductive alphabet : nat -> Type :=
+| Char_0 : forall n, alphabet n
+| Char_S : forall n, alphabet n -> alphabet (S n).
+
+Definition z_prf : alphabet 3.
+Proof.
+  apply Char_0.
+Defined.
 
 
-(* Conjunto com com os dígitos [0, ..., n] *)
+Definition one_prf : alphabet 3.
+Proof.
+  apply Char_S, Char_0.
+Defined.
 
-Definition alphabet n := {k : nat | k <= n}.
 
+Definition two_prf : alphabet 3.
+Proof.
+  apply Char_S, Char_S, Char_0.
+Defined.
+
+
+Definition three_prf : alphabet 3.
+Proof.
+  apply Char_S, Char_S, Char_S, Char_0.
+Defined.
+*)
+
+
+
+Inductive alphabet (n : nat) : Type :=
+| Char : forall k, k <= n -> alphabet n.
+
+Definition z_prf : alphabet 3.
+Proof.
+  refine (Char 3 2 _).
+  constructor. constructor.
+Defined.
+
+Definition get_char_value {n : nat} (a : alphabet n) :=
+  match a with 
+  | Char _ k _ => k
+  end.
 
 Definition eqb_char {n : nat} (a : alphabet n) (b : alphabet n) :=
-  proj1_sig a =? proj1_sig b.
+  get_char_value a =? get_char_value b.
 
 (* 
    Alfabeto 1   ->  {}, 0, 00, 000, ...
