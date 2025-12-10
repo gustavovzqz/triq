@@ -16,26 +16,36 @@ From Coq Require Extraction.
 From Coq Require Import Lia.
 Import ListNotations.
 
+(** "a" e "b" são os caracteres básicos do alfabeto de dois dígitos. *)
 
 Definition a : StringLang.alphabet 1.
 Proof.
   exists 0. constructor. constructor.
 Defined.
 
-Definition a' : StringLang.alphabet 1.
-Proof.
-  exists 0. lia.
-Defined.
-
-Theorem aa'_eq : a = a'.
-Proof.
-  unfold a. unfold a'.
-Abort.
-
 Definition b : StringLang.alphabet 1. 
 Proof.
   exists 1. constructor. 
 Defined.
+
+
+(** * Definições das Macros para o Caso de Dois Dígitos *)
+
+(** Diferente do caso "string 0" em que há uma associação direta
+    entre as instruções dos naturais com as instruções em strings,
+    aqui precisaremos definir macros mais complexas e que precisam
+    de variáveis e labels próprias. *)
+
+(** Para lidar com as variáveis auxiliares, basta padronizar o seguinte:
+    Seja _k_ o maior valor de _n_ na variável _Z n_ no programa dos naturais.
+    Para o programa de strings, sempre usaremos _aux_ como Z (k + 2) e
+    _z_ como Z (k + 1). Para usarmos Z de maneira segura, vamos sempre
+    zerar o seu valor ao final de cada macro, garantindo que estará
+    "limpo" para a execução da próxima macro. A variável aux será
+    usada apenas para simular o GOTO, então a argumentação deve
+    seguir um caminho um pouco diferente. *)
+
+(** ** Macro Soma Um *)
 
 Section incr_macro.
 
@@ -104,8 +114,10 @@ End incr_macro.
 
 Compute (StringLang.get (X 0) (incr_macro_1 (X 0) None 0 0 0) ([b]) 80).
 
-Section decr_macro.
 
+(** ** Macro Subtrai Um *)
+
+Section decr_macro.
 
 Variable (x : variable).
 Variable (lbl : option label). (* label da instrução original *)
@@ -176,6 +188,8 @@ End decr_macro.
 
 Compute (StringLang.get (X 0) (decr_macro_1 (X 0) None 0 0 0) ([b; b]) 100).
 
+(** ** Macro IF GOTO *)
+
 Section if_macro.
 
 Variable (x : variable).
@@ -188,6 +202,18 @@ Definition if_macro_1 :=
     ]}>.
 
 End if_macro.
+
+(** * Obtendo as Macros *)
+
+(** Para construir as macro, precisamos de algumas funções auxiliares
+    para que possamos obter valores únicos para labels e variáveis
+    auxiliares. Assim, podemos ter a garantia de que cada label
+    ou variável extra no programa de strings não ocorre no programa
+    dos naturais. *)
+
+
+
+(** ** Obtendo a Maior Label em p_nat *)
 
 Definition max_label_nat (nat_prg : NatLang.program) : nat :=
   let fix get_max_label (l : NatLang.program) (k : nat) : nat :=
@@ -203,6 +229,9 @@ Definition max_label_nat (nat_prg : NatLang.program) : nat :=
       end
   in get_max_label nat_prg 0.
 
+
+(** ** Obtendo a Maior Variável Z em p_nat *)
+
 Definition max_z_nat (nat_prg : NatLang.program) : nat :=
   let fix get_max_z (l : NatLang.program) (k : nat) : nat :=
       match l with
@@ -217,6 +246,20 @@ Definition max_z_nat (nat_prg : NatLang.program) : nat :=
   in get_max_z nat_prg 0.
 
 
+(** ** Obtendo a Macro *)
+
+(** Para obter a macro, precisamos passar:
+      - A instrução em p_nat;
+      - O índice da maior label em p_nat;
+      - O índice da maior variável z em p_nat;
+      - O índice da maior label em p_str.
+
+   O último índice será objeto na função recursiva de obter o programa
+   simulado. Veja que, como retorno da função, temos tanto a macro resultante
+   como o número de labels que a macro utilizou. Com a quantidade de labels,
+   conseguimos manter atualizado o valor de k para que as próximas macros
+   usem labels inteiramente novas *)
+
 
 Definition get_str_macro1 (i_nat : NatLang.instruction) (n n' k : nat) := 
   match i_nat with 
@@ -225,6 +268,8 @@ Definition get_str_macro1 (i_nat : NatLang.instruction) (n n' k : nat) :=
   | NatLang.Instr opt_lbl (NatLang.IF_GOTO x l) => (if_macro_1 x opt_lbl l, 0)
 end.
 
+
+(** ** Obtendo o Programa Simulado *)
 
 Definition get_simulated_program (nat_prg : NatLang.program) : StringLang.program 1 :=
   let n := max_label_nat nat_prg in
@@ -236,6 +281,23 @@ Definition get_simulated_program (nat_prg : NatLang.program) : StringLang.progra
                     macro ++ (get_str_prg_rec t (n' + max_n))
   end
   in get_str_prg_rec nat_prg 0.
+
+
+
+(** * Definições para a Equivalência *)
+
+(** Para o teorema principal, falaremos sobre _snapshots_ equivalentes,
+    ou seja, snapshots que possuem estados e posições equivalentes. A ideia
+    da prova é mostrar, por indução, que sempre há um número de passos no
+    programa de strings que mantem a equivalência de snapshot para um passo
+    do programa dos naturais.
+
+    Para a equivalência de posição, precisamos de um conceito que nos permita
+    raciocinar sobre a execução da instrução e a execução da macro. A ideia é
+    que, se a snapshot do programa dos naturais está na linha n com a instrução i,
+    então o programa de strings está em uma linha n', _equivalente a n_, obtida ao
+    expandir cada macro do programa dos naturais. *)
+
 
 Fixpoint get_equiv_simulated_position p_nat n :=
   match n with
@@ -303,4 +365,25 @@ Proof.
   + rewrite <- state_x_eq_v. reflexivity.
 Qed.
 
+Theorem nat_implies_string :
+  forall (p_nat : NatLang.program)
+         (initial_state_nat : NatLang.state),
 
+  exists (p_str : StringLang.program 1)
+         (initial_state_str : StringLang.state 1),
+
+  forall (n : nat),
+  exists (n' : nat),
+  snap_equiv p_nat
+             (NatLang.compute_program p_nat (NatLang.SNAP 0 initial_state_nat) n)
+             p_str
+             (StringLang.compute_program p_str (StringLang.SNAP 0 initial_state_str) n').
+Proof.
+  intros p_nat state_nat. exists (get_simulated_program p_nat). 
+  exists (get_equiv_state state_nat). intros n. exists n. 
+  remember (get_simulated_program p_nat) as p_str.
+  induction n.
+  - split.
+    + apply get_equiv_state_correct.
+    + destruct p_nat; reflexivity.
+  -

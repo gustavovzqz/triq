@@ -7,130 +7,45 @@ From Triq Require Export LanguagesCommon.
 Import ListNotations.
 
 
-(** O que é uma String?
-
-  - No modulo String, ela é definida como uma lista de caracteres ASCII, que,
-   por sua vez, é basicamente um booleano de oito dígitos.
-
-   Inductive ascii : Set := Ascii (_ _ _ _ _ _ _ _ : bool).
-
-   Inductive string : Set :=
-     | EmptyString : string
-     | String : ascii -> string -> string. *)
-
-(** A definição de strings acima não é suficiente para suprir as necessidades
-    da nossa linguagem. 
-
-   "We could also define a regex matcher over polymorphic lists,
-    not lists of ASCII characters specifically. The matching algorithm
-    that we will implement needs to be able to test equality of elements in 
-    a given list, and thus needs to be given an equality-testing function.
-    Generalizing the definitions, theorems, and proofs that we define
-    for such a setting is a bit tedious, but workable."
-    - https://softwarefoundations.cis.upenn.edu/lf-current/IndProp.html#lab287 *)
-
-
-(** Alfabetos:
-
-  1. Conjuntos finitos;
-  2. Precisamos indexar para formar o programa de alfabeto 0, 1, ..., n;
-  3. É útil atribuir uma ordem aos elementos do conjunto! *)
-
-
-(* 
-Inductive alphabet : nat -> Type :=
-| Char_0 : forall n, alphabet n
-| Char_S : forall n, alphabet n -> alphabet (S n).
-
-Definition z_prf : alphabet 3.
-Proof.
-  apply Char_0.
-Defined.
-
-
-Definition one_prf : alphabet 3.
-Proof.
-  apply Char_S, Char_0.
-Defined.
-
-
-Definition two_prf : alphabet 3.
-Proof.
-  apply Char_S, Char_S, Char_0.
-Defined.
-
-
-Definition three_prf : alphabet 3.
-Proof.
-  apply Char_S, Char_S, Char_S, Char_0.
-Defined.
-*)
-
-
-
-Inductive alphabet (n : nat) : Type :=
-| Char : forall k, k <= n -> alphabet n.
-
-Definition z_prf : alphabet 3.
-Proof.
-  refine (Char 3 2 _).
-  constructor. constructor.
-Defined.
-
-Definition get_char_value {n : nat} (a : alphabet n) :=
-  match a with 
-  | Char _ k _ => k
-  end.
-
-Definition eqb_char {n : nat} (a : alphabet n) (b : alphabet n) :=
-  get_char_value a =? get_char_value b.
-
-(* 
-   Alfabeto 1   ->  {}, 0, 00, 000, ...
-   Alfabeto 2   ->  {}, 0, 1, 00, 01, 10, 11
-   Alfabeto 9   ->  {}, 0, 1, 2, 3, 4, 5, 6, 7, 8, 00, 01
-
-   Não é exatamente como nós compomos as nossas bases já que não há dígito
-   com valor zero (usamos a string vazia). Começar com 1 em vez de zero também
-   não adianta muito:
-
-   Alfabeto 9   ->  {}, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, ...,
-
-   Não tem o 10! *)
-
-
-Definition string (n : nat) := list (alphabet n).
+Definition string := list nat.
 
 (** Elementos de um Programa: *)
 
 
-Inductive statement (n : nat) : Type :=
-  | APPEND: (alphabet n) -> variable -> statement n
-  | DEL : variable -> statement n
-  | IF_ENDS_GOTO   : variable -> (alphabet n) -> option label -> statement n.
+Inductive statement : Type :=
+  | APPEND: nat -> variable -> statement
+  | DEL : variable -> statement
+  | IF_ENDS_GOTO   : variable -> nat -> option label -> statement.
 
-Inductive instruction (n : nat) : Type :=
-  | Instr : option label -> statement n -> instruction n.
+Inductive instruction : Type :=
+  | Instr : option label -> statement  -> instruction.
 
-Definition program (n : nat)  := list (instruction n).
+Definition program := list (instruction).
 
-Definition state (n : nat) := variable -> (string n).
+Fixpoint program_over prog n :=
+  match prog with 
+  | [] => True
+  | h :: t => match h with 
+              | Instr _ (APPEND k _) => le k n /\ program_over t n
+              | Instr _ (IF_ENDS_GOTO _ k _) => le k n /\ program_over t n
+              | _ => False
+              end
+  end.
 
-Definition empty (n : nat) : (state n) := fun _ => [].
 
-Arguments Instr{n}.
+Definition state := variable -> string.
 
+Definition empty : state  := fun _ => [].
 
 (** Auxiliares **)
 
-Definition eq_inst_label {n : nat} (instr : instruction n ) (opt_lbl : option label) :=
+Definition eq_inst_label  (instr : instruction ) (opt_lbl : option label) :=
   match instr, opt_lbl with 
   | Instr (Some lbl_a) _, Some lbl_b => eqb_lbl lbl_a lbl_b
   | _, _                => false
   end.
 
-
-Fixpoint get_labeled_instr {n : nat} (p : program n) (lbl : option label) : nat :=
+Fixpoint get_labeled_instr (p : program) (lbl : option label) : nat :=
   match p with
   | [] => 0
   | h :: t =>
@@ -139,34 +54,22 @@ Fixpoint get_labeled_instr {n : nat} (p : program n) (lbl : option label) : nat 
       else 1 + get_labeled_instr t lbl
   end.
 
-
-Definition update {n : nat} (m : state n) (x : variable) (v : string n) :=
+Definition update (m : state ) (x : variable) (v : string ) :=
   fun x' => if eqb_var x x' then v else m x'.
 
-Definition append {n : nat} (h : (alphabet n)) (m : state n ) (x : variable) :=
+Definition append (h : nat) (m : state) (x : variable) :=
   let v := m x in 
-  update m x (h :: v).
+  update m x (v ++ [h]).
 
+Definition create_state  x :=
+  update empty (X 0) x.
 
-Definition create_state (n : nat) x :=
-  update (empty n) (X 0) x.
-
-Search list.
-
-Print removelast.
-
-Definition del {n : nat} (m : state n) (x : variable) :=
+Definition del (m : state) (x : variable) :=
   let v := m x in 
-  update m x (removelast v).
+  update m x (tl v).
 
-Inductive snapshot n :=
-  | SNAP : nat -> (state n) -> snapshot n.
-
-Arguments SNAP{n}.
-Arguments APPEND{n}.
-Arguments DEL{n}.
-Arguments IF_ENDS_GOTO{n}.
-
+Inductive snapshot :=
+  | SNAP : nat -> state -> snapshot.
 
 Declare Custom Entry com'.
 Declare Scope string_lang_scope.
@@ -204,23 +107,20 @@ Open Scope string_lang_scope.
 
 
 
-Fixpoint ends_with {n : nat} (l : string n) (h : alphabet n) :=
-  match l with
-  | [] => false 
-  | [a] => eqb_char a h
-  | a :: (_ :: _) as l' => ends_with l' h
+Definition ends_with (s : string) (n : nat) :=
+  match s with 
+  | [] => false
+  | h :: t => h =? n
   end.
-
 
 
 (** Propriedade de Passo de Computação: *)
 
- Inductive steps_to {n : nat} : (program n) ->
-  (snapshot n) -> (snapshot n) -> Prop :=
+ Inductive steps_to : program -> snapshot -> snapshot -> Prop :=
 
   (* V <- s V *)
-  | S_Append : forall (h : alphabet n) 
-      (p : program n) (i : nat) (instr : instruction n) (st : state n)
+  | S_Append : forall (h : nat) 
+      (p : program) (i : nat) (instr : instruction) (st : state)
       (x : variable) opt_lbl,
       nth_error p i = Some instr -> 
       instr = <{[opt_lbl] x <- + h}> ->
@@ -228,15 +128,15 @@ Fixpoint ends_with {n : nat} (l : string n) (h : alphabet n) :=
 
   (* V <- v- *)
   | S_Del: forall
-      (p : program n) (i : nat) (instr : instruction n) (st : state n)
+      (p : program) (i : nat) (instr : instruction) (st : state)
       (x : variable) opt_lbl,
       nth_error p i = Some instr -> 
       instr = <{[opt_lbl] x <- - }> ->
       steps_to p (SNAP i st) (SNAP (i + 1) (del st x))
 
   (* IF V ends s GOTO l -> if = true *)
-  | S_If_True: forall (h : alphabet n)
-      (p : program n) (i : nat) (instr : instruction n) (st : state n)
+  | S_If_True: forall (h : nat)
+      (p : program) (i : nat) (instr : instruction) (st : state)
       (x : variable) opt_lbl l j,
       nth_error p i = Some instr ->
       instr = <{[opt_lbl] IF x ENDS h GOTO l}> ->
@@ -245,8 +145,8 @@ Fixpoint ends_with {n : nat} (l : string n) (h : alphabet n) :=
       steps_to p (SNAP i st) (SNAP j st)
 
   (* IF V ends s GOTO l -> if = false *)
-  | S_If_False: forall (h : alphabet n)
-      (p : program n) (i : nat) (instr : instruction n) (st : state n)
+  | S_If_False: forall (h : nat)
+      (p : program) (i : nat) (instr : instruction) (st : state)
       (x : variable) opt_lbl l,
       nth_error p i = Some instr ->
       instr = <{[opt_lbl] IF x ENDS h GOTO l}> ->
@@ -254,7 +154,7 @@ Fixpoint ends_with {n : nat} (l : string n) (h : alphabet n) :=
       steps_to p (SNAP i st) (SNAP (i + 1) st)
 
   (* Fora dos limites do programa *)
-  | S_Out : forall (p : program n) (i : nat) (st : state n),
+  | S_Out : forall (p : program) (i : nat) (st : state),
       nth_error p i = None ->
       steps_to p (SNAP i st) (SNAP i st).
 
@@ -269,7 +169,7 @@ Fixpoint ends_with {n : nat} (l : string n) (h : alphabet n) :=
    f é parcialmente computável em NatLang. *)
 
 
-Definition next_step {n : nat} (p : program n) (snap : snapshot n) :=
+Definition next_step (p : program) (snap : snapshot) :=
   match snap with 
   | SNAP n s =>
       match nth_error p n with 
@@ -288,15 +188,15 @@ Definition next_step {n : nat} (p : program n) (snap : snapshot n) :=
 (** Prova de Equivalência da Versão Funcional e da Propriedade *)
 
 Theorem next_step_equivalence :
-  forall n (p : program n) snap1 snap2,
+  forall (p : program) snap1 snap2,
   (next_step p snap1) = snap2 <-> steps_to p snap1 snap2.
 Proof.
   intros. split.
   (* -> *)
-  - intros. destruct snap1. simpl in H. destruct (nth_error p n0) eqn:E.
+  - intros. destruct snap1. simpl in H. destruct (nth_error p n) eqn:E.
     + destruct i. destruct s0; subst; try(econstructor); try(eassumption);
       try(reflexivity).
-      ++ destruct (ends_with (s v) a) eqn:E1.
+      ++ destruct (ends_with (s v) n0) eqn:E1.
          +++ eapply S_If_True; try(reflexivity); try(eassumption).
          +++ eapply S_If_False; try(reflexivity); try(eassumption).
     + subst. apply S_Out. assumption.
@@ -308,20 +208,20 @@ Qed.
 
 
 
-Fixpoint compute_program {m : nat} (p : program m ) snap n :=
+Fixpoint compute_program (p : program ) snap n :=
   match n with
   | S n' => next_step p (compute_program p snap n')
   | O    => snap
   end.
 
 
-Definition get_state {k : nat} (p : program k ) n :=
-  let initial_snapshot := SNAP 0 (empty k) in 
+Definition get_state (p : program ) n :=
+  let initial_snapshot := SNAP 0 (empty) in 
   match (compute_program p initial_snapshot n) with 
   | SNAP _ s => s
   end.
 
-Definition HALT {m : nat} (s : state m ) (p : program m) (n : nat) :=
+Definition HALT (s : state) (p : program) (n : nat) :=
   let initial_snap := SNAP 0 s in 
   let nth_snap := compute_program p initial_snap n in 
 
@@ -330,26 +230,26 @@ Definition HALT {m : nat} (s : state m ) (p : program m) (n : nat) :=
   end.
 
 
-Definition get (y : variable) {n : nat} (p : program n ) (x : string n) (k : nat) :=
-  match (compute_program p (SNAP 0 (create_state n x)) k) with
+Definition get (y : variable)  (p : program) (x : string) (k : nat) :=
+  match (compute_program p (SNAP 0 (create_state x)) k) with
   | SNAP _ s => s y
   end.
 
 
 Definition partially_computable (n : nat) 
-  (f : (string n) -> option (string n)) := 
-  exists (p : program n), forall x,
-    (f x = None -> forall (k : nat), ~ (HALT (create_state n x) p k)) /\ 
-    (f x <> None -> exists (k : nat), HALT (create_state n x) p k /\ 
+  (f : (string) -> option (string)) := 
+  exists (p : program), forall x,
+    (f x = None -> forall (k : nat), ~ (HALT (create_state x) p k)) /\ 
+    (f x <> None -> exists (k : nat), HALT (create_state x) p k /\ 
     Some (get Y  p x k) = (f x)).
 
 
 Definition partially_computable_by_p (n : nat) 
-  (f : (string n) -> option (string n)) (p : program n) := 
+  (f : (string) -> option (string)) (p : program) := 
     forall x,
-    (f x = None -> forall (k : nat), ~ (HALT (create_state n x) p k)) /\ 
-    (f x <> None -> exists (k : nat), HALT (create_state n x) p k /\ 
+    (f x = None -> forall (k : nat), ~ (HALT (create_state x) p k)) /\ 
+    (f x <> None -> exists (k : nat), HALT (create_state x) p k /\ 
     Some (get Y  p x k) = (f x)).
 
 
-(* ################################################################# *)
+(* ################################################################ *)
