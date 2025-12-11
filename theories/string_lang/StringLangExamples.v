@@ -16,6 +16,11 @@ Qed.
 
 
 Definition prg :=
-  <{[ Instr None (APPEND (Char _ 0 t0_le_1) (X 0))]}>.
+  <{[ Instr None (APPEND 0 (X 0))]}>.
 
-Check (prg : program 1).
+Check (prg : program).
+
+Lemma prg_string_1 : program_over prg 1.
+Proof.
+  split; simpl; auto.
+Qed.

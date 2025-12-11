@@ -8,10 +8,7 @@ From Coq Require Extraction.
 From Coq Require Import Lia.
 Import ListNotations.
 
-Search nat.
 
-Definition get_char {n : nat} (m : StringLang.alphabet n)
-  := StringLang.get_char_value m.
 
 (** Conversão de String para Nat *)
 
@@ -21,67 +18,34 @@ Definition get_char {n : nat} (m : StringLang.alphabet n)
    [1, 0, 0, 2, 1]
    2 * 3^4 + 1 * 3 *)
 
-Definition string_to_nat {n : nat} (s : StringLang.string n) :=
-  let fix aux l k {struct l}:=
-  match l with 
-  | h :: t => ((get_char h + 1) * ((n + 1) ^ k)) + aux t (k - 1)
-  | []  => 0
-  end
-   in aux s (length s - 1).
-
+Definition string_to_nat (s : StringLang.string) (base : nat) :=
+  let fix aux l k {struct l} :=
+    match l with
+    | h :: t => (h + 1) * ((base + 1) ^ k) + aux t (S k)
+    | [] => 0
+    end
+  in aux s 0.
 
 (** Conversão de Nat para String *)
 
 
 (* Função de Incremento *)
 
-Definition incr_string {n : nat} (s : StringLang.string n) : (StringLang.string n). Proof.
-  refine (
-  let fix aux l :=
-  match l with 
-  | h :: t => ((match (get_char h <? (n) ) as eq return 
-               ((get_char h <? (n) = eq)) -> _ with
-              | true  => fun _ => ((StringLang.Char _ ((get_char h) + 1) _) :: t)
-              | false => fun _ => (StringLang.Char _ 0 _) :: (aux t)
-              end) _)
-  | [] =>  [StringLang.Char _ 0 _]
-  end 
-  in rev (aux (rev s))).
-  ++ apply PeanoNat.Nat.le_0_l. 
-  ++ rewrite PeanoNat.Nat.ltb_lt in e. unfold lt in e. 
-     rewrite PeanoNat.Nat.add_comm. simpl. exact e.
-  ++ apply PeanoNat.Nat.le_0_l.
-  ++ reflexivity.
-Defined.
-
-
-Extraction incr_string.
+Fixpoint incr_string (s : StringLang.string) (base : nat) :=
+  match s with 
+  | h :: t => if (h <? base) then (h + 1) :: t
+              else 0 :: incr_string t base 
+  | [] => [0]
+  end.
 
 
 (* Nat para String, basta usar o incremento n vezes *)
 
-Fixpoint nat_to_string (k : nat) (n : nat) : (StringLang.string k)  :=
+Fixpoint nat_to_string (n : nat) (base : nat) : (StringLang.string)  :=
     match n with
-    | S n' => incr_string (nat_to_string k n')
+    | S n' => incr_string (nat_to_string n' base) base
     | 0 => []
     end.
-
-(* Facilitar visibilidade *)
-
-Fixpoint string_to_nat_list {n : nat} (s : StringLang.string n) :=
-  match s with 
-  | h :: t => (get_char h) :: (string_to_nat_list t)
-  | [] => []
-  end.
-
-(* Função equivalente para strings *) 
-
-Definition get_string_function (n : nat) (f : nat -> option nat) :=
-  fun (s : StringLang.string n)  => 
-  match (f (string_to_nat s)) with
-  | Some k => Some (nat_to_string n k)
-  | None => None
-  end.
 
 
 (** MACROS **)
@@ -93,7 +57,7 @@ Proof.
   lia.
 Qed.
 
-(* [opt_lbl] IF X ENDS Si GOTO Ai ( 0 <= i <= n) *)
+(* rascunho ...[opt_lbl] IF X ENDS Si GOTO Ai ( 0 <= i <= n) *)
 
 
 (* TODO: Possivelmente vou ter que tomar cuidado com as labels.
@@ -101,7 +65,7 @@ Qed.
          nunca ocorram dentro de p_nat. Uma opção é criar uma nova letra,
          B, onde o programa em nat só usa A 1, A 2, A 3... E o programa
          em strings pode usar B 1, ... B 2 livremente. *)
-
+(*
 Definition get_if_ends_macro (n : nat) (opt_lbl : option label)
   (x : variable) : (StringLang.program n).
 Proof.
@@ -201,8 +165,9 @@ Defined.
         Y <- Si Y      } (i <= i <= n)
         GOTO C        }                         *)
 
+*)
 
-
+(*
 Definition get_decr_macro (n : nat) (opt_lbl : option label)
   (x : variable)  : (StringLang.program n).
 Proof.
@@ -235,4 +200,5 @@ Definition get_str_macro (k : nat) (i_nat : NatLang.instruction) :
   | NatLang.Instr opt_lbl (NatLang.DECR x) =>  get_decr_macro k opt_lbl x
   | NatLang.Instr opt_lbl (NatLang.IF_GOTO x l) => get_if_macro k opt_lbl x l
   end.
+*)
 

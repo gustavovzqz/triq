@@ -25,25 +25,20 @@ Import ListNotations.
     para contemplar as especificidades do caso de string 0. As macros possuem apenas
     uma instrução e as definições de equivalência podem ser simplificadas *)
 
-Definition zero_prf : StringLang.alphabet 0.
-Proof.
-exists 0. apply PeanoNat.Nat.le_0_l.
-Defined.
-
-Definition incr_string0 (s : StringLang.string 0) :=
-  zero_prf :: s.
+Definition incr_string0 (s : StringLang.string) :=
+  0 :: s.
 
 Definition get_incr_macro_0 opt_lbl x :=
-  StringLang.Instr opt_lbl (StringLang.APPEND zero_prf x).
+  StringLang.Instr opt_lbl (StringLang.APPEND 0 x).
 
-Definition get_decr_macro_0 opt_lbl x : (StringLang.instruction 0) :=
+Definition get_decr_macro_0 opt_lbl x : (StringLang.instruction) :=
   StringLang.Instr opt_lbl (StringLang.DEL x).
 
 Definition get_if_macro_0 opt_lbl x l :=
-StringLang.Instr opt_lbl (StringLang.IF_ENDS_GOTO x zero_prf l).
+StringLang.Instr opt_lbl (StringLang.IF_ENDS_GOTO x 0 l).
 
 Definition get_str_macro0 (i_nat : NatLang.instruction) :
-  (StringLang.instruction 0 ) := 
+  (StringLang.instruction ) := 
   match i_nat with 
   | NatLang.Instr opt_lbl (NatLang.INCR x) => get_incr_macro_0 opt_lbl x
   | NatLang.Instr opt_lbl (NatLang.DECR x) =>  get_decr_macro_0 opt_lbl x
@@ -51,7 +46,7 @@ Definition get_str_macro0 (i_nat : NatLang.instruction) :
 end.
 
 Fixpoint get_str_prg (nat_prg : NatLang.program) 
-                          : StringLang.program 0 :=
+                          : StringLang.program  :=
   match nat_prg with
   | [] => []
   | i_nat :: rest =>
@@ -86,7 +81,7 @@ Fixpoint get_equiv_simulated_position p_nat n :=
 Definition equiv_pos 
   (p_nat : NatLang.program)
   (n : nat)
-  (p_str : StringLang.program 0)
+  (p_str : StringLang.program )
   (n' : nat) :=
   (* n' = get_equiv_simulated_position p_nat n *)
   n = n'.
@@ -119,16 +114,16 @@ Fixpoint nat_to_string0 n :=
    resultará em uma posição equivalente (exatamente a mesma linha) e em um estado 
    equivalente ao dos naturais *)
 
-Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state 0) :=
+Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state ) :=
   (* Se s_nat x = v, então string_to_nat (s_str x) também retorna v *)
-  forall (x : variable) (v : StringLang.string 0),
+  forall (x : variable) (v : StringLang.string ),
   nat_to_string0 (s_nat x) = v -> s_str x = v.
 
 Definition snap_equiv
   (p_nat    : NatLang.program)
   (snap_nat : NatLang.snapshot)
-  (p_str    : StringLang.program 0) 
-  (snap_str : StringLang.snapshot 0) :=
+  (p_str    : StringLang.program ) 
+  (snap_str : StringLang.snapshot ) :=
 
   match snap_nat with
   | NatLang.SNAP n state_nat => (
@@ -141,7 +136,7 @@ Definition snap_equiv
 (** Para obter o estado equivalente, basta acoplar uma função de conversão ao resultado
     do estado original *)
 
-Definition get_equiv_state nat_state : (StringLang.state 0) :=
+Definition get_equiv_state nat_state : (StringLang.state ) :=
   (fun x => nat_to_string0 (nat_state x)).
 
 (** É fácil mostrar que o resultado da função acima é, de fato, um estado equivalente
@@ -223,29 +218,30 @@ Qed.
 
 (** ** x <- x + 1 *)
 
+Lemma append_cons_equiv : forall n,
+  nat_to_string0 n ++ [0] = 0 :: nat_to_string0 n.
+Proof.
+  induction n.
+  + reflexivity.
+  + simpl. unfold incr_string0. f_equal. apply IHn.
+Qed.
+
 Lemma incr_state_equiv: forall s s' v, 
   state_equiv s s' ->
-  state_equiv (NatLang.incr s v) (StringLang.append zero_prf s' v).
+  state_equiv (NatLang.incr s v) (StringLang.append 0 s' v).
 Proof.
   intros. unfold state_equiv, NatLang.incr, StringLang.append, NatLang.update,
-  StringLang.update. intros x v0.
+  StringLang.update. intros x v0. unfold state_equiv in H.
   destruct (eqb_var v x) eqn:E.
   + rewrite PeanoNat.Nat.add_comm. simpl. unfold incr_string0.
-    intros. unfold state_equiv in H. rewrite <- H0. f_equal.
-    apply H; reflexivity.
+    intros.  rewrite <- H0. 
+    assert (s' v = nat_to_string0 (s v)). {  apply H. reflexivity. }
+    rewrite H1.  rewrite append_cons_equiv. reflexivity.
   + apply H.
 Qed.
 
 (** ** x <- x - 1 *)
 
-
-Lemma remove_last_equiv: forall n, removelast (nat_to_string0 (S n)) = 
-  nat_to_string0 n.
-Proof.
-  induction n.
-  + reflexivity.
-  + simpl. simpl in IHn. rewrite IHn. reflexivity.
-Qed.
 
 Lemma decr_state_equiv: forall s s' v, 
   state_equiv s s' ->
@@ -262,7 +258,7 @@ Proof.
       pose proof (H v l). rewrite Heql in H0. pose proof (H0 eq_refl).
       rewrite H1. rewrite sv. intros H2. simpl in H2. 
       rewrite PeanoNat.Nat.sub_0_r in H2. rewrite <- H2.
-      apply remove_last_equiv.
+      reflexivity.
   - intros. unfold state_equiv in H. apply H, H0.
 Qed.
 
@@ -270,11 +266,27 @@ Qed.
 (** ** if x != 0 goto l *)
 
 Lemma ends_with_Sn_true: forall n, 
-  (StringLang.ends_with (nat_to_string0 (S n)) zero_prf) = true.
+  (StringLang.ends_with (nat_to_string0 (S n)) 0) = true.
 Proof.
-  induction n.
+  reflexivity.
+Qed.
+
+
+Lemma simulated_program_string_0 : forall p_nat,
+  StringLang.program_over (get_simulated_program p_nat) 0.
+Proof.
+  induction p_nat.
   + reflexivity.
-  + simpl. simpl in IHn. rewrite IHn. reflexivity.
+  + simpl. destruct a. destruct s; simpl; auto.
+Qed.
+
+Lemma equiv_state_string0 : forall s_nat,
+  StringLang.state_over (get_equiv_state s_nat) 0.
+Proof.
+  unfold StringLang.state_over, StringLang.string_over, get_equiv_state.
+  intros. induction (s_nat x).
+  + apply I.
+  + fold StringLang.string_over in *. simpl. split; auto.
 Qed.
 
 
@@ -329,8 +341,10 @@ Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
          (initial_state_nat : NatLang.state),
 
-  exists (p_str : StringLang.program 0)
-         (initial_state_str : StringLang.state 0),
+  exists (p_str : StringLang.program)
+         (initial_state_str : StringLang.state),
+ StringLang.program_over p_str 0 /\
+ StringLang.state_over initial_state_str 0 /\
 
   forall (n : nat),
   exists (n' : nat),
@@ -340,7 +354,10 @@ Theorem nat_implies_string :
              (StringLang.compute_program p_str (StringLang.SNAP 0 initial_state_str) n').
 Proof.
   intros p_nat state_nat. exists (get_simulated_program p_nat). 
-  exists (get_equiv_state state_nat). intros n. exists n. 
+  exists (get_equiv_state state_nat). split.
+  apply simulated_program_string_0. split.
+  apply equiv_state_string0.
+  intros n. exists n. 
   remember (get_simulated_program p_nat) as p_str.
   induction n.
   (* Caso base: n = 0 *)

@@ -26,14 +26,23 @@ Fixpoint program_over prog n :=
   match prog with 
   | [] => True
   | h :: t => match h with 
-              | Instr _ (APPEND k _) => le k n /\ program_over t n
-              | Instr _ (IF_ENDS_GOTO _ k _) => le k n /\ program_over t n
-              | _ => False
+              | Instr _ (APPEND k _) => k <= n /\ program_over t n
+              | Instr _ (IF_ENDS_GOTO _ k _) => k <= n /\ program_over t n
+              | _ => True
               end
   end.
 
-
 Definition state := variable -> string.
+
+
+Fixpoint string_over s n :=
+  match s with
+  | [] => True
+  | h :: t => h <= n /\ string_over t n
+  end.
+
+Definition state_over (st : state) n :=
+  forall x, string_over (st x) n.
 
 Definition empty : state  := fun _ => [].
 
