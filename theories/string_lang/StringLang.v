@@ -28,7 +28,7 @@ Fixpoint program_over prog n :=
   | h :: t => match h with 
               | Instr _ (APPEND k _) => k <= n /\ program_over t n
               | Instr _ (IF_ENDS_GOTO _ k _) => k <= n /\ program_over t n
-              | _ => True
+              | _ => program_over t n
               end
   end.
 

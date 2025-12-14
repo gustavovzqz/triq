@@ -201,4 +201,3 @@ Definition get_str_macro (k : nat) (i_nat : NatLang.instruction) :
   | NatLang.Instr opt_lbl (NatLang.IF_GOTO x l) => get_if_macro k opt_lbl x l
   end.
 *)
-

@@ -290,6 +290,77 @@ Proof.
 Qed.
 
 
+(** ** Um programa sobre n com estado sobre n nunca possui um caractere de 
+       outra string e seu estado *)
+
+
+Definition snap_over snap :=
+  match snap with
+  | StringLang.SNAP _ state => StringLang.state_over state
+  end.
+
+Lemma string_over_app_impl : forall h t n,
+  StringLang.string_over (h ++ t) n ->
+  StringLang.string_over h n /\ StringLang.string_over t n.
+Proof.
+  intros. induction h.
+  - split.
+    + apply I.
+    + simpl in H. apply H.
+  - split.
+    + simpl. split.
+      ++ destruct H; lia.
+      ++ simpl in H. destruct H. pose proof (IHh H0). 
+         apply H1.
+    + simpl in H. destruct H. pose proof (IHh H0). 
+      apply H1.
+Qed.
+
+Lemma string_over_app_impl' : forall h t n,
+  StringLang.string_over h n /\ StringLang.string_over t n ->
+  StringLang.string_over (h ++ t) n.
+Proof.
+  intros. induction h.
+  + apply H.
+  + simpl. simpl in H. destruct H. destruct H. split.
+    ++ apply H.
+    ++ apply IHh. auto.
+Qed.
+
+Lemma string_over_app : forall h t n,
+StringLang.string_over h n /\ StringLang.string_over t n <->
+StringLang.string_over (h ++ t) n. 
+Proof.
+  split.
+  + apply string_over_app_impl'.
+  + apply string_over_app_impl.
+Qed.
+
+
+
+
+
+  Lemma program_over_n_never_uses_Sn : forall n p_str initial_state,
+  StringLang.program_over p_str n ->
+  StringLang.state_over initial_state n ->
+  forall step, snap_over (StringLang.compute_program p_str 
+  (StringLang.SNAP 0 initial_state) step) n.
+Proof.
+  induction step.
+  + auto.
+  + simpl. unfold StringLang.next_step. 
+    destruct (StringLang.compute_program p_str (StringLang.SNAP 0 initial_state) step).
+    destruct (nth_error p_str n0) eqn:E.
+    ++ destruct i, s0.
+       +++ simpl. unfold StringLang.state_over. intros x.
+           unfold StringLang.append. unfold StringLang.update.
+           destruct (eqb_var).
+           - simpl. apply string_over_app. split.
+             * apply IHstep.
+             * admit.
+           - apply IHstep. 
+       +++ simpl. unfold StringLang.state_over. Abort.
+
 
 (** * Teorema principal *)
 

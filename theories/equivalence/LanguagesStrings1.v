@@ -18,16 +18,9 @@ Import ListNotations.
 
 (** "a" e "b" são os caracteres básicos do alfabeto de dois dígitos. *)
 
-Definition a : StringLang.alphabet 1.
-Proof.
-  exists 0. constructor. constructor.
-Defined.
+Definition a  := 0.
 
-Definition b : StringLang.alphabet 1. 
-Proof.
-  exists 1. constructor. 
-Defined.
-
+Definition b := 1.
 
 (** * Definições das Macros para o Caso de Dois Dígitos *)
 
@@ -271,7 +264,7 @@ end.
 
 (** ** Obtendo o Programa Simulado *)
 
-Definition get_simulated_program (nat_prg : NatLang.program) : StringLang.program 1 :=
+Definition get_simulated_program (nat_prg : NatLang.program) : StringLang.program :=
   let n := max_label_nat nat_prg in
   let k := max_z_nat nat_prg in
   let fix get_str_prg_rec l n'  :=
@@ -313,19 +306,17 @@ Fixpoint get_equiv_simulated_position p_nat n :=
 Definition equiv_pos 
   (p_nat : NatLang.program)
   (n : nat)
-  (p_str : StringLang.program 1)
+  (p_str : StringLang.program )
   (n' : nat) :=
    n' = get_equiv_simulated_position p_nat n.
 
-Definition incr_string1 (s : StringLang.string 1) : (StringLang.string 1) :=
-  let fix incr_rec l :=
-    match l with
-    | [] => [a]
-    | h :: t => if (get_char h =? 0) 
-                (* h = a *) then b :: t
-                (* h = b *) else (a :: (incr_rec t))
-    end
-  in rev (incr_rec (rev s)).
+
+Fixpoint incr_string1 (s : StringLang.string ) : (StringLang.string ) :=
+  match s with
+  | h :: t => if h =? a then b :: t
+              else a :: incr_string1 t 
+  | []     => [b] 
+  end.
 
 Compute (incr_string1 [b; b]).
 
@@ -335,15 +326,15 @@ Fixpoint nat_to_string1 n :=
   | S n' => incr_string1 (nat_to_string1 n')
   end.
 
-Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state 1) :=
-  forall (x : variable) (v : StringLang.string 1),
+Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state) :=
+  forall (x : variable) (v : StringLang.string),
   nat_to_string1 (s_nat x) = v -> s_str x = v.
 
 Definition snap_equiv
   (p_nat    : NatLang.program)
   (snap_nat : NatLang.snapshot)
-  (p_str    : StringLang.program 1)
-  (snap_str : StringLang.snapshot 1) :=
+  (p_str    : StringLang.program)
+  (snap_str : StringLang.snapshot) :=
   match snap_nat with
   | NatLang.SNAP n state_nat => (
       match snap_str with
@@ -352,7 +343,7 @@ Definition snap_equiv
       end)
   end.
 
-Definition get_equiv_state nat_state : (StringLang.state 1) :=
+Definition get_equiv_state nat_state : (StringLang.state ) :=
   (fun x => nat_to_string1 (nat_state x)).
 
 
@@ -369,8 +360,8 @@ Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
          (initial_state_nat : NatLang.state),
 
-  exists (p_str : StringLang.program 1)
-         (initial_state_str : StringLang.state 1),
+  exists (p_str : StringLang.program)
+         (initial_state_str : StringLang.state),
 
   forall (n : nat),
   exists (n' : nat),
