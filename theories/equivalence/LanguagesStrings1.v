@@ -346,7 +346,6 @@ Definition snap_equiv
 Definition get_equiv_state nat_state : (StringLang.state ) :=
   (fun x => nat_to_string1 (nat_state x)).
 
-
 Lemma get_equiv_state_correct : forall state_nat,
   state_equiv state_nat (get_equiv_state state_nat).
 Proof.
@@ -356,12 +355,40 @@ Proof.
   + rewrite <- state_x_eq_v. reflexivity.
 Qed.
 
+
+Lemma nat_nth_implies_macro : forall p_nat i instr_nat,
+  nth_error p_nat i = Some instr_nat ->
+  exists t n n' k,
+  skipn (get_equiv_simulated_position p_nat i) (get_simulated_program p_nat) =
+  fst (get_str_macro1 instr_nat n n' k) ++ t.
+Proof.
+  induction p_nat; intros; simpl in *.
+  + rewrite nth_error_nil in H. discriminate H.
+  + destruct i.
+    ++ simpl in H. injection H as eq. subst. exists (get_simulated_program p_nat).
+Abort.
+
+
+Lemma simulated_program_string_1 : forall p_nat,
+  StringLang.program_over (get_simulated_program p_nat) 1.
+Proof.
+  induction p_nat.
+  + reflexivity.
+  + simpl. (* Quebra. Não consigo referenciar o get_simulated_program 
+              recursivamente *) Abort.
+
+
+
+
+
 Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
          (initial_state_nat : NatLang.state),
 
   exists (p_str : StringLang.program)
          (initial_state_str : StringLang.state),
+   StringLang.program_over p_str 1 /\
+   StringLang.state_over initial_state_str 1 /\
 
   forall (n : nat),
   exists (n' : nat),
