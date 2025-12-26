@@ -1,3 +1,6 @@
+(** ARQUIVO DESABILITADO TEMPORARIAMENTE. MUITAS MUDANÇAS FORAM FEITAS NAS DEFINIÇÕES *)
+
+
 From Triq Require NatLang.
 From Triq Require NatLangProperties.
 From Triq Require StringLang.

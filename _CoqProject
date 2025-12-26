@@ -3,8 +3,8 @@
 theories/common/LanguagesCommon.v
 
 theories/equivalence/LanguagesUtils.v
-theories/equivalence/LanguagesProperties.v
 theories/equivalence/LanguagesString0.v
+theories/equivalence/LanguagesString1.v
 
 
 theories/nat_lang/NatLang.v

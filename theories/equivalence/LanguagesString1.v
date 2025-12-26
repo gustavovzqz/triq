@@ -346,7 +346,7 @@ Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state) :=
   nat_to_string1 (s_nat x) = v -> s_str x = v.
 
 (** Para a noção de equivalência de snapshot, unimos as definições de equivalência
-    de posição e a equivaência de estado. *)
+    de posição e a equivalência de estado. *)
 
 Definition snap_equiv
   (p_nat    : NatLang.program)
@@ -379,6 +379,10 @@ Proof.
   + rewrite <- state_x_eq_v. reflexivity.
 Qed.
 
+(** Para mostrar que o programa em strings está em string 1,
+    é útil provar primeiro que a concatenação mantém o alfabeto dos
+    programas *)
+
 Lemma app_string_1 : forall p p', 
   StringLang.program_over p  1  ->
   StringLang.program_over p' 1  ->
@@ -393,6 +397,9 @@ Proof.
 Qed.
 
 
+(** Podemos usar o lema anterior para provar que o a função
+    get_str_prg_rec resulta em um programa de string 1. *)
+
 Lemma get_str_prg_string_1 : forall p_nat n' n k,
   StringLang.program_over  (get_str_prg_rec p_nat n' n k ) 1.
 Proof.
@@ -401,11 +408,20 @@ Proof.
   + destruct a0. destruct s; repeat constructor; apply IHp_nat.
 Qed.
 
+(** Finalmente, podemos continuar com a prova para o caso da função
+    geral get_simulated_program. *)
+
 Lemma simulated_program_string_1 : forall p_nat,
   StringLang.program_over (get_simulated_program p_nat) 1.
 Proof.
   intros p_nat. apply get_str_prg_string_1.
 Qed.
+
+
+
+
+(** Para mostrar que o estado é equivalente, é necessário mostrar também
+    que a função de incrementar string mantém a string no mesmo alfabeto. *)
 
 Lemma incr_string_over : forall s, 
   StringLang.string_over s 1 ->
@@ -419,23 +435,19 @@ Proof.
     ++ simpl. repeat constructor. apply H1.
 Qed.
 
-Lemma equiv_state_string0 : forall s_nat,
+
+(** Usando o lema acima, podemos mostrar que a conversão nat_to_string1 
+    gera uma string no alfabeto desejado *)
+
+Lemma equiv_state_string1 : forall s_nat,
   StringLang.state_over (get_equiv_state s_nat) 1.
 Proof.
-  unfold StringLang.state_over, StringLang.string_over, get_equiv_state.
-  intros. induction (s_nat x).
+  unfold StringLang.state_over. unfold get_equiv_state.
+  intros. unfold nat_to_string1. induction (s_nat x).
   + apply I.
-  + fold StringLang.string_over in *. simpl.
-    destruct (nat_to_string1 n) eqn:E.
-    ++ simpl; auto.
-    ++ simpl. destruct (n0 =? a) eqn:E1.
-       * simpl. simpl in IHn. split.
-         ** constructor.
-         ** apply IHn.
-       * simpl in *. split.
-         ** repeat constructor.
-         ** apply incr_string_over, IHn.
+  + apply incr_string_over, IHn.
 Qed.
+
 
 
 Lemma nat_nth_implies_macro : forall p_nat i instr_nat,
@@ -472,7 +484,23 @@ Proof.
   intros p_nat state_nat. exists (get_simulated_program p_nat). 
   exists (get_equiv_state state_nat). split.
   apply simulated_program_string_1. split.
-  apply equiv_state_string0.
-  (* prova segue *)
+  apply equiv_state_string1.
+  intros n. exists n. 
+  remember (get_simulated_program p_nat) as p_str.
+  induction n.
+  (* Caso base: n = 0 *)
+  - split.
+    + apply get_equiv_state_correct. 
+    + destruct p_nat.
+      ++ simpl. reflexivity.
+      ++ simpl. reflexivity.
+  (* Passo da indução *)
+  - destruct (NatLang.compute_program p_nat (NatLang.SNAP 0 state_nat) n)
+    as [k s] eqn:snap_nat. 
+    destruct (StringLang.compute_program p_str (StringLang.SNAP 0 
+    (get_equiv_state state_nat)) n) as [k' s'] eqn:snap_str. 
+    destruct IHn. unfold equiv_pos in H0.
+Abort.
+
 
 
