@@ -407,7 +407,36 @@ Proof.
   intros p_nat. apply get_str_prg_string_1.
 Qed.
 
-Lemma state_over_string_1 : forall state_nat
+Lemma incr_string_over : forall s, 
+  StringLang.string_over s 1 ->
+  StringLang.string_over (incr_string1 s) 1.
+Proof.
+  intros. induction s.
+  + simpl. repeat (constructor).
+  + simpl in *. destruct H. pose proof (IHs H0).
+    destruct (a0 =? a).
+    ++ repeat constructor. apply H0.
+    ++ simpl. repeat constructor. apply H1.
+Qed.
+
+Lemma equiv_state_string0 : forall s_nat,
+  StringLang.state_over (get_equiv_state s_nat) 1.
+Proof.
+  unfold StringLang.state_over, StringLang.string_over, get_equiv_state.
+  intros. induction (s_nat x).
+  + apply I.
+  + fold StringLang.string_over in *. simpl.
+    destruct (nat_to_string1 n) eqn:E.
+    ++ simpl; auto.
+    ++ simpl. destruct (n0 =? a) eqn:E1.
+       * simpl. simpl in IHn. split.
+         ** constructor.
+         ** apply IHn.
+       * simpl in *. split.
+         ** repeat constructor.
+         ** apply incr_string_over, IHn.
+Qed.
+
 
 Lemma nat_nth_implies_macro : forall p_nat i instr_nat,
   nth_error p_nat i = Some instr_nat ->
@@ -443,5 +472,7 @@ Proof.
   intros p_nat state_nat. exists (get_simulated_program p_nat). 
   exists (get_equiv_state state_nat). split.
   apply simulated_program_string_1. split.
+  apply equiv_state_string0.
+  (* prova segue *)
 
 
