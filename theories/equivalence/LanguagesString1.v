@@ -460,8 +460,46 @@ Proof.
   + rewrite nth_error_nil in H. discriminate H.
   + destruct i.
     ++ simpl in H. injection H as eq. subst. exists (get_simulated_program p_nat).
-Abort.
+Admitted.
 
+
+Lemma nat_nth_implies_none : forall p_nat i a b c,
+  nth_error p_nat i = None ->
+  nth_error (get_str_prg_rec p_nat a b c) 
+  (get_equiv_simulated_position p_nat i) = None.
+Proof.
+  induction p_nat as [|h t IH]; intros.
+  - rewrite nth_error_nil. reflexivity.
+  - destruct i.
+    + simpl in H. discriminate.
+    + simpl in H. unfold get_simulated_program in *. 
+      remember (max_label_nat (h :: t)). remember (max_z_nat (h :: t)).
+      remember (get_str_macro1 h b0 a0 c). destruct p.
+      remember (get_str_macro1 h 0 0 0). destruct p.
+      simpl. rewrite <- Heqp. rewrite <- Heqp0. destruct h.
+      destruct s; simpl in *;
+      injection Heqp; injection Heqp0; intros; subst;
+      apply IH, H.
+Qed.
+
+Lemma exists_n'_snap_equiv :
+  forall p_nat p_str  snap_nat snap_str,
+  p_str = (get_simulated_program p_nat) ->
+  snap_equiv p_nat snap_nat p_str snap_str ->
+  exists n', snap_equiv p_nat
+             (NatLang.next_step p_nat snap_nat)
+             (get_simulated_program p_nat)
+             (compute_program p_str
+              snap_str n').
+Proof.
+  intros. destruct snap_nat as [pos_nat state_nat].
+  destruct snap_str as [pos_str state_str]. simpl.
+  destruct (nth_error p_nat pos_nat) as [[opt_lbl statement_nat]|] eqn:E.
+  (* Há alguma instrução na pos_nat em p_nat*)
+  + admit.
+  (* Não há alguma instrução na pos_nat em p_nat*)
+  + 
+   
 
 
 
@@ -485,21 +523,21 @@ Proof.
   exists (get_equiv_state state_nat). split.
   apply simulated_program_string_1. split.
   apply equiv_state_string1.
-  intros n. exists n. 
+  intros n.
   remember (get_simulated_program p_nat) as p_str.
   induction n.
   (* Caso base: n = 0 *)
-  - split.
+  - exists 0. split.
     + apply get_equiv_state_correct. 
     + destruct p_nat.
       ++ simpl. reflexivity.
       ++ simpl. reflexivity.
   (* Passo da indução *)
-  - destruct (NatLang.compute_program p_nat (NatLang.SNAP 0 state_nat) n)
+  -  destruct (NatLang.compute_program p_nat (NatLang.SNAP 0 state_nat) n)
     as [k s] eqn:snap_nat. 
     destruct (StringLang.compute_program p_str (StringLang.SNAP 0 
     (get_equiv_state state_nat)) n) as [k' s'] eqn:snap_str. 
-    destruct IHn. unfold equiv_pos in H0.
+    destruct IHn. simpl. subst.
 Abort.
 
 
