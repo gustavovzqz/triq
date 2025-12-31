@@ -482,26 +482,6 @@ Proof.
       apply IH, H.
 Qed.
 
-Lemma exists_n'_snap_equiv :
-  forall p_nat p_str  snap_nat snap_str,
-  p_str = (get_simulated_program p_nat) ->
-  snap_equiv p_nat snap_nat p_str snap_str ->
-  exists n', snap_equiv p_nat
-             (NatLang.next_step p_nat snap_nat)
-             (get_simulated_program p_nat)
-             (compute_program p_str
-              snap_str n').
-Proof.
-  intros. destruct snap_nat as [pos_nat state_nat].
-  destruct snap_str as [pos_str state_str]. simpl.
-  destruct (nth_error p_nat pos_nat) as [[opt_lbl statement_nat]|] eqn:E.
-  (* Há alguma instrução na pos_nat em p_nat*)
-  + admit.
-  (* Não há alguma instrução na pos_nat em p_nat*)
-  + 
-   
-
-
 
 Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
@@ -519,25 +499,25 @@ Theorem nat_implies_string :
              p_str
              (StringLang.compute_program p_str (StringLang.SNAP 0 initial_state_str) n').
 Proof.
-  intros p_nat state_nat. exists (get_simulated_program p_nat). 
-  exists (get_equiv_state state_nat). split.
-  apply simulated_program_string_1. split.
-  apply equiv_state_string1.
-  intros n.
+  intros. exists (get_simulated_program p_nat).
+  exists (get_equiv_state initial_state_nat). split.
+  { apply simulated_program_string_1. } split.
+  { apply equiv_state_string1. }
+  intros steps_nat.
   remember (get_simulated_program p_nat) as p_str.
-  induction n.
+  induction steps_nat as [| steps_nat IH].
   (* Caso base: n = 0 *)
   - exists 0. split.
-    + apply get_equiv_state_correct. 
+    + apply get_equiv_state_correct.
     + destruct p_nat.
       ++ simpl. reflexivity.
       ++ simpl. reflexivity.
   (* Passo da indução *)
-  -  destruct (NatLang.compute_program p_nat (NatLang.SNAP 0 state_nat) n)
-    as [k s] eqn:snap_nat. 
+  - destruct (NatLang.compute_program p_nat (NatLang.SNAP 0 initial_state_nat)
+    steps_nat) as [pos_nat state_nat] eqn:snap_nat.
     destruct (StringLang.compute_program p_str (StringLang.SNAP 0 
-    (get_equiv_state state_nat)) n) as [k' s'] eqn:snap_str. 
-    destruct IHn. simpl. subst.
+    (get_equiv_state state_nat)) steps_nat) as [pos_str state_str] eqn:snap_str. 
+    destruct IH. simpl. subst.
 Abort.
 
 
