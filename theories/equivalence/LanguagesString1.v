@@ -449,18 +449,48 @@ Proof.
 Qed.
 
 
+Lemma macros_same_size : forall h n1 n2 n3 n4 n5 n6,
+  length (fst (get_str_macro1 h n1 n2 n3)) = length (fst (get_str_macro1 h n4 n5 n6)).
+Proof.
+  intros. destruct h; destruct s; reflexivity.
+Qed.
 
-Lemma nat_nth_implies_macro : forall p_nat i instr_nat,
+
+Lemma nat_nth_implies_macro : forall p_nat i instr_nat a b c,
   nth_error p_nat i = Some instr_nat ->
-  exists t n n' k,
-  skipn (get_equiv_simulated_position p_nat i) (get_simulated_program p_nat) =
+  exists n n' k t,
+  skipn (get_equiv_simulated_position p_nat i) (get_str_prg_rec p_nat a b c) =
   fst (get_str_macro1 instr_nat n n' k) ++ t.
 Proof.
-  induction p_nat; intros; simpl in *.
+  induction p_nat as [|h t IH]; intros.
   + rewrite nth_error_nil in H. discriminate H.
-  + destruct i.
-    ++ simpl in H. injection H as eq. subst. exists (get_simulated_program p_nat).
-Admitted.
+  + destruct i eqn:E.
+    ++ simpl. exists b0, a0, c. simpl in H. inversion H.
+       remember (get_str_macro1 instr_nat b0 a0 c). destruct p.
+       eauto.
+    ++ simpl in H. simpl.
+       remember (get_str_macro1 h 0 0 0). destruct p.
+       remember (get_str_macro1 h b0 a0 c). destruct p.  
+       assert (length l = length l0). 
+       { assert (l = fst (get_str_macro1 h 0 0 0)). rewrite <- Heqp. reflexivity.
+         assert (l0 = fst (get_str_macro1 h b0 a0 c)). 
+         rewrite <- Heqp0. reflexivity. rewrite H0, H1. apply macros_same_size. 
+       }
+        assert (skipn (length l + get_equiv_simulated_position t n)
+        (l0 ++ get_str_prg_rec t (a0 + n1) b0 c)  = skipn 
+        (get_equiv_simulated_position t n ) (get_str_prg_rec t (a0 + n1) b0 c)).
+        { pose proof (skipn_app (length l + get_equiv_simulated_position t n)
+          l0 (get_str_prg_rec t (a0 + n1) b0 c)).
+          rewrite H1, H0. 
+          assert ((skipn (length l0 + get_equiv_simulated_position t n) l0) = []).
+          { apply skipn_all_iff.  lia. }
+          rewrite H2. simpl. assert ((length l0 + 
+          get_equiv_simulated_position t n - length l0) = 
+          get_equiv_simulated_position t n) by lia.
+          rewrite H3. reflexivity.
+        }
+          rewrite H1.  subst. apply IH, H.
+Qed.
 
 
 Lemma nat_nth_implies_none : forall p_nat i a b c,
