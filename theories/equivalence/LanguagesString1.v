@@ -601,21 +601,29 @@ Proof.
 Abort.
 
 
-Definition macro_at_i (prog : StringLang.program) macro position :=
+Definition macro_at (prog : StringLang.program) macro position :=
   exists t,
   skipn position prog = macro ++ t.
 
-Definition keeps_execution_in_program prog macro pos_i state m :=
-  macro_at_i prog macro pos_i /\ 
-  forall i, i < m -> 
-  get_position (compute_program prog (SNAP pos_i state) i)
-  < (pos_i + length macro)
-  /\ get_position (compute_program prog (SNAP pos_i state) i) >= i.
 
-Lemma split_execution : forall prog macro pos_i state m,
-  (exists t, skipn pos_i prog = macro ++ t) ->
-  keeps_execution_in_program prog macro pos_i state m ->
-  get_state (compute_program prog (SNAP pos_i state) m) =
-  get_state (compute_program macro (SNAP 0 state) m).
+Definition tracked prog macro macro_position m :=
+  forall (i : nat) state,
+  i <= m ->
+  get_position (compute_program prog (SNAP macro_position state) i) =
+  get_position (compute_program macro (SNAP 0 state) i) + macro_position.
+
+Lemma split_execution :
+  forall prog state macro macro_position m,
+  macro_at prog macro macro_position ->
+  tracked prog macro macro_position m ->
+  forall i s_prog s_macro l_prog l_macro, i <= m ->
+  (SNAP l_prog s_prog) = compute_program prog (SNAP macro_position state) i ->
+  (SNAP l_macro s_macro) = compute_program macro (SNAP 0 state) i ->
+  s_prog = s_macro /\ l_prog = l_macro + macro_position.
 Proof.
+  destruct i; intros; destruct H; unfold tracked in H0. 
+  (* i = 0 *)
+  - split; inversion H2; inversion H3; reflexivity.
+  (* S i *)
+  - simpl in H2, H3.
 Abort.
