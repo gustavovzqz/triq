@@ -615,6 +615,7 @@ Definition tracked prog macro macro_position m :=
   (i = m -> l_macro = length macro).
 
 
+(* ajustar essa prova depois *)
 Lemma split_execution :
   forall prog state macro macro_position m,
   macro_at prog macro macro_position ->
@@ -627,7 +628,13 @@ Proof.
   induction i; intros; destruct H.
   (* i = 0 *)
   - split; inversion H2; inversion H3; reflexivity.
-  (* S i *) - simpl in H2, H3. 
+  (* S i *) - 
+  assert (l_prog = l_macro + macro_position) as eq_second.
+  { eapply H0.
+    + rewrite <- H2. reflexivity.
+    + rewrite <- H3. reflexivity.
+      }
+  simpl in H2, H3.
     remember (compute_program prog (SNAP macro_position state) i) as snap_prog.
     remember (compute_program macro (SNAP 0 state) i) as snap_macro.
     destruct snap_prog as [line_prog state_prog]. 
@@ -663,10 +670,5 @@ Proof.
          * destruct (ends_with (state_macro v) n);
            injection H2; injection H3; intros; subst; reflexivity.
       ++ injection H2; injection H3; intros; subst; reflexivity.
-    + destruct (nth_error macro line_macro).
-      ++ destruct i0. destruct s.
-         * injection H2; injection H3; intros; subst; lia.
-         * injection H2; injection H3; intros; subst; lia.
-         * admit. (* provar separadamente e arrumar o resto da prova *)
-      ++ injection H2; injection H3; intros; subst; reflexivity.
-Abort.
+    + reflexivity.
+Qed.
