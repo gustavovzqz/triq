@@ -607,10 +607,13 @@ Definition macro_at (prog : StringLang.program) macro position :=
 
 
 Definition tracked prog macro macro_position m :=
-  forall (i : nat) state,
-  i <= m ->
-  get_position (compute_program prog (SNAP macro_position state) i) =
-  get_position (compute_program macro (SNAP 0 state) i) + macro_position.
+  forall (i : nat) state l_prog l_macro,
+  l_prog  = get_position (compute_program prog (SNAP macro_position state) i) ->
+  l_macro = get_position (compute_program macro (SNAP 0 state) i) ->
+  l_prog = l_macro + macro_position /\
+  (i < m -> l_macro < length macro) /\
+  (i = m -> l_macro = length macro).
+
 
 Lemma split_execution :
   forall prog state macro macro_position m,
@@ -621,9 +624,49 @@ Lemma split_execution :
   (SNAP l_macro s_macro) = compute_program macro (SNAP 0 state) i ->
   s_prog = s_macro /\ l_prog = l_macro + macro_position.
 Proof.
-  destruct i; intros; destruct H; unfold tracked in H0. 
+  induction i; intros; destruct H.
   (* i = 0 *)
   - split; inversion H2; inversion H3; reflexivity.
-  (* S i *)
-  - simpl in H2, H3.
+  (* S i *) - simpl in H2, H3. 
+    remember (compute_program prog (SNAP macro_position state) i) as snap_prog.
+    remember (compute_program macro (SNAP 0 state) i) as snap_macro.
+    destruct snap_prog as [line_prog state_prog]. 
+    destruct snap_macro as [line_macro state_macro].
+    assert (state_prog = state_macro /\
+            line_prog = line_macro + macro_position).
+    { apply IHi; try (reflexivity). transitivity (S i); auto. }
+    clear IHi. destruct H4. 
+    assert (nth_error prog (line_macro + macro_position) =
+            nth_error (skipn macro_position prog) line_macro).
+    { rewrite nth_error_skipn;
+      rewrite PeanoNat.Nat.add_comm; reflexivity.
+    }
+    assert (line_prog = line_macro + macro_position /\ 
+    (i < m -> line_macro < length macro) /\ 
+    (i = m -> line_macro = length macro)).
+    { unfold tracked in H0. apply H0 with state.
+      + rewrite <- Heqsnap_prog. reflexivity.
+      + rewrite <- Heqsnap_macro. reflexivity. 
+    } 
+    destruct H7. destruct H8. rewrite H4 in H2.  
+    assert (line_macro < length macro).
+    { apply H8, H1. }
+    assert (nth_error (skipn macro_position prog) line_macro =
+            nth_error macro line_macro).
+    { rewrite H. apply nth_error_app1, H10. }
+    unfold next_step in H2, H3. subst.
+    rewrite H11 in H6. rewrite H6 in H2. split.
+    + destruct (nth_error macro line_macro).
+      ++ destruct i0. destruct s.
+         * injection H2; injection H3; intros; subst; reflexivity.
+         * injection H2; injection H3; intros; subst; reflexivity.
+         * destruct (ends_with (state_macro v) n);
+           injection H2; injection H3; intros; subst; reflexivity.
+      ++ injection H2; injection H3; intros; subst; reflexivity.
+    + destruct (nth_error macro line_macro).
+      ++ destruct i0. destruct s.
+         * injection H2; injection H3; intros; subst; lia.
+         * injection H2; injection H3; intros; subst; lia.
+         * admit. (* provar separadamente e arrumar o resto da prova *)
+      ++ injection H2; injection H3; intros; subst; reflexivity.
 Abort.
