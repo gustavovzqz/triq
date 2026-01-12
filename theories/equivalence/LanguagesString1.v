@@ -16,6 +16,17 @@ From Coq Require Extraction.
 From Coq Require Import Lia.
 Import ListNotations.
 
+
+(** Descomentar caso não esteja na biblioteca padrão *)
+
+Lemma nth_error_nil :
+  forall (A : Type) (n : nat),
+    nth_error (@nil A) n = None.
+Proof.
+  intros A n.
+  destruct n; reflexivity.
+Qed.
+
 (** "a" e "b" são os caracteres básicos do alfabeto de dois dígitos. *)
 
 Definition a  := 0.
@@ -606,19 +617,19 @@ Definition macro_at (prog : StringLang.program) macro position :=
   skipn position prog = macro ++ t.
 
 
-Definition tracked prog macro macro_position m :=
-  forall (i : nat) state l_prog l_macro,
+Definition tracked prog state macro macro_position m :=
+  forall (i : nat) l_prog l_macro,
+  i <= m -> 
   l_prog  = get_position (compute_program prog (SNAP macro_position state) i) ->
   l_macro = get_position (compute_program macro (SNAP 0 state) i) ->
   l_prog = l_macro + macro_position /\
-  (i < m -> l_macro < length macro) /\
-  (i = m -> l_macro = length macro).
+  (i < m -> l_macro < length macro).
 
 
 Lemma split_execution :
   forall prog state macro macro_position m,
   macro_at prog macro macro_position ->
-  tracked prog macro macro_position m ->
+  tracked prog state macro macro_position m ->
   forall i s_prog s_macro l_prog l_macro, i <= m ->
   (SNAP l_prog s_prog) = compute_program prog (SNAP macro_position state) i ->
   (SNAP l_macro s_macro) = compute_program macro (SNAP 0 state) i ->
@@ -644,19 +655,21 @@ Proof.
               nth_error (skipn macro_position prog) line_macro).
       { rewrite nth_error_skipn, PeanoNat.Nat.add_comm; reflexivity. }
       assert (line_prog = line_macro + macro_position /\
-      (i < m -> line_macro < length macro) /\ 
-      (i = m -> line_macro = length macro)).
-      { unfold tracked in H0. apply H0 with state.
+      (i < m -> line_macro < length macro)).
+      { unfold tracked in H0. apply H0.
+        + transitivity (S i). 
+          ++ apply PeanoNat.Nat.le_succ_diag_r.
+          ++ apply H1.
         + rewrite <- Heqsnap_prog. reflexivity.
         + rewrite <- Heqsnap_macro. reflexivity. }
-      destruct H7, H8. rewrite H4 in H2.
+      destruct H7. rewrite H4 in H2.
       assert (line_macro < length macro).
       { apply H8, H1. }
       assert (nth_error (skipn macro_position prog) line_macro =
               nth_error macro line_macro).
-      { rewrite H. apply nth_error_app1, H10. }
+      { rewrite H. apply nth_error_app1, H9. }
       unfold next_step in H2, H3. subst.
-      rewrite H11 in H6. rewrite H6 in H2.
+      rewrite H10 in H6. rewrite H6 in H2.
       ++ destruct (nth_error macro line_macro).
          +++ destruct i0. destruct s.
              ** injection H2; injection H3; intros; subst; reflexivity.
@@ -666,6 +679,56 @@ Proof.
          +++ injection H2; injection H3; intros; subst; reflexivity.
     (*  l_prog = l_macro + macro_position. *)
     + eapply H0.
+      ++ rewrite <- H1; reflexivity.
       ++ rewrite <- H2; reflexivity.
       ++ rewrite <- H3; reflexivity.
 Qed.
+
+(** Mostrar que toda macro IF acompanha o programa geral *)
+
+Lemma i_le_2_destruct : forall i, i <= 2 -> 
+  i = 0 \/ i = 1 \/ i = 2.
+Proof.
+  intros. inversion H; auto.
+  inversion H1; auto.
+  inversion H3; auto.
+Qed.
+
+
+Lemma p_str_tracked_if : forall p_nat nat_state p_str str_state pos_nat o v l,
+  p_str = get_simulated_program p_nat ->
+  str_state = get_equiv_state nat_state ->
+  nth_error p_nat pos_nat = Some (NatLang.Instr o (NatLang.IF_GOTO v l)) ->
+  exists macro macro_position m,
+  tracked p_str str_state macro macro_position m.
+Proof.
+  intros. assert (exists n n' k t, 
+          skipn (get_equiv_simulated_position p_nat pos_nat)
+                (get_simulated_program p_nat) =
+                fst (get_str_macro1 (NatLang.Instr o (NatLang.IF_GOTO v l))
+                n n' k) ++ t).
+  { unfold get_simulated_program. apply nat_nth_implies_macro, H1. }
+  destruct H2 as [n [n' [k [t]]]]. 
+  exists (fst (get_str_macro1 (NatLang.Instr o (NatLang.IF_GOTO v l)) n n' k)),
+  (get_equiv_simulated_position p_nat pos_nat). simpl.
+  unfold if_macro_1. unfold tracked. intros.
+  (* m depende de quem é v *)
+  destruct (str_state v) as [| h s] eqn:E.
+  (* v é a string vazia -> m = 2 *)
+  + exists 2. intros.  pose proof (i_le_2_destruct i H3).
+    destruct H6; subst.
+    (* i = 0 *)
+    ++ simpl. split; auto.
+    ++ destruct H6.
+       (* i = 1 *)
+       * subst. simpl in H2. simpl. rewrite E. simpl.
+         rewrite <- hd_error_skipn. rewrite H2. simpl.
+         rewrite E. simpl. lia.
+       (* i = 2 *)
+       * subst. simpl in H2. simpl. rewrite E. simpl.
+         rewrite <- hd_error_skipn. rewrite H2. simpl.
+         rewrite E. simpl. Search (nth_error).
+         rewrite <- nth_error_skipn. rewrite H2. simpl.
+         rewrite E. simpl. lia.
+Abort.
+
