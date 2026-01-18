@@ -472,7 +472,7 @@ Proof.
       apply IH, H.
 Qed.
 
-Lemma nat_nth_implies_macro : forall p_nat i instr_nat a b c,
+Lemma nat_nth_implies_macro' : forall p_nat i instr_nat a b c,
   nth_error p_nat i = Some instr_nat ->
   exists n n' k t,
   skipn (get_equiv_simulated_position p_nat i) (get_str_prg_rec p_nat a b c) =
@@ -507,6 +507,19 @@ Proof.
         }
           rewrite H1.  subst. apply IH, H.
 Qed.
+
+Lemma nat_nth_implies_macro : forall p_nat i instr_nat,
+  nth_error p_nat i = Some instr_nat ->
+  exists n n' k t,
+  skipn (get_equiv_simulated_position p_nat i) (get_simulated_program p_nat) =
+  fst (get_str_macro1 instr_nat n n' k) ++ t.
+Proof.
+  unfold get_simulated_program. intros.
+  apply nat_nth_implies_macro', H.
+Qed.
+
+
+
 
 
 Theorem nat_implies_string :
@@ -545,32 +558,70 @@ Proof.
     destruct (StringLang.compute_program p_str (StringLang.SNAP 0 
     (get_equiv_state initial_state_nat)) steps_str) as [pos_str state_str] 
     eqn:snap_str_eq.
-      destruct H as [H0 H1]. simpl. unfold NatLang.next_step.
-    rewrite snap_nat_eq. destruct (nth_error p_nat pos_nat) eqn:p_nat_instr.
-    + destruct i, s.
+    destruct H as [H0 H1]. 
+    cut (exists m : nat,
+            snap_equiv p_nat
+            (NatLang.compute_program p_nat (NatLang.SNAP 0 initial_state_nat)
+            (S steps_nat))
+            p_str
+            (compute_program p_str (SNAP 0 
+            (get_equiv_state initial_state_nat)) (steps_str + m))).
+    intros. destruct H. exists (steps_str + x). apply H.
+
+    simpl. unfold NatLang.next_step.
+    rewrite snap_nat_eq. 
+     assert (forall m, compute_program p_str
+     (SNAP 0 (get_equiv_state initial_state_nat)) (steps_str + m) = 
+     (compute_program p_str  (compute_program p_str
+     (SNAP 0 (get_equiv_state initial_state_nat)) steps_str) m)).
+     { intros m. rewrite PeanoNat.Nat.add_comm. 
+       apply StringLangProperties.compute_program_add.
+     } 
+     destruct (nth_error p_nat pos_nat) eqn:p_nat_instr.
+    + assert (exists (n n' k : nat) (t : list instruction),
+             skipn (get_equiv_simulated_position p_nat pos_nat)
+             (get_simulated_program p_nat) = 
+             fst (get_str_macro1 i n n' k) ++ t).
+      { apply nat_nth_implies_macro, p_nat_instr. }
+      destruct H2 as [n [n' [k [ t]]]].
+      rewrite <- Heqp_str in H2.
+      rewrite <- H1 in H2.
+      destruct i, s.
       (* x <- x + 1 *)
-      ++ eexists (steps_str + ?[m]). simpl.
-         assert (compute_program p_str 
-         (SNAP 0 (get_equiv_state initial_state_nat)) (steps_str + ?m) = 
-         (compute_program p_str  (compute_program p_str
-         (SNAP 0 (get_equiv_state initial_state_nat)) steps_str) ?m)).
-         { rewrite PeanoNat.Nat.add_comm. 
-           apply StringLangProperties.compute_program_add.
-         }
-         rewrite H. rewrite snap_str_eq. clear H.
-
-         Search (nth_error).
-         admit.
-
+      ++ admit.
       (* x <- x - 1 *)
       ++ admit.
       (* if x != 0 goto a *)
-      ++ admit.
+      ++ destruct (state_nat v) eqn:E. 
+         (* v = 0 *)
+         +++ exists 2. rewrite H, snap_str_eq. simpl in *. 
+             assert ((nth_error p_str pos_str) = (Some [o] (IF v ENDS a GOTO o0))).
+             { replace pos_str with (pos_str + 0).
+               rewrite <- nth_error_skipn, H2. reflexivity. lia. }
+             rewrite H3. assert (state_str v = []). 
+             { apply H0. rewrite E. reflexivity. }
+             rewrite H4. simpl.
+             assert ((nth_error p_str (pos_str + 1))
+             = (Some [o] (IF v ENDS b GOTO o0))).
+             { rewrite <- nth_error_skipn, H2. reflexivity. }
+             rewrite H5. rewrite H4. simpl. split.
+             * apply H0.
+             * unfold equiv_pos. (* preciso dizer que andei corretamente *)
+               give_up.
+         +++ give_up.
     + unfold equiv_pos in H1.
-      simpl. exists steps_str. rewrite snap_str_eq. split.
+      simpl. exists 0. replace (steps_str + 0) with steps_str.
+      rewrite snap_str_eq. split.
       ++ apply H0.
       ++ apply H1.
+      ++ lia.
 Abort.
+
+(* nth_error_skipn:
+  forall [A : Type] (n : nat) (l : list A) (i : nat),
+   nth_error (skipn n l) i = nth_error l (n + i) *)
+
+
 
 
 (** ############## RASCUNHO ############# **)
@@ -685,50 +736,3 @@ Proof.
 Qed.
 
 (** Mostrar que toda macro IF acompanha o programa geral *)
-
-Lemma i_le_2_destruct : forall i, i <= 2 -> 
-  i = 0 \/ i = 1 \/ i = 2.
-Proof.
-  intros. inversion H; auto.
-  inversion H1; auto.
-  inversion H3; auto.
-Qed.
-
-
-Lemma p_str_tracked_if : forall p_nat nat_state p_str str_state pos_nat o v l,
-  p_str = get_simulated_program p_nat ->
-  str_state = get_equiv_state nat_state ->
-  nth_error p_nat pos_nat = Some (NatLang.Instr o (NatLang.IF_GOTO v l)) ->
-  exists macro macro_position m,
-  tracked p_str str_state macro macro_position m.
-Proof.
-  intros. assert (exists n n' k t, 
-          skipn (get_equiv_simulated_position p_nat pos_nat)
-                (get_simulated_program p_nat) =
-                fst (get_str_macro1 (NatLang.Instr o (NatLang.IF_GOTO v l))
-                n n' k) ++ t).
-  { unfold get_simulated_program. apply nat_nth_implies_macro, H1. }
-  destruct H2 as [n [n' [k [t]]]]. 
-  exists (fst (get_str_macro1 (NatLang.Instr o (NatLang.IF_GOTO v l)) n n' k)),
-  (get_equiv_simulated_position p_nat pos_nat). simpl.
-  unfold if_macro_1. unfold tracked. intros.
-  (* m depende de quem é v *)
-  destruct (str_state v) as [| h s] eqn:E.
-  (* v é a string vazia -> m = 2 *)
-  + exists 2. intros.  pose proof (i_le_2_destruct i H3).
-    destruct H6; subst.
-    (* i = 0 *)
-    ++ simpl. split; auto.
-    ++ destruct H6.
-       (* i = 1 *)
-       * subst. simpl in H2. simpl. rewrite E. simpl.
-         rewrite <- hd_error_skipn. rewrite H2. simpl.
-         rewrite E. simpl. lia.
-       (* i = 2 *)
-       * subst. simpl in H2. simpl. rewrite E. simpl.
-         rewrite <- hd_error_skipn. rewrite H2. simpl.
-         rewrite E. simpl. Search (nth_error).
-         rewrite <- nth_error_skipn. rewrite H2. simpl.
-         rewrite E. simpl. lia.
-Abort.
-
