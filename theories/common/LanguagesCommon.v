@@ -25,6 +25,13 @@ Definition eqb_lbl l1 l2 :=
   | A a, A b => a =? b
   end.
 
+
+
+Theorem eqb_lbl_refl : forall v, eqb_lbl v v = true.
+Proof.
+  destruct v; try (apply PeanoNat.Nat.eqb_refl); reflexivity.
+Qed.
+
 Theorem eqb_var_refl : forall v, eqb_var v v = true.
 Proof.
   destruct v; try (apply PeanoNat.Nat.eqb_refl); reflexivity.
@@ -41,6 +48,16 @@ Proof.
   (* <- *)
   - rewrite H. apply eqb_var_refl.
 Qed.
+
+Theorem lbl_eqb_eq : forall l1 l2 , eqb_lbl l1 l2 = true <-> l1 = l2.
+Proof.
+  intros l1 l2. split; intros H.
+  + destruct l1; destruct l2; (try discriminate).
+    simpl in H. rewrite PeanoNat.Nat.eqb_eq in H. rewrite H. reflexivity.
+  + rewrite H. apply eqb_lbl_refl.
+Qed.
+
+
 
 Theorem var_eqb_neq : forall v1 v2 : variable, eqb_var v1 v2 = false <-> v1 <> v2.
 Proof.

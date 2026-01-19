@@ -44,7 +44,7 @@ Definition b := 1.
     Seja _k_ o maior valor de _n_ na variável _Z n_ no programa dos naturais.
     Para o programa de strings, sempre usaremos _aux_ como Z (k + 2) e
     _z_ como Z (k + 1). Para usarmos Z de maneira segura, vamos sempre
-    zerar o seu valor ao final de cada macro, garantindo que estará
+zerar o seu valor ao final de cada macro, garantindo que estará
     "limpo" para a execução da próxima macro. A variável aux será
     usada apenas para simular o GOTO, então a argumentação deve
     seguir um caminho um pouco diferente. *)
@@ -217,16 +217,27 @@ End if_macro.
 
 (** ** Obtendo a Maior Label em p_nat *)
 
+
+Definition max := PeanoNat.Nat.max.
+
+Definition max_opts opt_lbl goto_lbl k :=
+  match opt_lbl, goto_lbl with
+  | Some (A n), Some (A n') => max (max n n) k 
+  | Some (A n), None => max n k
+  | None, Some (A n') => max n' k
+  | None, None => k
+  end.
+
 Definition max_label_nat (nat_prg : NatLang.program) : nat :=
   let fix get_max_label (l : NatLang.program) (k : nat) : nat :=
       match l with
       | [] => k
+      | NatLang.Instr opt_lbl (NatLang.IF_GOTO _ goto_lbl) :: t =>
+            get_max_label t (max_opts opt_lbl goto_lbl k)
       | NatLang.Instr opt_lbl _ :: t =>
           match opt_lbl with
           | None => get_max_label t k
-          | Some (A n) =>
-              if ltb k n then get_max_label t n
-                       else get_max_label t k
+          | Some (A n) => get_max_label t (max n k)
           end
       end
   in get_max_label nat_prg 0.
@@ -240,9 +251,7 @@ Definition max_z_nat (nat_prg : NatLang.program) : nat :=
       | [] => k
       | NatLang.Instr opt_lbl (NatLang.INCR (Z n))  :: t 
       | NatLang.Instr opt_lbl (NatLang.DECR (Z n))  :: t 
-      | NatLang.Instr opt_lbl (NatLang.IF_GOTO (Z n) _ )  :: t 
-        => if ltb k n then get_max_z t n
-                      else get_max_z t k
+      | NatLang.Instr opt_lbl (NatLang.IF_GOTO (Z n) _ )  :: t  => get_max_z t (max n k)
       | _ :: t => get_max_z t k
       end
   in get_max_z nat_prg 0.
@@ -303,16 +312,29 @@ Definition get_simulated_program (nat_prg : NatLang.program) : StringLang.progra
 (** A posição equivalente é simplesmente a soma do tamanho de todas 
     as expansões de macro até aquele ponto. *)
 
-Fixpoint get_equiv_simulated_position p_nat n :=
-  match n with
-  | S n' => match p_nat with 
-            | h :: t => let (macro, _) := get_str_macro1 h 0 0 0 in 
-                        length macro 
-                        + get_equiv_simulated_position t n'
-            | []     => 1
-            end
-  | O    => 0
-  end.
+Definition macro_length i :=
+  length (fst (get_str_macro1 i 0 0 0)).
+
+Definition get_equiv_simulated_position (p_nat : NatLang.program) (n : nat) :=
+  fold_left
+    (fun acc instr => acc + macro_length instr)
+    (firstn n p_nat)
+  0.
+
+Import ListNotations.
+
+Lemma firstn_S_nth_error :
+  forall (A : Type) (l : list A) n x,
+    nth_error l n = Some x ->
+    firstn (n + 1) l = firstn n l ++ [x].
+Proof.
+  induction l as [|h t IH]; intros n x H.
+  - rewrite nth_error_nil in H. discriminate.
+  - destruct n.
+    + simpl in *. inversion H; reflexivity.
+    + simpl in *. apply IH in H.
+      rewrite H. reflexivity.
+Qed.
 
 Definition equiv_pos 
   (p_nat : NatLang.program)
@@ -453,6 +475,43 @@ Proof.
   intros. destruct h; destruct s; reflexivity.
 Qed.
 
+
+Lemma fold_left_add_const :
+  forall l acc c,
+    fold_left
+      (fun acc instr => acc + macro_length instr)
+      l (acc + c)
+    =
+    acc +
+    fold_left
+      (fun acc instr => acc + macro_length instr)
+      l c.
+Proof.
+  induction l as [|h t IH]; intros acc c.
+  - simpl. reflexivity.
+  - simpl. pose proof (IH acc (c + macro_length h)).
+    replace (acc + (c + macro_length h)) with (acc + c + (macro_length h))
+    in H. rewrite H. reflexivity.
+    lia.
+Qed.
+
+Lemma get_equiv_simulated_position_cons :
+  forall h t i,
+    get_equiv_simulated_position (h :: t) (S i) =
+    macro_length h +
+    get_equiv_simulated_position t i.
+Proof.
+  intros.
+  replace (h :: t) with ([h] ++ t).
+  + unfold get_equiv_simulated_position. simpl.
+    pose proof (fold_left_add_const (firstn i t)  (macro_length h) 0).
+    replace (macro_length h + 0) with (macro_length h) in H by lia.
+    exact H.
+  + reflexivity.
+Qed.
+
+
+
 Lemma nat_nth_implies_none : forall p_nat i a b c,
   nth_error p_nat i = None ->
   nth_error (get_str_prg_rec p_nat a b c) 
@@ -466,11 +525,13 @@ Proof.
       remember (max_label_nat (h :: t)). remember (max_z_nat (h :: t)).
       remember (get_str_macro1 h b0 a0 c). destruct p.
       remember (get_str_macro1 h 0 0 0). destruct p.
-      simpl. rewrite <- Heqp. rewrite <- Heqp0. destruct h.
+      rewrite get_equiv_simulated_position_cons.
+      simpl. rewrite <- Heqp. destruct h.
       destruct s; simpl in *;
       injection Heqp; injection Heqp0; intros; subst;
       apply IH, H.
 Qed.
+
 
 Lemma nat_nth_implies_macro' : forall p_nat i instr_nat a b c,
   nth_error p_nat i = Some instr_nat ->
@@ -504,8 +565,9 @@ Proof.
           get_equiv_simulated_position t n - length l0) = 
           get_equiv_simulated_position t n) by lia.
           rewrite H3. reflexivity.
-        }
-          rewrite H1.  subst. apply IH, H.
+        } rewrite get_equiv_simulated_position_cons.
+          unfold macro_length. rewrite <- Heqp. simpl.
+        rewrite H1.  subst. apply IH, H.
 Qed.
 
 Lemma nat_nth_implies_macro : forall p_nat i instr_nat,
@@ -519,8 +581,82 @@ Proof.
 Qed.
 
 
+Lemma incr_string_not_empty : forall l, (incr_string1 l) <> [].
+Proof.
+  intros l. unfold incr_string1. destruct l.
+  + intros H. discriminate H.
+  + destruct (n =? a); intros H; discriminate H.
+Qed.
 
 
+Lemma state_nat_Sn_implies_non_empty : forall v state_nat state_str n,
+  state_equiv state_nat state_str ->
+  state_nat v = S n -> exists h t, state_str v = h :: t.
+Proof.
+  intros. unfold get_equiv_state in H. 
+  remember (state_str v). unfold state_equiv in H.
+  assert (state_str v = (nat_to_string1 (state_nat v))).
+  { apply H, eq_refl. } rewrite H1, H0 in Heqs.
+  simpl in Heqs. destruct s eqn:E.
+  + pose proof (incr_string_not_empty (nat_to_string1 n)).
+    rewrite Heqs in H2. contradiction.
+  + exists n0, s0; reflexivity.
+Qed.
+
+Lemma get_equiv_simulated_Sn:
+  forall p_nat n instr, 
+    nth_error p_nat n = Some instr ->
+    get_equiv_simulated_position p_nat (n + 1) 
+    = get_equiv_simulated_position p_nat n + macro_length instr.
+Proof.
+  intros p_nat n instr Hnth.
+  unfold get_equiv_simulated_position.
+  rewrite firstn_S_nth_error with (x := instr); auto.
+  rewrite fold_left_app. simpl. lia.
+Qed.
+
+
+Fixpoint label_in p_nat lbl :=
+  match p_nat with
+  | [] => false
+  | NatLang.Instr opt_lbl _ :: t => match opt_lbl with 
+                                    | Some lbl' => if eqb_lbl lbl' lbl then true
+                                                  else label_in t lbl
+                                    | None => label_in t lbl
+                                    end
+  end.
+
+
+Lemma get_labeled_instr_simulated : forall p_nat l s,
+  get_labeled_instr (get_simulated_program (NatLang.Instr (Some l) s :: p_nat))
+  (Some l) = 0.
+Proof.
+  intros. unfold get_simulated_program. 
+  remember  (max_label_nat (NatLang.Instr (Some l) s :: p_nat)).
+  remember (max_z_nat (NatLang.Instr (Some l) s :: p_nat)).
+  simpl. destruct s; simpl; rewrite eqb_lbl_refl; reflexivity.
+Qed.
+  
+
+
+Lemma labels_equiv_position : forall p_nat p_str label,
+  label_in p_nat label = true ->
+  p_str = get_simulated_program p_nat ->
+  equiv_pos p_nat (NatLang.get_labeled_instr p_nat (Some label))
+            p_str (get_labeled_instr p_str (Some label)).
+Proof.
+  induction p_nat; intros.
+  + unfold label_in in H. discriminate H.
+  + unfold equiv_pos in *. simpl. unfold NatLang.eq_inst_label.
+    destruct a0. destruct o eqn:E.
+    ++ rewrite H0. simpl in H. destruct (eqb_lbl l label) eqn:E2.
+       +++ apply lbl_eqb_eq in E2. rewrite E2. 
+           rewrite get_labeled_instr_simulated. unfold get_equiv_simulated_position.
+           rewrite firstn_0. reflexivity.
+       +++ rewrite get_equiv_simulated_position_cons. destruct s.
+           (* Beleza, basta expandir as macros e usar algum lema para 
+              dizer que toda label da macro será diferente *)
+Abort.
 
 Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
@@ -606,9 +742,25 @@ Proof.
              { rewrite <- nth_error_skipn, H2. reflexivity. }
              rewrite H5. rewrite H4. simpl. split.
              * apply H0.
-             * unfold equiv_pos. (* preciso dizer que andei corretamente *)
-               give_up.
-         +++ give_up.
+             * unfold equiv_pos.
+               pose proof (get_equiv_simulated_Sn p_nat pos_nat _ p_nat_instr).
+               unfold macro_length in H6. simpl in H6. rewrite H6.
+               rewrite <- H1. lia.
+          (* v = S n *)
+         +++ assert (exists h t,  state_str v = h :: t).
+             { eapply state_nat_Sn_implies_non_empty, E.
+               apply H0. }
+             destruct H3 as [char [string_t]].
+             destruct char.
+             (* char = 0 *)
+             * exists 1. rewrite H, snap_str_eq. simpl in *.
+             assert ((nth_error p_str pos_str) = (Some [o] (IF v ENDS a GOTO o0))).
+             { replace pos_str with (pos_str + 0).
+               rewrite <- nth_error_skipn, H2. reflexivity. lia. }
+             rewrite H4. rewrite H3. simpl.
+             (* NatLang.get_labeled_instr p_nat o0 equiv get_labeled_instr p_str *)
+             admit.
+
     + unfold equiv_pos in H1.
       simpl. exists 0. replace (steps_str + 0) with steps_str.
       rewrite snap_str_eq. split.
@@ -641,26 +793,6 @@ Definition get_position snap :=
   | SNAP i _ => i
   end.
 
-Lemma algo : forall p_nat p_str pos_str pos_nat state_str o v m,
-  nth_error p_nat pos_nat = Some (NatLang.Instr o (NatLang.INCR v)) ->
-  p_str = get_simulated_program p_nat ->
-  pos_str = get_equiv_simulated_position p_nat pos_nat ->
-  exists macro,
-  (get_state (compute_program p_str (SNAP pos_str state_str) m))
-   = (get_state (compute_program (macro) (SNAP 0 state_str) m)).
-Proof.
-  intros.
-  assert (exists n n' k t, skipn (pos_str) (p_str) = 
-  fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR v)) n n' k) ++ t).
-  { rewrite H1. rewrite H0. unfold get_simulated_program.
-      apply nat_nth_implies_macro, H. 
-  }
-  destruct H2 as [n [n' [k [t]]]].
-  exists (fst  (get_str_macro1 (NatLang.Instr o (NatLang.INCR v)) n n' k)).
-  simpl. unfold compute_program. unfold next_step. simpl.
-
-
-Abort.
 
 
 Definition macro_at (prog : StringLang.program) macro position :=
