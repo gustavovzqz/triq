@@ -16,17 +16,6 @@ From Coq Require Extraction.
 From Coq Require Import Lia.
 Import ListNotations.
 
-
-(** Descomentar caso não esteja na biblioteca padrão *)
-
-Lemma nth_error_nil :
-  forall (A : Type) (n : nat),
-    nth_error (@nil A) n = None.
-Proof.
-  intros A n.
-  destruct n; reflexivity.
-Qed.
-
 (** "a" e "b" são os caracteres básicos do alfabeto de dois dígitos. *)
 
 Definition a  := 0.
@@ -130,6 +119,8 @@ Variable (n': nat). (* n' é o valor da maior label que aparece em p_str *)
 Variable (k : nat). (* k é o valor da maior variável Z que aparece em p_nat *)
 
 Let z := Z (1 + k).
+
+
 Let aux := Z (2 + k).
 
 Let B  := Some (A (1  + n + n')).
@@ -228,8 +219,7 @@ Definition max_opts opt_lbl goto_lbl k :=
   | None, None => k
   end.
 
-Definition max_label_nat (nat_prg : NatLang.program) : nat :=
-  let fix get_max_label (l : NatLang.program) (k : nat) : nat :=
+Fixpoint get_max_label (l : NatLang.program) (k : nat) : nat :=
       match l with
       | [] => k
       | NatLang.Instr opt_lbl (NatLang.IF_GOTO _ goto_lbl) :: t =>
@@ -239,22 +229,26 @@ Definition max_label_nat (nat_prg : NatLang.program) : nat :=
           | None => get_max_label t k
           | Some (A n) => get_max_label t (max n k)
           end
-      end
-  in get_max_label nat_prg 0.
+      end.
+
+Definition max_label_nat (nat_prg : NatLang.program) : nat :=
+  get_max_label nat_prg 0.
 
 
 (** ** Obtendo a Maior Variável Z em p_nat *)
 
-Definition max_z_nat (nat_prg : NatLang.program) : nat :=
-  let fix get_max_z (l : NatLang.program) (k : nat) : nat :=
+Fixpoint get_max_z (l : NatLang.program) (k : nat) : nat :=
       match l with
       | [] => k
       | NatLang.Instr opt_lbl (NatLang.INCR (Z n))  :: t 
       | NatLang.Instr opt_lbl (NatLang.DECR (Z n))  :: t 
       | NatLang.Instr opt_lbl (NatLang.IF_GOTO (Z n) _ )  :: t  => get_max_z t (max n k)
       | _ :: t => get_max_z t k
-      end
-  in get_max_z nat_prg 0.
+      end.
+
+
+Definition max_z_nat (nat_prg : NatLang.program) : nat :=
+   get_max_z nat_prg 0.
 
 
 (** ** Obtendo a Macro *)
@@ -636,7 +630,66 @@ Proof.
   remember (max_z_nat (NatLang.Instr (Some l) s :: p_nat)).
   simpl. destruct s; simpl; rewrite eqb_lbl_refl; reflexivity.
 Qed.
-  
+
+
+
+Lemma get_max_label_max : forall p_nat k n, 
+  get_max_label p_nat (max k n) >= k.
+Proof.
+  unfold max. induction p_nat; intros.
+  - simpl. apply PeanoNat.Nat.le_max_l.
+  - simpl. destruct a0. destruct s.
+    + destruct o.
+       ++ destruct l. pose proof (PeanoNat.Nat.max_dec k n).
+          destruct H; unfold max.
+          * rewrite e. rewrite PeanoNat.Nat.max_comm. apply IHp_nat.
+          * rewrite e. admit.
+       ++ apply IHp_nat.
+    + destruct o.
+       ++ destruct l. pose proof (PeanoNat.Nat.max_dec k n).
+          destruct H; unfold max.
+          * rewrite e. rewrite PeanoNat.Nat.max_comm. apply IHp_nat.
+          * rewrite e. admit.
+       ++ apply IHp_nat.
+Admitted.
+(* + destruct o.
+       ++ destruct l. pose proof (PeanoNat.Nat.max_dec k n).
+          destruct H; unfold max.
+          * rewrite e. rewrite PeanoNat.Nat.max_comm. apply IHp_nat.
+          * rewrite e. admit.
+   ++ apply IHp_nat. *)
+
+
+
+Lemma max_label_diff_pnat_label : forall p_nat label_nat k b0,
+  label_in p_nat label_nat = true ->
+  label_nat = A b0 ->
+  get_max_label p_nat k >= b0.
+Proof.
+  induction p_nat; intros.
+  - simpl in H. discriminate.
+  - destruct a0. destruct o eqn:E. simpl in H.
+    (* o = Some l *)
+    + destruct (eqb_lbl l label_nat) eqn:label_eq.
+      ++ rewrite lbl_eqb_eq in label_eq. subst. clear H.
+         destruct s; unfold max_label_nat.
+         +++ simpl. apply get_max_label_max.
+         +++ simpl. apply get_max_label_max.
+         +++ simpl. destruct o.
+             * destruct l. admit.
+             * apply get_max_label_max.
+      ++ destruct label_nat. unfold max_label_nat. destruct s.
+         +++  destruct l. simpl. apply IHp_nat with (A b0).
+              destruct H0. apply H. reflexivity.
+         +++  destruct l. simpl. apply IHp_nat with (A b0).
+              destruct H0. apply H. reflexivity.
+         +++  destruct l. simpl. apply IHp_nat with (A b0).
+              destruct H0. apply H. reflexivity.
+    + destruct s.
+      ++ simpl in *. apply IHp_nat with (label_nat). apply H. apply H0.
+      ++ simpl in *. apply IHp_nat with (label_nat). apply H. apply H0.
+      ++ simpl in *.
+Abort.
 
 
 Lemma labels_equiv_position : forall p_nat p_str label,
@@ -654,6 +707,8 @@ Proof.
            rewrite get_labeled_instr_simulated. unfold get_equiv_simulated_position.
            rewrite firstn_0. reflexivity.
        +++ rewrite get_equiv_simulated_position_cons. destruct s.
+           (* v <- v + 1 *)
+           * simpl. fold *.
            (* Beleza, basta expandir as macros e usar algum lema para 
               dizer que toda label da macro será diferente *)
 Abort.
