@@ -118,22 +118,20 @@ Variable (n : nat). (* n é o valor da maior label que aparece em p_nat *)
 Variable (n': nat). (* n' é o valor da maior label que aparece em p_str *)
 Variable (k : nat). (* k é o valor da maior variável Z que aparece em p_nat *)
 
-Let z := Z (1 + k).
+Let z  := Z (k + 1).
 
+Let aux := Z (k + 2).
 
-Let aux := Z (2 + k).
-
-Let B  := Some (A (1  + n + n')).
-Let A1 := Some (A (2  + n + n')).
-Let A2 := Some (A (3  + n + n')).
-Let C  := Some (A (4  + n + n')).
-Let C2 := Some (A (5  + n + n')).
-Let D1 := Some (A (6  + n + n')).
-Let D2 := Some (A (7  + n + n')).
-Let K0 := Some (A (8  + n + n')).
-Let K1 := Some (A (9  + n + n')).
-Let K2 := Some (A (10 + n + n')).
-
+Let B  := Some (A (n + n' + 1)).
+Let A1 := Some (A (n + n' + 2)).
+Let A2 := Some (A (n + n' + 3)).
+Let C  := Some (A (n + n' + 4)).
+Let C2 := Some (A (n + n' + 5)).
+Let D1 := Some (A (n + n' + 6)).
+Let D2 := Some (A (n + n' + 7)).
+Let K0 := Some (A (n + n' + 8)).
+Let K1 := Some (A (n + n' + 9)).
+Let K2 := Some (A (n + n' + 10)).
 Let goto l := [ ] IF aux ENDS a GOTO l.
 
 Definition decr_macro_1 :=
@@ -621,11 +619,11 @@ Fixpoint label_in p_nat lbl :=
   end.
 
 
-Lemma get_labeled_instr_simulated : forall p_nat l s,
-  get_labeled_instr (get_simulated_program (NatLang.Instr (Some l) s :: p_nat))
+Lemma get_labeled_instr_simulated : forall p_nat l s a b c,
+  get_labeled_instr (get_str_prg_rec (NatLang.Instr (Some l) s :: p_nat) a b c)
   (Some l) = 0.
 Proof.
-  intros. unfold get_simulated_program. 
+  intros. 
   remember  (max_label_nat (NatLang.Instr (Some l) s :: p_nat)).
   remember (max_z_nat (NatLang.Instr (Some l) s :: p_nat)).
   simpl. destruct s; simpl; rewrite eqb_lbl_refl; reflexivity.
@@ -661,7 +659,7 @@ Admitted.
 
 
 
-Lemma max_label_diff_pnat_label : forall p_nat label_nat k b0,
+Lemma max_label_gt: forall p_nat label_nat k b0,
   label_in p_nat label_nat = true ->
   label_nat = A b0 ->
   get_max_label p_nat k >= b0.
@@ -676,7 +674,8 @@ Proof.
          +++ simpl. apply get_max_label_max.
          +++ simpl. apply get_max_label_max.
          +++ simpl. destruct o.
-             * destruct l. admit.
+             * destruct l. unfold max. rewrite PeanoNat.Nat.max_id.
+               apply get_max_label_max.
              * apply get_max_label_max.
       ++ destruct label_nat. unfold max_label_nat. destruct s.
          +++  destruct l. simpl. apply IHp_nat with (A b0).
@@ -686,32 +685,133 @@ Proof.
          +++  destruct l. simpl. apply IHp_nat with (A b0).
               destruct H0. apply H. reflexivity.
     + destruct s.
-      ++ simpl in *. apply IHp_nat with (label_nat). apply H. apply H0.
-      ++ simpl in *. apply IHp_nat with (label_nat). apply H. apply H0.
-      ++ simpl in *.
-Abort.
+      ++ simpl in *. apply IHp_nat with (label_nat); auto.
+      ++ simpl in *. apply IHp_nat with (label_nat); auto.
+      ++ simpl in *. destruct o0.
+         +++ destruct l. apply IHp_nat with label_nat; auto.
+         +++ apply IHp_nat with label_nat; auto.
+Qed.
 
 
-Lemma labels_equiv_position : forall p_nat p_str label,
-  label_in p_nat label = true ->
-  p_str = get_simulated_program p_nat ->
-  equiv_pos p_nat (NatLang.get_labeled_instr p_nat (Some label))
-            p_str (get_labeled_instr p_str (Some label)).
+Lemma max_label_diff_label : forall p_nat label_nat b0 m k,
+  label_in p_nat label_nat = true ->
+  label_nat = A b0 ->
+  k >= max_label_nat p_nat ->
+  m <> 0 ->
+  k + m =? b0 = false.
+Proof.
+Admitted.
+
+
+Lemma max_label_nat_ht_gt_t : forall h t,
+  max_label_nat (h :: t) >= max_label_nat t.
+Proof.
+  intros. unfold max_label_nat. destruct h.
+  destruct s.
+  + simpl. destruct o.
+    ++ destruct l.  rewrite PeanoNat.Nat.max_0_r.
+       unfold get_max_label.
+       admit.
+Admitted.
+
+Lemma ge_add : forall n m k,
+  n >= k -> n + m >= k.
+Proof.
+  induction m; intros.
+  + rewrite PeanoNat.Nat.add_0_r. apply H.
+  + rewrite PeanoNat.Nat.add_comm. simpl. constructor. unfold ge in *.
+    rewrite PeanoNat.Nat.add_comm. apply IHm, H.
+Qed.
+
+Lemma labels_equiv_position_in :
+  forall p_nat label a b c,
+    label_in p_nat label = true ->
+    b >= max_label_nat p_nat ->
+    equiv_pos
+      p_nat
+      (NatLang.get_labeled_instr p_nat (Some label))
+      (get_str_prg_rec p_nat a b c)
+      (get_labeled_instr
+         (get_str_prg_rec p_nat a b c)
+         (Some label)).
 Proof.
   induction p_nat; intros.
-  + unfold label_in in H. discriminate H.
-  + unfold equiv_pos in *. simpl. unfold NatLang.eq_inst_label.
+  - unfold label_in in H. discriminate H.
+  - unfold equiv_pos in *. simpl. unfold NatLang.eq_inst_label.
     destruct a0. destruct o eqn:E.
-    ++ rewrite H0. simpl in H. destruct (eqb_lbl l label) eqn:E2.
-       +++ apply lbl_eqb_eq in E2. rewrite E2. 
-           rewrite get_labeled_instr_simulated. unfold get_equiv_simulated_position.
-           rewrite firstn_0. reflexivity.
-       +++ rewrite get_equiv_simulated_position_cons. destruct s.
-           (* v <- v + 1 *)
-           * simpl. fold *.
-           (* Beleza, basta expandir as macros e usar algum lema para 
-              dizer que toda label da macro será diferente *)
-Abort.
+    + simpl in H. simpl. destruct s eqn:statement.
+      ++ simpl. destruct (eqb_lbl l label) eqn:label_eq.
+         * unfold get_equiv_simulated_position. reflexivity.
+         * destruct label. rewrite get_equiv_simulated_position_cons. simpl.
+           assert ((max_label_nat (NatLang.Instr (Some l) (NatLang.INCR v) 
+           :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
+           repeat (erewrite max_label_diff_label);
+           repeat (f_equal); eauto.
+           apply IHp_nat; eauto. lia.
+           all : apply ge_add; lia.
+      ++ simpl. destruct (eqb_lbl l label) eqn:label_eq.
+         * unfold get_equiv_simulated_position. reflexivity.
+         * destruct label. rewrite get_equiv_simulated_position_cons. simpl.
+           assert ((max_label_nat (NatLang.Instr (Some l) (NatLang.DECR v) 
+           :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
+           repeat (erewrite max_label_diff_label);
+           repeat (f_equal); eauto.
+           apply IHp_nat; eauto. lia.
+           all : apply ge_add; lia.
+      ++ simpl. destruct (eqb_lbl l label) eqn:label_eq.
+         * unfold get_equiv_simulated_position. reflexivity.
+         * destruct label. rewrite get_equiv_simulated_position_cons. simpl.
+           assert ((max_label_nat (NatLang.Instr (Some l) (NatLang.IF_GOTO v o0)
+           :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
+           repeat (erewrite max_label_diff_label);
+           repeat (f_equal); eauto.
+           apply IHp_nat; eauto. lia.
+    + simpl in H. simpl. destruct s.
+      ++ simpl. destruct label. rewrite get_equiv_simulated_position_cons.
+         assert ((max_label_nat (NatLang.Instr (None ) (NatLang.INCR v)
+         :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
+         simpl. repeat (erewrite max_label_diff_label);
+         repeat (f_equal); eauto; lia.
+      ++ simpl. destruct label. rewrite get_equiv_simulated_position_cons.
+         assert ((max_label_nat (NatLang.Instr (None ) (NatLang.DECR v)
+         :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
+         simpl. repeat (erewrite max_label_diff_label);
+         repeat (f_equal); eauto; lia.
+      ++ simpl. destruct label. rewrite get_equiv_simulated_position_cons.
+         assert ((max_label_nat (NatLang.Instr (None ) (NatLang.IF_GOTO v o0)
+         :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
+         simpl. repeat (erewrite max_label_diff_label);
+         repeat (f_equal); eauto.
+         apply IHp_nat; auto; lia.
+Qed.
+
+Lemma labels_equiv_position_not_in:
+  forall p_nat label a b c,
+    label_in p_nat label = false ->
+    b >= max_label_nat p_nat ->
+    equiv_pos
+      p_nat
+      (NatLang.get_labeled_instr p_nat (Some label))
+      (get_str_prg_rec p_nat a b c)
+      (get_labeled_instr
+         (get_str_prg_rec p_nat a b c)
+         (Some label)).
+Proof.
+Admitted.
+
+Lemma labels_equiv_position_none:
+  forall p_nat a b c,
+    equiv_pos
+      p_nat
+      (NatLang.get_labeled_instr p_nat (None))
+      (get_str_prg_rec p_nat a b c)
+      (get_labeled_instr
+         (get_str_prg_rec p_nat a b c)
+         (None)).
+Proof.
+Admitted.
+
+
 
 Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
@@ -812,9 +912,10 @@ Proof.
              assert ((nth_error p_str pos_str) = (Some [o] (IF v ENDS a GOTO o0))).
              { replace pos_str with (pos_str + 0).
                rewrite <- nth_error_skipn, H2. reflexivity. lia. }
-             rewrite H4. rewrite H3. simpl.
-             (* NatLang.get_labeled_instr p_nat o0 equiv get_labeled_instr p_str *)
-             admit.
+             rewrite H4. rewrite H3. simpl. split.
+             ** apply H0.
+             ** (* Destruct no label_in. Se está dentro, uso lema que já provei *)admit.
+        
 
     + unfold equiv_pos in H1.
       simpl. exists 0. replace (steps_str + 0) with steps_str.
