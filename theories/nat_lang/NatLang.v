@@ -51,6 +51,7 @@ Inductive statement : Type :=
   | DECR : variable -> statement
   | IF_GOTO   : variable -> option label -> statement.
 
+
 Inductive instruction : Type :=
   | Instr : option label -> statement -> instruction.
 
