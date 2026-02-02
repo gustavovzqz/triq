@@ -631,33 +631,95 @@ Qed.
 
 
 
-Lemma get_max_label_max : forall p_nat k n, 
-  get_max_label p_nat (max k n) >= k.
+(* Devo ter feito algum destruct errado em algum momento *)
+Lemma get_max_label_max' : forall p_nat k, 
+  get_max_label p_nat k >= k.
 Proof.
   unfold max. induction p_nat; intros.
-  - simpl. apply PeanoNat.Nat.le_max_l.
-  - simpl. destruct a0. destruct s.
+  - simpl. constructor.
+  - simpl. destruct a0. destruct s eqn:E.
     + destruct o.
-       ++ destruct l. pose proof (PeanoNat.Nat.max_dec k n).
+       ++ destruct l. pose proof (PeanoNat.Nat.max_dec n k).
           destruct H; unfold max.
-          * rewrite e. rewrite PeanoNat.Nat.max_comm. apply IHp_nat.
-          * rewrite e. admit.
+          * rewrite e. pose proof (IHp_nat n).
+            assert (n >= k).
+            { Search (PeanoNat.Nat.max). unfold ge.
+              rewrite PeanoNat.Nat.max_comm in e.
+              apply PeanoNat.Nat.max_r_iff in e. exact e. }
+            eapply PeanoNat.Nat.le_trans.
+            ** apply H0.
+            ** apply H.
+          * rewrite e. apply IHp_nat.
        ++ apply IHp_nat.
-    + destruct o.
-       ++ destruct l. pose proof (PeanoNat.Nat.max_dec k n).
+  + destruct o.
+       ++ destruct l. pose proof (PeanoNat.Nat.max_dec n k).
           destruct H; unfold max.
-          * rewrite e. rewrite PeanoNat.Nat.max_comm. apply IHp_nat.
-          * rewrite e. admit.
+          * rewrite e. pose proof (IHp_nat n).
+            assert (n >= k).
+            { Search (PeanoNat.Nat.max). unfold ge.
+              rewrite PeanoNat.Nat.max_comm in e.
+              apply PeanoNat.Nat.max_r_iff in e. exact e. }
+            eapply PeanoNat.Nat.le_trans.
+            ** apply H0.
+            ** apply H.
+          * rewrite e. apply IHp_nat.
        ++ apply IHp_nat.
-Admitted.
-(* + destruct o.
-       ++ destruct l. pose proof (PeanoNat.Nat.max_dec k n).
-          destruct H; unfold max.
-          * rewrite e. rewrite PeanoNat.Nat.max_comm. apply IHp_nat.
-          * rewrite e. admit.
-   ++ apply IHp_nat. *)
+    + unfold max_opts. destruct o.
+       ++ destruct l. destruct o0.
+          * destruct l. rewrite PeanoNat.Nat.max_id.
+              pose proof (IHp_nat (max n k)).
+              pose proof (PeanoNat.Nat.max_dec n k).
+              destruct H0.
+            ** assert (n >= k).
+              { Search (PeanoNat.Nat.max). unfold ge.
+              rewrite PeanoNat.Nat.max_comm in e.
+              apply PeanoNat.Nat.max_r_iff in e. exact e. }
+              eapply PeanoNat.Nat.le_trans.
+              *** apply H0.
+              *** unfold max. rewrite e. apply IHp_nat.
+            ** unfold max. rewrite e. apply IHp_nat.
+          * pose proof (IHp_nat (max n k)).
+            pose proof (PeanoNat.Nat.max_dec n k).
+            destruct H0.
+            ** unfold max in *. rewrite e in *.
+               assert (n >= k).
+              { Search (PeanoNat.Nat.max). unfold ge.
+              rewrite PeanoNat.Nat.max_comm in e.
+              apply PeanoNat.Nat.max_r_iff in e. exact e. }
+              eapply PeanoNat.Nat.le_trans.
+              *** apply H0.
+              *** apply IHp_nat.
+            ** unfold max. rewrite e. apply IHp_nat.
+       ++ destruct o0.
+          * destruct l.
+              pose proof (IHp_nat (max n k)).
+              pose proof (PeanoNat.Nat.max_dec n k).
+              destruct H0.
+            ** assert (n >= k).
+              { Search (PeanoNat.Nat.max). unfold ge.
+              rewrite PeanoNat.Nat.max_comm in e.
+              apply PeanoNat.Nat.max_r_iff in e. exact e. }
+              eapply PeanoNat.Nat.le_trans.
+              *** apply H0.
+              *** unfold max. rewrite e. apply IHp_nat.
+            ** unfold max. rewrite e. apply IHp_nat.
+          * apply IHp_nat.
+Qed.
 
-
+Lemma get_max_label_max : forall p_nat k n,
+  get_max_label p_nat (max k n) >= k.
+Proof.
+  intros.
+  remember (max k n).
+  pose proof (get_max_label_max' p_nat n0).
+  assert (n0 >= k).
+  {Search (PeanoNat.Nat.max _). rewrite Heqn0. unfold max.
+   unfold ge. apply PeanoNat.Nat.le_max_l. }
+    eapply PeanoNat.Nat.le_trans.
+    + apply H0.
+    + apply H.
+Qed.
+  
 
 Lemma max_label_gt: forall p_nat label_nat k b0,
   label_in p_nat label_nat = true ->
@@ -710,8 +772,14 @@ Proof.
   destruct s.
   + simpl. destruct o.
     ++ destruct l.  rewrite PeanoNat.Nat.max_0_r.
-       unfold get_max_label.
        admit.
+    ++ constructor.
+  + simpl. destruct o.
+    ++ destruct l.  rewrite PeanoNat.Nat.max_0_r.
+       admit.
+    ++ constructor.
+  + simpl. destruct o0.
+    ++ destruct l. simpl.
 Admitted.
 
 Lemma ge_add : forall n m k,
@@ -813,6 +881,21 @@ Admitted.
 
 
 
+Lemma state_str_1_char_0_1 : forall state_str x h t,
+  StringLang.state_over state_str 1 ->
+  state_str x = h :: t ->
+  h = 0 \/ h = 1.
+Proof.
+  intros. unfold state_over in H. unfold string_over in H.
+  pose proof (H x). rewrite H0 in H1. destruct H1. destruct H0.
+  destruct h.
+  + left. reflexivity.
+  + right. destruct h.
+    ++ reflexivity.
+    ++ apply le_S_n in H1. apply PeanoNat.Nat.nle_succ_0 in H1.
+       contradiction.
+Qed.
+
 Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
          (initial_state_nat : NatLang.state),
@@ -835,6 +918,8 @@ Proof.
   { apply equiv_state_string1. }
   intros steps_nat.
   remember (get_simulated_program p_nat) as p_str.
+  remember (get_equiv_state initial_state_nat) as initial_state.
+  rewrite Heqinitial_state.
   induction steps_nat as [| steps_nat IH].
   (* Caso base: n = 0 *)
   - exists 0. split.
@@ -906,17 +991,40 @@ Proof.
              { eapply state_nat_Sn_implies_non_empty, E.
                apply H0. }
              destruct H3 as [char [string_t]].
-             destruct char.
+             assert (char = 0 \/ char = 1). 
+             { admit. } destruct H4.
+               
              (* char = 0 *)
              * exists 1. rewrite H, snap_str_eq. simpl in *.
              assert ((nth_error p_str pos_str) = (Some [o] (IF v ENDS a GOTO o0))).
              { replace pos_str with (pos_str + 0).
                rewrite <- nth_error_skipn, H2. reflexivity. lia. }
-             rewrite H4. rewrite H3. simpl. split.
+             rewrite H5, H3, H4. simpl. split.
              ** apply H0.
-             ** (* Destruct no label_in. Se está dentro, uso lema que já provei *)admit.
-        
-
+             ** destruct o0.
+                *** destruct (label_in p_nat l) eqn:lbl_in.
+                    **** rewrite Heqp_str. unfold get_simulated_program.
+                         apply labels_equiv_position_in. auto. constructor.
+                    **** rewrite Heqp_str. apply labels_equiv_position_not_in.
+                         auto. constructor.
+                *** rewrite Heqp_str. apply labels_equiv_position_none.
+            (* char = 1 *)
+             * exists 2. rewrite H, snap_str_eq. simpl in *.
+             assert ((nth_error p_str pos_str) = (Some [o] (IF v ENDS a GOTO o0))).
+             { replace pos_str with (pos_str + 0).
+               rewrite <- nth_error_skipn, H2. reflexivity. lia. }
+             rewrite H5, H3, H4. simpl. 
+             assert ((nth_error p_str (pos_str + 1) = (Some [o] (IF v ENDS b GOTO o0)))).
+             { rewrite <- nth_error_skipn, H2. reflexivity. }
+             rewrite H6, H3, H4. simpl. split.
+             ** apply H0.
+             ** destruct o0.
+                *** destruct (label_in p_nat l) eqn:lbl_in.
+                    **** rewrite Heqp_str. unfold get_simulated_program.
+                         apply labels_equiv_position_in. auto. constructor.
+                    **** rewrite Heqp_str. apply labels_equiv_position_not_in.
+                         auto. constructor.
+                *** rewrite Heqp_str. apply labels_equiv_position_none.
     + unfold equiv_pos in H1.
       simpl. exists 0. replace (steps_str + 0) with steps_str.
       rewrite snap_str_eq. split.
@@ -927,7 +1035,14 @@ Abort.
 
 (* nth_error_skipn:
   forall [A : Type] (n : nat) (l : list A) (i : nat),
-   nth_error (skipn n l) i = nth_error l (n + i) *)
+   nth_error (skipn n l) i = nth_error l (n + i) *)  
+
+
+                  
+
+              
+
+
 
 
 
