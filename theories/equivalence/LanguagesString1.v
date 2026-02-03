@@ -213,7 +213,7 @@ Search (le).
 
 Definition max_opts opt_lbl goto_lbl k :=
   match opt_lbl, goto_lbl with
-  | Some (A n), Some (A n') => max (max n n) k 
+  | Some (A n), Some (A n') => max (max n n') k 
   | Some (A n), None => max n k
   | None, Some (A n') => max n' k
   | None, None => k
@@ -610,14 +610,27 @@ Proof.
 Qed.
 
 
+
+Definition check_equals_labels_label t1 t2 value :=
+  match t1, t2 with
+  | Some t1', Some t2' => orb (eqb_lbl t1' value) (eqb_lbl t2' value)
+  | Some t1', None => eqb_lbl t1' value
+  | None, Some t2' => eqb_lbl t2' value
+  | None, None => false
+  end.
+
+Definition eqb_opt_label_label opt_label value :=
+  match opt_label with 
+  | Some lbl => eqb_lbl lbl value
+  | None => false
+  end.
+
 Fixpoint label_in p_nat lbl :=
   match p_nat with
   | [] => false
-  | NatLang.Instr opt_lbl _ :: t => match opt_lbl with 
-                                    | Some lbl' => if eqb_lbl lbl' lbl then true
-                                                  else label_in t lbl
-                                    | None => label_in t lbl
-                                    end
+  | NatLang.Instr opt_lbl _ :: t => if (eqb_opt_label_label opt_lbl lbl)
+                                    then true
+                                    else label_in t lbl
   end.
 
 
@@ -668,18 +681,11 @@ Proof.
        ++ apply IHp_nat.
     + unfold max_opts. destruct o.
        ++ destruct l. destruct o0.
-          * destruct l. rewrite PeanoNat.Nat.max_id.
-              pose proof (IHp_nat (max n k)).
-              pose proof (PeanoNat.Nat.max_dec n k).
-              destruct H0.
-            ** assert (n >= k).
-              { Search (PeanoNat.Nat.max). unfold ge.
-              rewrite PeanoNat.Nat.max_comm in e.
-              apply PeanoNat.Nat.max_r_iff in e. exact e. }
-              eapply PeanoNat.Nat.le_trans.
-              *** apply H0.
-              *** unfold max. rewrite e. apply IHp_nat.
-            ** unfold max. rewrite e. apply IHp_nat.
+          * destruct l. 
+              pose proof (IHp_nat (max (max n n0) k)).
+              eapply PeanoNat.Nat.le_trans with (max (max n n0) k).
+              { unfold max. lia. }
+              apply IHp_nat.
           * pose proof (IHp_nat (max n k)).
             pose proof (PeanoNat.Nat.max_dec n k).
             destruct H0.
@@ -737,22 +743,37 @@ Proof.
          destruct s; unfold max_label_nat.
          +++ simpl. apply get_max_label_max.
          +++ simpl. apply get_max_label_max.
-         +++ simpl. destruct o.
-             * destruct l. unfold max. rewrite PeanoNat.Nat.max_id.
+         +++ simpl. destruct o eqn:Eo.
+             * destruct l. unfold max. 
+               apply PeanoNat.Nat.le_trans with (PeanoNat.Nat.max b0 n).
+               { lia. }
                apply get_max_label_max.
              * apply get_max_label_max.
       ++ destruct label_nat. unfold max_label_nat. destruct s.
-         +++  destruct l. simpl. apply IHp_nat with (A b0).
+         +++ destruct l. simpl. apply IHp_nat with (A b0).
               destruct H0. apply H. reflexivity.
-         +++  destruct l. simpl. apply IHp_nat with (A b0).
+         +++ destruct l. simpl. apply IHp_nat with (A b0).
               destruct H0. apply H. reflexivity.
-         +++  destruct l. simpl. apply IHp_nat with (A b0).
-              destruct H0. apply H. reflexivity.
+         +++ destruct l. simpl. destruct o0.
+             * destruct l. simpl in *.
+               destruct (n1 =? n) eqn:E1.
+               ** injection H0 as H1. assert (n1 = b0). 
+                  { rewrite PeanoNat.Nat.eqb_eq in E1. lia. }
+                  subst. apply PeanoNat.Nat.le_trans with (max n0 b0).
+                  { unfold max. lia. }
+                  apply get_max_label_max.
+               ** apply IHp_nat with (A n); auto.
+             * apply IHp_nat with (A n); auto.
+    (* o = None *)
     + destruct s.
       ++ simpl in *. apply IHp_nat with (label_nat); auto.
       ++ simpl in *. apply IHp_nat with (label_nat); auto.
       ++ simpl in *. destruct o0.
-         +++ destruct l. apply IHp_nat with label_nat; auto.
+         +++ destruct l. subst. simpl in H. 
+             destruct (n =? b0) eqn:E.
+             * rewrite PeanoNat.Nat.eqb_eq in E. subst.
+               apply get_max_label_max.
+             * apply IHp_nat with (A b0); auto.
          +++ apply IHp_nat with label_nat; auto.
 Qed.
 
@@ -761,36 +782,10 @@ Lemma max_label_diff_label' : forall p_nat b0 k,
   label_in p_nat (A b0) = true ->
   get_max_label p_nat k >= b0.
 Proof.
-  intros. generalize dependent k.
-  induction p_nat; intros; 
-  unfold max_label_nat.
-  - simpl in H. discriminate.
-  - simpl in *. destruct a0. destruct o. destruct l.
-    + simpl in H. destruct (n =? b0) eqn:E.
-      ++ assert (max n k >= n). { unfold max. lia. }
-         rewrite PeanoNat.Nat.eqb_eq in E. 
-         assert (n >= b0) by lia.
-         destruct s.
-         +++ subst. pose proof (get_max_label_max' p_nat (max b0 k)).
-             eapply PeanoNat.Nat.le_trans.
-             * apply H0.
-             * apply H2.
-         +++ subst. pose proof (get_max_label_max' p_nat (max b0 k)).
-             eapply PeanoNat.Nat.le_trans.
-             * apply H0.
-             * apply H2.
-         +++ destruct o.
-             * destruct l. simpl. rewrite PeanoNat.Nat.max_id.
-               pose proof (get_max_label_max' p_nat (max n k)).
-               eapply PeanoNat.Nat.le_trans.
-               ** apply H1.
-               ** apply get_max_label_max.
-             * simpl. pose proof (get_max_label_max' p_nat (max n k)).
-               eapply PeanoNat.Nat.le_trans.
-               ** apply H1.
-               ** apply get_max_label_max.
-      ++ destruct s; apply IHp_nat, H.
-    + destruct s; apply IHp_nat, H.
+  intros.
+  eapply max_label_gt.
+  + apply H.
+  + reflexivity.
 Qed.
 
 
@@ -835,11 +830,8 @@ Proof.
       ++ apply IHp, H.
     + destruct o.
       ++ unfold max_opts. destruct l. destruct o0. 
-         +++ destruct l. rewrite PeanoNat.Nat.max_id. 
-             pose proof (PeanoNat.Nat.max_dec n0 k). destruct H0;
-             unfold max in *; rewrite e; apply IHp; lia.
-         +++ pose proof (PeanoNat.Nat.max_dec n0 k). destruct H0;
-             unfold max in *; rewrite e; apply IHp; lia.
+         +++ destruct l. apply IHp. unfold max. lia.
+         +++ apply IHp. unfold max. lia.
       ++ simpl. destruct o0. 
          +++ destruct l. pose proof (PeanoNat.Nat.max_dec n0 k). destruct H0;
              unfold max in *; rewrite e; apply IHp; lia.
@@ -878,6 +870,9 @@ Proof.
     rewrite PeanoNat.Nat.add_comm. apply IHm, H.
 Qed.
 
+
+
+
 Lemma labels_equiv_position_in :
   forall p_nat label a b c,
     label_in p_nat label = true ->
@@ -890,55 +885,70 @@ Lemma labels_equiv_position_in :
          (get_str_prg_rec p_nat a b c)
          (Some label)).
 Proof.
-  induction p_nat; intros.
+  induction p_nat as [|h t]; intros.
   - unfold label_in in H. discriminate H.
   - unfold equiv_pos in *. simpl. unfold NatLang.eq_inst_label.
-    destruct a0. destruct o eqn:E.
+    destruct h. destruct o eqn:E.
     + simpl in H. simpl. destruct s eqn:statement.
       ++ simpl. destruct (eqb_lbl l label) eqn:label_eq.
          * unfold get_equiv_simulated_position. reflexivity.
          * destruct label. rewrite get_equiv_simulated_position_cons. simpl.
            assert ((max_label_nat (NatLang.Instr (Some l) (NatLang.INCR v) 
-           :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
+           :: t) >= max_label_nat t)) by apply max_label_nat_ht_gt_t.
            repeat (erewrite max_label_diff_label);
            repeat (f_equal); eauto.
-           apply IHp_nat; eauto. lia.
+           apply IHt; eauto. lia.
            all : apply ge_add; lia.
       ++ simpl. destruct (eqb_lbl l label) eqn:label_eq.
          * unfold get_equiv_simulated_position. reflexivity.
          * destruct label. rewrite get_equiv_simulated_position_cons. simpl.
            assert ((max_label_nat (NatLang.Instr (Some l) (NatLang.DECR v) 
-           :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
+           :: t) >= max_label_nat t)) by apply max_label_nat_ht_gt_t.
            repeat (erewrite max_label_diff_label);
            repeat (f_equal); eauto.
-           apply IHp_nat; eauto. lia.
+           apply IHt; eauto. lia.
            all : apply ge_add; lia.
       ++ simpl. destruct (eqb_lbl l label) eqn:label_eq.
          * unfold get_equiv_simulated_position. reflexivity.
-         * destruct label. rewrite get_equiv_simulated_position_cons. simpl.
-           assert ((max_label_nat (NatLang.Instr (Some l) (NatLang.IF_GOTO v o0)
-           :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
-           repeat (erewrite max_label_diff_label);
-           repeat (f_equal); eauto.
-           apply IHp_nat; eauto. lia.
+         * destruct o0.
+           ** simpl. rewrite get_equiv_simulated_position_cons. simpl.
+              f_equal. f_equal. unfold eqb_lbl in *.  destruct l.
+              destruct l0. destruct label. simpl in *.
+              *** apply IHt; eauto. 
+                   assert ((max_label_nat ((NatLang.Instr (Some (A n)) 
+                   (NatLang.IF_GOTO v (Some (A n0))))
+                   :: t) >= max_label_nat t)) by apply max_label_nat_ht_gt_t.
+                   lia.
+           ** simpl. rewrite get_equiv_simulated_position_cons. simpl.
+              f_equal. f_equal. unfold eqb_lbl in *.  destruct l.
+              destruct label. simpl in *.
+              *** apply IHt; eauto. 
+                   assert ((max_label_nat (NatLang.Instr (Some (A n)) 
+                   (NatLang.IF_GOTO v None)
+                   :: t) >= max_label_nat t)) by apply max_label_nat_ht_gt_t.
+                   lia.
     + simpl in H. simpl. destruct s.
       ++ simpl. destruct label. rewrite get_equiv_simulated_position_cons.
          assert ((max_label_nat (NatLang.Instr (None ) (NatLang.INCR v)
-         :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
+         :: t) >= max_label_nat t)) by apply max_label_nat_ht_gt_t.
          simpl. repeat (erewrite max_label_diff_label);
          repeat (f_equal); eauto; lia.
       ++ simpl. destruct label. rewrite get_equiv_simulated_position_cons.
          assert ((max_label_nat (NatLang.Instr (None ) (NatLang.DECR v)
-         :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
+         :: t) >= max_label_nat t)) by apply max_label_nat_ht_gt_t.
          simpl. repeat (erewrite max_label_diff_label);
          repeat (f_equal); eauto; lia.
       ++ simpl. destruct label. rewrite get_equiv_simulated_position_cons.
          assert ((max_label_nat (NatLang.Instr (None ) (NatLang.IF_GOTO v o0)
-         :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
+         :: t) >= max_label_nat t)) by apply max_label_nat_ht_gt_t.
          simpl. repeat (erewrite max_label_diff_label);
          repeat (f_equal); eauto.
-         apply IHp_nat; auto; lia.
+         apply IHt; auto; lia.
 Qed.
+
+
+
+
 
 Lemma labels_equiv_position_not_in:
   forall p_nat label a b c,
@@ -953,6 +963,8 @@ Lemma labels_equiv_position_not_in:
          (Some label)).
 Proof.
 Admitted.
+
+          
 
 Lemma labels_equiv_position_none:
   forall p_nat a b c,
