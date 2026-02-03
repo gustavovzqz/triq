@@ -625,13 +625,23 @@ Definition eqb_opt_label_label opt_label value :=
   | None => false
   end.
 
-Fixpoint label_in p_nat lbl :=
+Fixpoint label_in_instr p_nat lbl :=
   match p_nat with
   | [] => false
   | NatLang.Instr opt_lbl _ :: t => if (eqb_opt_label_label opt_lbl lbl)
                                     then true
-                                    else label_in t lbl
+                                    else label_in_instr t lbl
   end.
+
+Fixpoint label_in_if p_nat lbl :=
+  match p_nat with
+  | NatLang.Instr _
+    (NatLang.IF_GOTO v l) :: t => if (eqb_opt_label_label l lbl)
+                                    then true
+                                    else label_in_if t lbl
+  | _ => false
+  end.
+
 
 
 Lemma get_labeled_instr_simulated : forall p_nat l s a b c,
@@ -730,7 +740,7 @@ Qed.
   
 
 Lemma max_label_gt: forall p_nat label_nat k b0,
-  label_in p_nat label_nat = true ->
+  label_in_instr p_nat label_nat = true ->
   label_nat = A b0 ->
   get_max_label p_nat k >= b0.
 Proof.
@@ -779,7 +789,7 @@ Qed.
 
 
 Lemma max_label_diff_label' : forall p_nat b0 k, 
-  label_in p_nat (A b0) = true ->
+  label_in_instr p_nat (A b0) = true ->
   get_max_label p_nat k >= b0.
 Proof.
   intros.
@@ -790,7 +800,7 @@ Qed.
 
 
 Lemma max_label_diff_label : forall p_nat label_nat b0 m k,
-  label_in p_nat label_nat = true ->
+  label_in_instr p_nat label_nat = true ->
   label_nat = A b0 ->
   k >= max_label_nat p_nat ->
   m <> 0 ->
@@ -875,7 +885,7 @@ Qed.
 
 Lemma labels_equiv_position_in :
   forall p_nat label a b c,
-    label_in p_nat label = true ->
+    label_in_instr p_nat label = true ->
     b >= max_label_nat p_nat ->
     equiv_pos
       p_nat
@@ -886,7 +896,7 @@ Lemma labels_equiv_position_in :
          (Some label)).
 Proof.
   induction p_nat as [|h t]; intros.
-  - unfold label_in in H. discriminate H.
+  - unfold label_in_instr in H. discriminate H.
   - unfold equiv_pos in *. simpl. unfold NatLang.eq_inst_label.
     destruct h. destruct o eqn:E.
     + simpl in H. simpl. destruct s eqn:statement.
@@ -947,24 +957,12 @@ Proof.
 Qed.
 
 
-
-
-
-Lemma labels_equiv_position_not_in:
-  forall p_nat label a b c,
-    label_in p_nat label = false ->
-    b >= max_label_nat p_nat ->
-    equiv_pos
-      p_nat
-      (NatLang.get_labeled_instr p_nat (Some label))
-      (get_str_prg_rec p_nat a b c)
-      (get_labeled_instr
-         (get_str_prg_rec p_nat a b c)
-         (Some label)).
+Lemma eq_inst_label_none : forall inst,
+  NatLang.eq_inst_label inst None = false.
 Proof.
-Admitted.
-
-          
+  intros instr. destruct instr. 
+  simpl. destruct o; reflexivity.
+Qed.
 
 Lemma labels_equiv_position_none:
   forall p_nat a b c,
@@ -976,7 +974,35 @@ Lemma labels_equiv_position_none:
          (get_str_prg_rec p_nat a b c)
          (None)).
 Proof.
+  induction p_nat; intros. 
+  - reflexivity.
+  - simpl. rewrite eq_inst_label_none. destruct a0. unfold equiv_pos.
+    destruct o; destruct s; rewrite get_equiv_simulated_position_cons;
+    simpl; repeat f_equal; apply IHp_nat.
+Qed.
+
+
+
+
+Lemma labels_equiv_position_not_in:
+  forall p_nat label a b c,
+    label_in_instr p_nat label = false ->
+    label_in_if p_nat label = true ->
+    b >= max_label_nat p_nat ->
+    equiv_pos
+      p_nat
+      (NatLang.get_labeled_instr p_nat (Some label))
+      (get_str_prg_rec p_nat a b c)
+      (get_labeled_instr
+         (get_str_prg_rec p_nat a b c)
+         (Some label)).
+Proof.
+  induction p_nat; intros.
+  - reflexivity.
+  - simpl.
 Admitted.
+
+          
 
 
 
@@ -1102,11 +1128,11 @@ Proof.
              ** apply H0.
              ** destruct o0.
                 (* GOTO GOTO None E *)
-                *** destruct (label_in p_nat l) eqn:lbl_in.
+                *** destruct (label_in_instr p_nat l) eqn:lbl_in.
                     **** rewrite Heqp_str. unfold get_simulated_program.
                          apply labels_equiv_position_in. auto. constructor.
-                    **** rewrite Heqp_str. apply labels_equiv_position_not_in.
-                         auto. constructor.
+                    **** rewrite Heqp_str. apply labels_equiv_position_not_in; auto.
+                         admit.
                 *** rewrite Heqp_str. apply labels_equiv_position_none.
             (* char = 1 *)
              * exists 2. rewrite H, snap_str_eq. simpl in *.
@@ -1119,11 +1145,11 @@ Proof.
              rewrite H6, H3, H4. simpl. split.
              ** apply H0.
              ** destruct o0.
-                *** destruct (label_in p_nat l) eqn:lbl_in.
+                *** destruct (label_in_instr p_nat l) eqn:lbl_in.
                     **** rewrite Heqp_str. unfold get_simulated_program.
                          apply labels_equiv_position_in. auto. constructor.
-                    **** rewrite Heqp_str. apply labels_equiv_position_not_in.
-                         auto. constructor.
+                    **** rewrite Heqp_str. apply labels_equiv_position_not_in; auto.
+                         admit.
                 *** rewrite Heqp_str. apply labels_equiv_position_none.
     + unfold equiv_pos in H1.
       simpl. exists 0. replace (steps_str + 0) with steps_str.
