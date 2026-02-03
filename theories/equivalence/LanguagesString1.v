@@ -900,9 +900,9 @@ Proof.
          * destruct label. rewrite get_equiv_simulated_position_cons. simpl.
            assert ((max_label_nat (NatLang.Instr (Some l) (NatLang.INCR v) 
            :: p_nat) >= max_label_nat p_nat)) by apply max_label_nat_ht_gt_t.
-           repeat (erewrite max_label_diff_label).
+           repeat (erewrite max_label_diff_label);
            repeat (f_equal); eauto.
-           apply IHp_nat; eauto; lia.
+           apply IHp_nat; eauto. lia.
            all : apply ge_add; lia.
       ++ simpl. destruct (eqb_lbl l label) eqn:label_eq.
          * unfold get_equiv_simulated_position. reflexivity.
