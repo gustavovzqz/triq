@@ -51,7 +51,6 @@ Variable (k : nat). (* k é o valor da maior variável Z que aparece em p_nat *)
 Let z := Z (k + 1).
 Let aux := Z (k + 2).
 
-
 Let B  := Some (A (n + n' + 1)).
 Let A1 := Some (A (n + n' + 2)).
 Let A2 := Some (A (n + n' + 3)).
@@ -106,7 +105,6 @@ Definition incr_macro_1:=
 End incr_macro.
 
 Compute (StringLang.get (X 0) (incr_macro_1 (X 0) None 0 0 0) ([b]) 80).
-
 
 (** ** Macro Subtrai Um *)
 
@@ -337,7 +335,6 @@ Definition equiv_pos
   (n' : nat) :=
    n' = get_equiv_simulated_position p_nat n.
 
-
 (** O incremento de strings é trivial no que se espera para um número
     na base dois. É importante lembrar que estamos operando sobre uma
     o inverso da string, o que simplifica as operações *)
@@ -469,7 +466,6 @@ Proof.
   intros. destruct h; destruct s; reflexivity.
 Qed.
 
-
 Lemma fold_left_add_const :
   forall l acc c,
     fold_left
@@ -504,8 +500,6 @@ Proof.
   + reflexivity.
 Qed.
 
-
-
 Lemma nat_nth_implies_none : forall p_nat i a b c,
   nth_error p_nat i = None ->
   nth_error (get_str_prg_rec p_nat a b c) 
@@ -525,7 +519,6 @@ Proof.
       injection Heqp; injection Heqp0; intros; subst;
       apply IH, H.
 Qed.
-
 
 Lemma nat_nth_implies_macro' : forall p_nat i instr_nat a b c,
   nth_error p_nat i = Some instr_nat ->
@@ -574,14 +567,12 @@ Proof.
   apply nat_nth_implies_macro', H.
 Qed.
 
-
 Lemma incr_string_not_empty : forall l, (incr_string1 l) <> [].
 Proof.
   intros l. unfold incr_string1. destruct l.
   + intros H. discriminate H.
   + destruct (n =? a); intros H; discriminate H.
 Qed.
-
 
 Lemma state_nat_Sn_implies_non_empty : forall v state_nat state_str n,
   state_equiv state_nat state_str ->
@@ -609,8 +600,6 @@ Proof.
   rewrite fold_left_app. simpl. lia.
 Qed.
 
-
-
 Definition check_equals_labels_label t1 t2 value :=
   match t1, t2 with
   | Some t1', Some t2' => orb (eqb_lbl t1' value) (eqb_lbl t2' value)
@@ -633,16 +622,23 @@ Fixpoint label_in_instr p_nat lbl :=
                                     else label_in_instr t lbl
   end.
 
+Fixpoint label_in_instr_str p_str lbl :=
+  match p_str with
+  | [] => false
+  | StringLang.Instr opt_lbl _ :: t => if (eqb_opt_label_label opt_lbl lbl)
+                                    then true
+                                    else label_in_instr_str t lbl
+  end.
+
 Fixpoint label_in_if p_nat lbl :=
   match p_nat with
   | NatLang.Instr _
     (NatLang.IF_GOTO v l) :: t => if (eqb_opt_label_label l lbl)
                                     then true
                                     else label_in_if t lbl
-  | _ => false
+  | _ :: t => label_in_if t lbl
+  | [] => false
   end.
-
-
 
 Lemma get_labeled_instr_simulated : forall p_nat l s a b c,
   get_labeled_instr (get_str_prg_rec (NatLang.Instr (Some l) s :: p_nat) a b c)
@@ -653,8 +649,6 @@ Proof.
   remember (max_z_nat (NatLang.Instr (Some l) s :: p_nat)).
   simpl. destruct s; simpl; rewrite eqb_lbl_refl; reflexivity.
 Qed.
-
-
 
 (* Devo ter feito algum destruct errado em algum momento *)
 Lemma get_max_label_max' : forall p_nat k, 
@@ -737,7 +731,6 @@ Proof.
     + apply H0.
     + apply H.
 Qed.
-  
 
 Lemma max_label_gt: forall p_nat label_nat k b0,
   label_in_instr p_nat label_nat = true ->
@@ -787,7 +780,6 @@ Proof.
          +++ apply IHp_nat with label_nat; auto.
 Qed.
 
-
 Lemma max_label_diff_label' : forall p_nat b0 k, 
   label_in_instr p_nat (A b0) = true ->
   get_max_label p_nat k >= b0.
@@ -797,7 +789,6 @@ Proof.
   + apply H.
   + reflexivity.
 Qed.
-
 
 Lemma max_label_diff_label : forall p_nat label_nat b0 m k,
   label_in_instr p_nat label_nat = true ->
@@ -814,8 +805,6 @@ Proof.
   assert (k >= b0) by lia. 
   lia.
 Qed.
-
-
 
 Lemma  max_label_n_k : forall p n k,
   n >= k ->
@@ -870,7 +859,6 @@ Proof.
        +++  apply max_label_n_k. lia.
 Qed.
 
-
 Lemma ge_add : forall n m k,
   n >= k -> n + m >= k.
 Proof.
@@ -879,9 +867,6 @@ Proof.
   + rewrite PeanoNat.Nat.add_comm. simpl. constructor. unfold ge in *.
     rewrite PeanoNat.Nat.add_comm. apply IHm, H.
 Qed.
-
-
-
 
 Lemma labels_equiv_position_in :
   forall p_nat label a b c,
@@ -956,7 +941,6 @@ Proof.
          apply IHt; auto; lia.
 Qed.
 
-
 Lemma eq_inst_label_none : forall inst,
   NatLang.eq_inst_label inst None = false.
 Proof.
@@ -981,30 +965,233 @@ Proof.
     simpl; repeat f_equal; apply IHp_nat.
 Qed.
 
+Lemma max_label_gt_if: forall p_nat label_nat k b0,
+  label_in_if p_nat label_nat = true ->
+  label_nat = A b0 ->
+  get_max_label p_nat k >= b0.
+Proof.
+  induction p_nat; intros.
+  - simpl in H. discriminate.
+  - destruct a0. destruct o eqn:E. simpl in H.
+    + destruct s.
+      ++ simpl. destruct l. apply IHp_nat with label_nat; auto.
+      ++ simpl. destruct l. apply IHp_nat with label_nat; auto.
+      ++ destruct o0.
+         +++ simpl in H. destruct (eqb_lbl l0 label_nat) eqn:E1. 
+             * unfold eqb_lbl in *. destruct l0. destruct label_nat.
+               rewrite PeanoNat.Nat.eqb_eq in E1. injection H0 as H1.
+               subst. simpl. destruct l.
+               apply PeanoNat.Nat.le_trans with (max (max n b0) k).
+               ** unfold max. lia. 
+               ** apply get_max_label_max'. 
+             * simpl. destruct l. destruct l0. 
+               apply IHp_nat with label_nat; auto.
+         +++ simpl in *. destruct l. apply IHp_nat with label_nat; auto.
+    + destruct s.
+      ++ simpl. apply IHp_nat with label_nat; auto.
+      ++ simpl.  apply IHp_nat with label_nat; auto.
+      ++ destruct o0.
+         +++ simpl in H. destruct (eqb_lbl l label_nat) eqn:E1. 
+             * unfold eqb_lbl in *. destruct l. destruct label_nat.
+               rewrite PeanoNat.Nat.eqb_eq in E1. injection H0 as H1.
+               subst. simpl. 
+               apply PeanoNat.Nat.le_trans with (max  b0 k).
+               ** unfold max. lia.
+               ** apply get_max_label_max'. 
+             * simpl. destruct l. apply IHp_nat with label_nat; auto.
+         +++ simpl in *. apply IHp_nat with label_nat; auto.
+Qed.
 
+Lemma max_label_diff_if_label' : forall p_nat b0 k, 
+  label_in_if p_nat (A b0) = true ->
+  get_max_label p_nat k >= b0.
+Proof.
+  intros.
+  eapply max_label_gt_if.
+  + apply H.
+  + reflexivity.
+Qed.
 
+Lemma max_label_diff_label_if : forall p_nat label_nat b0 m k,
+  label_in_if p_nat label_nat = true ->
+  label_nat = A b0 ->
+  k >= max_label_nat p_nat ->
+  m <> 0 ->
+  k + m =? b0 = false.
+Proof.
+  intros.
+  assert (max_label_nat p_nat >= b0).
+  { unfold max_label_nat. apply max_label_diff_if_label'. rewrite <- H0.
+    apply H. }
+  rewrite PeanoNat.Nat.eqb_neq.
+  assert (k >= b0) by lia. 
+  lia.
+Qed.
 
-Lemma labels_equiv_position_not_in:
-  forall p_nat label a b c,
+Lemma label_in_instr_cons : forall h t n,
+  label_in_instr (h :: t) (A n) = false ->
+  label_in_instr t (A n) = false.
+Proof.
+  intros.  destruct h. simpl in *. 
+  destruct (eqb_opt_label_label o (A n)); auto.
+  discriminate H.
+Qed.
+
+Lemma label_not_in_implies_out :
+  forall p_nat label,
     label_in_instr p_nat label = false ->
-    label_in_if p_nat label = true ->
-    b >= max_label_nat p_nat ->
-    equiv_pos
-      p_nat
-      (NatLang.get_labeled_instr p_nat (Some label))
-      (get_str_prg_rec p_nat a b c)
-      (get_labeled_instr
-         (get_str_prg_rec p_nat a b c)
-         (Some label)).
+    NatLang.get_labeled_instr p_nat (Some label) = length p_nat.
+Proof.
+  induction p_nat as [|h t]; intros.
+  + reflexivity.
+  + destruct h. simpl in H. 
+    assert ((eqb_opt_label_label o label) = false).
+    { destruct o. simpl in H. destruct (eqb_lbl l label) eqn:E.
+      discriminate H. simpl. apply E. reflexivity. }
+    destruct o. rewrite H0 in *. simpl in H0.
+    destruct s.
+    ++ simpl. rewrite H0. f_equal. apply IHt; auto.
+    ++ simpl. rewrite H0. f_equal. apply IHt; auto.
+    ++ simpl. rewrite H0. f_equal. apply IHt; auto.
+    ++ rewrite H0 in H. simpl. f_equal. apply IHt; auto.
+Qed.
+
+Lemma label_not_in_implies_out_str :
+  forall p_str label,
+    label_in_instr_str p_str label = false ->
+    get_labeled_instr p_str (Some label) = length p_str.
+Proof.
+  induction p_str as [|h t]; intros.
+  + reflexivity.
+  + destruct h. simpl in H. 
+    assert ((eqb_opt_label_label o label) = false).
+    { destruct o. simpl in H. destruct (eqb_lbl l label) eqn:E.
+      discriminate H. simpl. apply E. reflexivity. }
+    destruct o. rewrite H0 in *. simpl in H0.
+    destruct s.
+    ++ simpl. rewrite H0. f_equal. apply IHt; auto.
+    ++ simpl. rewrite H0. f_equal. apply IHt; auto.
+    ++ simpl. rewrite H0. f_equal. apply IHt; auto.
+    ++ rewrite H0 in H. simpl. f_equal. apply IHt; auto.
+Qed.
+
+Lemma label_in_implies_max : forall p_nat n k,
+  label_in_if p_nat (A n) = true ->
+  get_max_label p_nat k >= n.
+Proof.
+  induction p_nat; intros.
+  - simpl in H. discriminate H.
+  - destruct a0. destruct s.
+    + simpl in *.  destruct o.
+      ++ destruct l. apply IHp_nat, H.
+      ++ apply IHp_nat, H.
+    + simpl in *.  destruct o.
+      ++ destruct l. apply IHp_nat, H.
+      ++ apply IHp_nat, H.
+    + simpl in H. destruct (eqb_opt_label_label o0 (A n)) eqn:E.
+      ++ unfold max_opts. destruct o0.
+         +++ simpl in E. destruct l. simpl in E.
+             rewrite PeanoNat.Nat.eqb_eq in E. subst.
+             simpl. unfold max_opts. destruct o.
+             * destruct l. 
+               pose proof (get_max_label_max' p_nat (max (max n0 n) k)).
+               apply PeanoNat.Nat.le_trans with (max (max n0 n) k ).
+               { unfold max. lia. } apply H0.
+             * apply get_max_label_max. 
+         +++ simpl in E. discriminate E.
+      ++ simpl. apply IHp_nat, H.
+Qed.
+
+Lemma Nat_add_ge_neq :
+  forall k n m l,
+    k >= n ->
+    m + l >= 1 ->
+    (k + m + l=? n) = false.
+Proof.
+  intros k n m Hkn Hm.
+  rewrite PeanoNat.Nat.eqb_neq.
+  lia.
+
+Qed.
+
+Lemma nth_error_implies_label_in_if :
+  forall p_nat pos_nat v l o,
+    nth_error p_nat pos_nat =
+      Some (NatLang.Instr o (NatLang.IF_GOTO v (Some l))) ->
+    label_in_if p_nat l = true.
+Proof.
+  induction p_nat as [| h t IH]; intros pos_nat v l o Hnth.
+  - (* lista vazia *)
+    rewrite nth_error_nil in Hnth.
+    discriminate Hnth.
+
+  - (* h :: t *)
+    simpl.
+    destruct pos_nat as [| pos'].
+    + simpl in Hnth. inversion Hnth; subst.
+      simpl. unfold eqb_opt_label_label.
+      rewrite eqb_lbl_refl.
+      reflexivity.
+    + (* pos_nat = S pos' *)
+      simpl in Hnth.
+      apply IH in Hnth.
+      destruct h. destruct s; auto.
+      destruct (eqb_opt_label_label o1 l); auto.
+Qed.
+
+Lemma label_in_p_nat_implies_not_in_if :
+forall p_nat n k a1 a2 a3,
+  a2 >= get_max_label p_nat k ->
+  label_in_instr p_nat (A n) = false ->
+  n <= get_max_label p_nat k ->
+  label_in_instr_str (get_str_prg_rec p_nat a1 a2 a3) (A n) = false.
 Proof.
   induction p_nat; intros.
   - reflexivity.
-  - simpl.
-Admitted.
+  - destruct a0. unfold max_label_nat in *. destruct o.
+    + destruct s.
+      ++ destruct l. simpl in *. destruct (n0 =? n).
+         +++ discriminate H0.
+         +++ unfold max_label_nat. simpl.
+             repeat (rewrite (Nat_add_ge_neq)); auto.
+             eapply IHp_nat. apply H. apply H0.
+             apply H1. all : lia.
+      ++ destruct l. simpl in *. destruct (n0 =? n).
+         +++ discriminate H0.
+         +++ unfold max_label_nat. simpl.
+             repeat (rewrite (Nat_add_ge_neq)); auto.
+             eapply IHp_nat. apply H. apply H0.
+             apply H1. all : lia.
+      ++ destruct l. simpl in *. destruct (n0 =? n).
+         +++ discriminate H0.
+         +++ unfold max_label_nat. simpl.
+             repeat (rewrite (Nat_add_ge_neq)); auto.
+             eapply IHp_nat. apply H. apply H0.
+             apply H1. all : lia.
+    + unfold max_label_nat in *. simpl in *. destruct s.
+      ++ simpl in *. repeat (rewrite (Nat_add_ge_neq)); auto.
+         eapply IHp_nat. apply H. apply H0.
+         apply H1. all : lia.
+      ++ simpl in *. repeat (rewrite (Nat_add_ge_neq)); auto.
+         eapply IHp_nat. apply H. apply H0.
+         apply H1. all : lia.
+      ++ simpl in *. repeat (rewrite (Nat_add_ge_neq)); auto.
+         eapply IHp_nat. apply H. apply H0.
+         apply H1. all : lia.
+Qed.
 
-          
-
-
+Lemma length_equiv_pos : forall p_nat a b c,
+  equiv_pos p_nat (length p_nat) 
+            (get_str_prg_rec p_nat a b c)
+            (length (get_str_prg_rec p_nat a b c)).
+Proof.
+  induction p_nat; intros; unfold equiv_pos.
+  - reflexivity.
+  - destruct a0. destruct s; simpl; rewrite get_equiv_simulated_position_cons.
+    + simpl. repeat f_equal. apply IHp_nat.
+    + simpl. repeat f_equal. apply IHp_nat.
+    + simpl. repeat f_equal. apply IHp_nat.
+Qed.
 
 Lemma state_str_1_char_0_1 : forall state_str x h t,
   StringLang.state_over state_str 1 ->
@@ -1020,6 +1207,26 @@ Proof.
     ++ apply le_S_n in H1. apply PeanoNat.Nat.nle_succ_0 in H1.
        contradiction.
 Qed.
+
+Lemma equiv_position_if_not_in : forall p_nat o v l pos_nat,
+  nth_error p_nat pos_nat = 
+  Some (NatLang.Instr o (NatLang.IF_GOTO v (Some l))) ->
+  label_in_instr p_nat l = false ->
+  equiv_pos p_nat (NatLang.get_labeled_instr p_nat (Some l))
+  (get_simulated_program p_nat)
+  (get_labeled_instr (get_simulated_program p_nat) (Some l)).
+Proof.
+  unfold equiv_pos. intros.
+  rewrite label_not_in_implies_out.
+  rewrite label_not_in_implies_out_str.
+  apply length_equiv_pos. unfold get_simulated_program. destruct l.
+  eapply  label_in_p_nat_implies_not_in_if.
+  unfold max_label_nat. constructor. apply H0.
+  apply label_in_implies_max. eapply nth_error_implies_label_in_if.
+  apply H. apply H0.
+Qed.
+
+
 
 Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
@@ -1131,8 +1338,7 @@ Proof.
                 *** destruct (label_in_instr p_nat l) eqn:lbl_in.
                     **** rewrite Heqp_str. unfold get_simulated_program.
                          apply labels_equiv_position_in. auto. constructor.
-                    **** rewrite Heqp_str. apply labels_equiv_position_not_in; auto.
-                         admit.
+                    **** rewrite Heqp_str. eapply equiv_position_if_not_in; eauto.
                 *** rewrite Heqp_str. apply labels_equiv_position_none.
             (* char = 1 *)
              * exists 2. rewrite H, snap_str_eq. simpl in *.
@@ -1148,8 +1354,7 @@ Proof.
                 *** destruct (label_in_instr p_nat l) eqn:lbl_in.
                     **** rewrite Heqp_str. unfold get_simulated_program.
                          apply labels_equiv_position_in. auto. constructor.
-                    **** rewrite Heqp_str. apply labels_equiv_position_not_in; auto.
-                         admit.
+                    **** rewrite Heqp_str. eapply equiv_position_if_not_in; eauto.
                 *** rewrite Heqp_str. apply labels_equiv_position_none.
     + unfold equiv_pos in H1.
       simpl. exists 0. replace (steps_str + 0) with steps_str.
