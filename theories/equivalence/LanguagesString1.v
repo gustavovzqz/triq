@@ -86,7 +86,6 @@ Definition incr_macro_1:=
       [  ] z <- + a;
       goto C;
 
-
       [D2] x <- -;
       [  ] z <- + b;
       goto C;
@@ -1273,8 +1272,9 @@ Definition tracked prog state macro macro_position m :=
   i <= m -> 
   l_prog  = get_position (compute_program prog (SNAP macro_position state) i) ->
   l_macro = get_position (compute_program macro (SNAP 0 state) i) ->
-  l_prog = l_macro + macro_position /\
-  (i < m -> l_macro < length macro).
+  (l_prog = l_macro + macro_position) /\
+  (i < m -> l_macro < length macro) /\
+  (i = m -> l_macro = length macro).
 
 
 Lemma split_execution :
@@ -1305,8 +1305,9 @@ Proof.
       assert (nth_error prog (line_macro + macro_position) =
               nth_error (skipn macro_position prog) line_macro).
       { rewrite nth_error_skipn, PeanoNat.Nat.add_comm; reflexivity. }
-      assert (line_prog = line_macro + macro_position /\
-      (i < m -> line_macro < length macro)).
+      assert ((line_prog = line_macro + macro_position) /\
+      (i < m -> line_macro < length macro) /\ (i = m -> 
+      line_macro = length macro)).
       { unfold tracked in H0. apply H0.
         + transitivity (S i). 
           ++ apply PeanoNat.Nat.le_succ_diag_r.
@@ -1336,6 +1337,27 @@ Proof.
 Qed.
 
 (** ** CASO X <- X + 1 *)
+
+
+(** 1. Tracked *)
+
+Lemma all_incr_macro_tracked :
+  forall p_nat state_str macro_pos x lbl a b c,
+  macro_at (get_simulated_program p_nat) (incr_macro_1 x lbl a b c) macro_pos ->
+  state_str (Z (max_z_nat p_nat + 1)) = [] ->
+  exists m,
+  tracked (get_simulated_program p_nat) state_str 
+  (incr_macro_1 x lbl a b c) macro_pos m.
+Proof.
+
+
+(** 2. Modificação do Estado *)
+
+
+
+
+
+(** * Teorema Principal *)
 
 Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
