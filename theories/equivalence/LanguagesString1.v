@@ -1267,14 +1267,26 @@ Definition macro_at (prog : StringLang.program) macro position :=
   exists t,
   skipn position prog = macro ++ t.
 
-Definition tracked prog state macro macro_position m :=
+Definition tracked prog state macro start_position m :=
   forall (i : nat) l_prog l_macro,
   i <= m -> 
-  l_prog  = get_position (compute_program prog (SNAP macro_position state) i) ->
+  l_prog  = get_position (compute_program prog (SNAP start_position state) i) ->
   l_macro = get_position (compute_program macro (SNAP 0 state) i) ->
-  (l_prog = l_macro + macro_position) /\
-  (i < m -> l_macro < length macro) /\
-  (i = m -> l_macro = length macro).
+  (l_prog = l_macro + start_position) /\
+  (i < m -> l_macro < length macro).
+
+Search (lt).
+
+Lemma tracked_trans :
+  forall prog state macro start m m'
+         mid_line mid_state,
+  compute_program prog (SNAP start state) m =
+    SNAP mid_line mid_state ->
+  tracked prog state macro start m ->
+  tracked prog mid_state macro mid_line m' ->
+  tracked prog state macro start (m + m').
+Proof.
+Admitted.
 
 
 Lemma split_execution :
@@ -1306,8 +1318,7 @@ Proof.
               nth_error (skipn macro_position prog) line_macro).
       { rewrite nth_error_skipn, PeanoNat.Nat.add_comm; reflexivity. }
       assert ((line_prog = line_macro + macro_position) /\
-      (i < m -> line_macro < length macro) /\ (i = m -> 
-      line_macro = length macro)).
+      (i < m -> line_macro < length macro)).
       { unfold tracked in H0. apply H0.
         + transitivity (S i). 
           ++ apply PeanoNat.Nat.le_succ_diag_r.
