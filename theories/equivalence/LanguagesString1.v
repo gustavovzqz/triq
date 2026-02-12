@@ -274,6 +274,10 @@ end.
 
 (** ** Obtendo o Programa Simulado *)
 
+(* n' = maior variavel z no em p_str 
+   n = max_label_nat 
+   k = max_z_nat *)
+
 Fixpoint get_str_prg_rec l n' n k :=
   match l with
   | [] => []
@@ -363,7 +367,8 @@ Definition snap_equiv
   | NatLang.SNAP n state_nat => (
       match snap_str with
       | StringLang.SNAP n' state_str =>
-      state_equiv state_nat state_str  /\ equiv_pos p_nat n p_str n'
+      state_equiv state_nat state_str  /\ equiv_pos p_nat n p_str n' /\
+      state_str (Z ((max_label_nat p_nat) + 1)) = []
       end)
   end.
 
@@ -1251,128 +1256,29 @@ Proof.
 Qed.
 
 
-(** * Split Execution e Definições para macros x <- x + 1 e x <- x - 1 *)
+(** Definições de Estado Inicial *)
+Definition is_initial_state (state_nat : NatLang.state) :=
+  state_nat Y = 0 /\ forall n, state_nat (Z n) = 0.
 
-Definition get_state snap := 
-  match snap with 
-  | SNAP _ s => s
-  end.
 
-Definition get_position snap :=
-  match snap with 
-  | SNAP i _ => i
-  end.
+(** get_equiv_state retorna um estado onde state_str (Z n) = 0 *)
 
-Definition macro_at (prog : StringLang.program) macro position :=
-  exists t,
-  skipn position prog = macro ++ t.
-
-Definition tracked prog state macro start_position m :=
-  forall (i : nat) l_prog l_macro,
-  i <= m -> 
-  l_prog  = get_position (compute_program prog (SNAP start_position state) i) ->
-  l_macro = get_position (compute_program macro (SNAP 0 state) i) ->
-  (l_prog = l_macro + start_position) /\
-  (i < m -> l_macro < length macro).
-
-Search (lt).
-
-Lemma tracked_trans :
-  forall prog state macro start m m'
-         mid_line mid_state,
-  compute_program prog (SNAP start state) m =
-    SNAP mid_line mid_state ->
-  tracked prog state macro start m ->
-  tracked prog mid_state macro mid_line m' ->
-  tracked prog state macro start (m + m').
+Lemma get_equiv_state_initial : forall state_nat,
+  is_initial_state state_nat ->
+  forall n, (get_equiv_state state_nat) (Z n) = [].
 Proof.
-Admitted.
-
-
-Lemma split_execution :
-  forall prog state macro macro_position m,
-  macro_at prog macro macro_position ->
-  tracked prog state macro macro_position m ->
-  forall i s_prog s_macro l_prog l_macro, i <= m ->
-  (SNAP l_prog s_prog) = compute_program prog (SNAP macro_position state) i ->
-  (SNAP l_macro s_macro) = compute_program macro (SNAP 0 state) i ->
-  s_prog = s_macro /\ l_prog = l_macro + macro_position.
-Proof.
-  induction i; intros; destruct H.
-  (* i = 0 *)
-  - split; inversion H2; inversion H3; reflexivity.
-  (* S i *) 
-  - split.
-    (*  s_prog = s_macro  *)
-    + simpl in H2, H3.
-      remember (compute_program prog (SNAP macro_position state) i) 
-      as snap_prog.
-      remember (compute_program macro (SNAP 0 state) i) as snap_macro.
-      destruct snap_prog as [line_prog state_prog]. 
-      destruct snap_macro as [line_macro state_macro].
-      assert (state_prog = state_macro /\
-              line_prog = line_macro + macro_position).
-      { apply IHi; try (reflexivity). transitivity (S i); auto. }
-      clear IHi. destruct H4. 
-      assert (nth_error prog (line_macro + macro_position) =
-              nth_error (skipn macro_position prog) line_macro).
-      { rewrite nth_error_skipn, PeanoNat.Nat.add_comm; reflexivity. }
-      assert ((line_prog = line_macro + macro_position) /\
-      (i < m -> line_macro < length macro)).
-      { unfold tracked in H0. apply H0.
-        + transitivity (S i). 
-          ++ apply PeanoNat.Nat.le_succ_diag_r.
-          ++ apply H1.
-        + rewrite <- Heqsnap_prog. reflexivity.
-        + rewrite <- Heqsnap_macro. reflexivity. }
-      destruct H7. rewrite H4 in H2.
-      assert (line_macro < length macro).
-      { apply H8, H1. }
-      assert (nth_error (skipn macro_position prog) line_macro =
-              nth_error macro line_macro).
-      { rewrite H. apply nth_error_app1, H9. }
-      unfold next_step in H2, H3. subst.
-      rewrite H10 in H6. rewrite H6 in H2.
-      ++ destruct (nth_error macro line_macro).
-         +++ destruct i0. destruct s.
-             ** injection H2; injection H3; intros; subst; reflexivity.
-             ** injection H2; injection H3; intros; subst; reflexivity.
-             ** destruct (ends_with (state_macro v) n);
-           injection H2; injection H3; intros; subst; reflexivity.
-         +++ injection H2; injection H3; intros; subst; reflexivity.
-    (*  l_prog = l_macro + macro_position. *)
-    + eapply H0.
-      ++ rewrite <- H1; reflexivity.
-      ++ rewrite <- H2; reflexivity.
-      ++ rewrite <- H3; reflexivity.
+  intros. unfold is_initial_state in H. unfold get_equiv_state.
+  destruct H. rewrite H0. reflexivity.
 Qed.
 
-(** ** CASO X <- X + 1 *)
-
-
-(** 1. Tracked *)
-
-Lemma all_incr_macro_tracked :
-  forall p_nat state_str macro_pos x lbl a b c,
-  macro_at (get_simulated_program p_nat) (incr_macro_1 x lbl a b c) macro_pos ->
-  state_str (Z (max_z_nat p_nat + 1)) = [] ->
-  exists m,
-  tracked (get_simulated_program p_nat) state_str 
-  (incr_macro_1 x lbl a b c) macro_pos m.
-Proof.
-
-
-(** 2. Modificação do Estado *)
-
-
-
-
-
 (** * Teorema Principal *)
+
+(* Preciso ser mais especifico em relação ao estado inicial *)
 
 Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
          (initial_state_nat : NatLang.state),
+  is_initial_state initial_state_nat ->
 
   exists (p_str : StringLang.program)
          (initial_state_str : StringLang.state),
@@ -1398,17 +1304,17 @@ Proof.
   (* Caso base: n = 0 *)
   - exists 0. split.
     + apply get_equiv_state_correct.
-    + destruct p_nat.
-      ++ simpl. reflexivity.
-      ++ simpl. reflexivity.
+    + split.
+      ++ reflexivity.
+      ++ rewrite get_equiv_state_initial; auto.
   (* Passo da indução *)
   - destruct (NatLang.compute_program p_nat (NatLang.SNAP 0 initial_state_nat)
     steps_nat) as [pos_nat state_nat] eqn:snap_nat_eq.
-    destruct IH as [steps_str H]. unfold snap_equiv in H.
+    destruct IH as [steps_str H0]. unfold snap_equiv in H0.
     destruct (StringLang.compute_program p_str (StringLang.SNAP 0 
     (get_equiv_state initial_state_nat)) steps_str) as [pos_str state_str] 
     eqn:snap_str_eq.
-    destruct H as [H0 H1]. 
+    destruct H0 as [H1 [H2 H3]]. 
     cut (exists m : nat,
             snap_equiv p_nat
             (NatLang.compute_program p_nat (NatLang.SNAP 0 initial_state_nat)
@@ -1416,7 +1322,7 @@ Proof.
             p_str
             (compute_program p_str (SNAP 0 
             (get_equiv_state initial_state_nat)) (steps_str + m))).
-    intros. destruct H. exists (steps_str + x). apply H.
+    intros. destruct H0. exists (steps_str + x). apply H0.
 
     simpl. unfold NatLang.next_step.
     rewrite snap_nat_eq. 
@@ -1433,9 +1339,9 @@ Proof.
              (get_simulated_program p_nat) = 
              fst (get_str_macro1 i n n' k) ++ t).
       { apply nat_nth_implies_macro, p_nat_instr. }
-      destruct H2 as [n [n' [k [ t]]]].
-      rewrite <- Heqp_str in H2.
-      rewrite <- H1 in H2.
+      destruct H4 as [n [n' [k [ t]]]].
+      rewrite <- Heqp_str in H4.
+      rewrite <- H2 in H4.
       destruct i, s.
       (* x <- x + 1 *)
       ++ admit.
@@ -1444,55 +1350,57 @@ Proof.
       (* if x != 0 goto a *)
       ++ destruct (state_nat v) eqn:E. 
          (* v = 0 *)
-         +++ exists 2. rewrite H, snap_str_eq. simpl in *. 
+         +++ exists 2. rewrite H0, snap_str_eq. simpl in *. 
              assert ((nth_error p_str pos_str) = (Some [o] (IF v ENDS a GOTO o0))).
              { replace pos_str with (pos_str + 0).
-               rewrite <- nth_error_skipn, H2. reflexivity. lia. }
-             rewrite H3. assert (state_str v = []). 
-             { apply H0. rewrite E. reflexivity. }
-             rewrite H4. simpl.
+               rewrite <- nth_error_skipn, H4; reflexivity. lia. }
+             rewrite H5. assert (state_str v = []). 
+             { apply H1. rewrite E. reflexivity. }
+             rewrite H6. simpl.
              assert ((nth_error p_str (pos_str + 1))
              = (Some [o] (IF v ENDS b GOTO o0))).
-             { rewrite <- nth_error_skipn, H2. reflexivity. }
-             rewrite H5. rewrite H4. simpl. split.
-             * apply H0.
+             { rewrite <- nth_error_skipn, H4. reflexivity. }
+             rewrite H7. rewrite H6. simpl. split.
+             * apply H1.
              * unfold equiv_pos.
                pose proof (get_equiv_simulated_Sn p_nat pos_nat _ p_nat_instr).
-               unfold macro_length in H6. simpl in H6. rewrite H6.
-               rewrite <- H1. lia.
+               unfold macro_length in H8. simpl in H8. rewrite H8.
+               rewrite <- H2. split.
+               ** lia.
+               ** apply H3.
           (* v = S n *)
          +++ assert (exists h t,  state_str v = h :: t).
              { eapply state_nat_Sn_implies_non_empty, E.
-               apply H0. }
-             destruct H3 as [char [string_t]].
+               apply H1. }
+             destruct H5 as [char [string_t]].
              assert (char = 0 \/ char = 1). 
-             { admit. } destruct H4.
-               
+             { admit. } destruct H6.
              (* char = 0 *)
-             * exists 1. rewrite H, snap_str_eq. simpl in *.
+             * exists 1. rewrite H0, snap_str_eq. simpl in *.
              assert ((nth_error p_str pos_str) = (Some [o] (IF v ENDS a GOTO o0))).
              { replace pos_str with (pos_str + 0).
-               rewrite <- nth_error_skipn, H2. reflexivity. lia. }
-             rewrite H5, H3, H4. simpl. split.
-             ** apply H0.
+               rewrite <- nth_error_skipn, H4. reflexivity. lia. }
+             rewrite H7. rewrite H5, H6. simpl. split.
+             ** apply H1.
              ** destruct o0.
                 (* GOTO GOTO None E *)
                 *** destruct (label_in_instr p_nat l) eqn:lbl_in.
                     **** rewrite Heqp_str. unfold get_simulated_program.
-                         apply labels_equiv_position_in. auto. constructor.
-                    **** rewrite Heqp_str. eapply equiv_position_if_not_in; eauto.
-                *** rewrite Heqp_str. apply labels_equiv_position_none.
+                         split; auto. apply labels_equiv_position_in. auto. constructor.
+                    **** rewrite Heqp_str. split; auto. 
+                         eapply equiv_position_if_not_in; eauto.
+                *** rewrite Heqp_str. split; auto. apply labels_equiv_position_none.
             (* char = 1 *)
-             * exists 2. rewrite H, snap_str_eq. simpl in *.
+             * exists 2. rewrite H0, snap_str_eq. simpl in *.
              assert ((nth_error p_str pos_str) = (Some [o] (IF v ENDS a GOTO o0))).
              { replace pos_str with (pos_str + 0).
-               rewrite <- nth_error_skipn, H2. reflexivity. lia. }
-             rewrite H5, H3, H4. simpl. 
+               rewrite <- nth_error_skipn, H4. reflexivity. lia. }
+             rewrite H7, H5, H6. simpl. 
              assert ((nth_error p_str (pos_str + 1) = (Some [o] (IF v ENDS b GOTO o0)))).
-             { rewrite <- nth_error_skipn, H2. reflexivity. }
-             rewrite H6, H3, H4. simpl. split.
-             ** apply H0.
-             ** destruct o0.
+             { rewrite <- nth_error_skipn, H4. reflexivity. }
+             rewrite H8, H5, H6. simpl. split.
+             ** apply H1.
+             ** split; auto. destruct o0.
                 *** destruct (label_in_instr p_nat l) eqn:lbl_in.
                     **** rewrite Heqp_str. unfold get_simulated_program.
                          apply labels_equiv_position_in. auto. constructor.
@@ -1501,7 +1409,7 @@ Proof.
     + unfold equiv_pos in H1.
       simpl. exists 0. replace (steps_str + 0) with steps_str.
       rewrite snap_str_eq. split.
-      ++ apply H0.
       ++ apply H1.
+      ++ split; auto.
       ++ lia.
 Abort.
