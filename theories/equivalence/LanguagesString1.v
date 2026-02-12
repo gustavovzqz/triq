@@ -1273,6 +1273,34 @@ Qed.
 
 (** * Teorema Principal *)
 
+Lemma incr_macro_simulates :
+  forall p_nat p_str
+         pos_nat state_nat
+         pos_str state_str
+         o v,
+  snap_equiv
+    p_nat
+    (NatLang.SNAP pos_nat state_nat)
+    p_str
+    (StringLang.SNAP pos_str state_str) ->
+
+  nth_error p_nat pos_nat =
+    Some (NatLang.Instr o (NatLang.INCR v)) ->
+
+  exists m,
+  snap_equiv
+    p_nat
+    (NatLang.SNAP (pos_nat + 1)
+       (NatLang.incr state_nat v))
+    p_str
+    (StringLang.compute_program
+       p_str
+       (StringLang.SNAP pos_str state_str)
+       m).
+Admitted.
+
+
+
 (* Preciso ser mais especifico em relação ao estado inicial *)
 
 Theorem nat_implies_string :
@@ -1344,8 +1372,12 @@ Proof.
       rewrite <- H2 in H4.
       destruct i, s.
       (* x <- x + 1 *)
-      ++ admit.
-      (* x <- x - 1 *)
+      ++ assert (exists m : nat, snap_equiv p_nat (NatLang.SNAP (pos_nat + 1) 
+         (NatLang.incr state_nat v)) p_str 
+         (compute_program p_str (SNAP pos_str state_str) m)).
+         { eapply incr_macro_simulates; eauto. unfold snap_equiv. auto. }
+         destruct H5. exists x. rewrite H0, snap_str_eq. apply H5. 
+
       ++ admit.
       (* if x != 0 goto a *)
       ++ destruct (state_nat v) eqn:E. 
