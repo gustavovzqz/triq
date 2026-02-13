@@ -1271,7 +1271,18 @@ Proof.
   destruct H. rewrite H0. reflexivity.
 Qed.
 
-(** * Teorema Principal *)
+
+(** CASO X <- X + 1 *)
+
+(** ** 1. Do começo da macro, existe um m tal que:
+    a) Terminamos a execução na linha da label K0 e;
+    b) O valor de Z é o incremento do X inicial e o valor de X é zero. *)
+
+
+
+(** ** 2. Da linha da label K0, existe um m' tal que:
+    a) Terminamos a execução na linha final;
+    b) O valor de X é o valor inicial de Z e o valor de Z é 0. *)
 
 Lemma incr_macro_simulates :
   forall p_nat p_str
@@ -1301,7 +1312,7 @@ Admitted.
 
 
 
-(* Preciso ser mais especifico em relação ao estado inicial *)
+(** * Teorema Principal *)
 
 Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
