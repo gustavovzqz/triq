@@ -32,7 +32,7 @@ Definition b := 1.
 (** Para lidar com as variáveis auxiliares, basta padronizar o seguinte:
     Seja _k_ o maior valor de _n_ na variável _Z n_ no programa dos naturais.
     Para o programa de strings, sempre usaremos _aux_ como Z (k + 2) e
-    _z_ como Z (k + 1). Para usarmos Z de maneira segura, vamos sempre
+  _z_ como Z (k + 1). Para usarmos Z de maneira segura, vamos sempre
 zerar o seu valor ao final de cada macro, garantindo que estará
     "limpo" para a execução da próxima macro. A variável aux será
     usada apenas para simular o GOTO, então a argumentação deve
@@ -234,6 +234,18 @@ Fixpoint get_max_label (l : NatLang.program) (k : nat) : nat :=
 Definition max_label_nat (nat_prg : NatLang.program) : nat :=
 get_max_label nat_prg 0.
 
+Fixpoint get_max_label_str (l : StringLang.program) (k : nat) : nat :=
+    match l with
+    | [] => k
+    | StringLang.Instr opt_lbl _ :: t =>
+        match opt_lbl with
+        | None => get_max_label_str t k
+        | Some (A n) => get_max_label_str t (max n k)
+        end
+    end.
+
+Definition max_label_str (str_prg : StringLang.program) : nat :=
+get_max_label_str str_prg 0.
 
 (** ** Obtendo a Maior Variável Z em p_nat *)
 
@@ -597,49 +609,6 @@ Proof.
   unfold get_simulated_program. intros.
   apply nat_nth_implies_macro', H.
 Qed.
-
-
-(* TODO: Decomposição precisa dizer que n' >=
-         max_label h. Provavelmente é melhor obter
-         diretamente do nth_error_implies_macro *)
-
-Lemma simulated_program_decomposition :
-forall p_nat i instr_nat,
-nth_error p_nat i = Some instr_nat ->
-exists n n' k h t,
-get_simulated_program p_nat =
-  h ++ fst (get_str_macro1 instr_nat n n' k) ++ t /\
-length h = get_equiv_simulated_position p_nat i.
-Proof.
-  intros p_nat i instr_nat Hnth.
-  destruct (nat_nth_implies_macro _ _ _ Hnth)
-    as [n [n' [k [t Hskip]]]].
-
-  exists n, n', k.
-
-  remember (get_equiv_simulated_position p_nat i) as pos.
-  remember (get_simulated_program p_nat) as p_str.
-
-  exists (firstn pos p_str), t. split.
-  rewrite <- Hskip. rewrite  (firstn_skipn pos p_str).
-  reflexivity.
-
-  - rewrite length_firstn.
-    assert (length p_str >= pos).
-    { pose proof (PeanoNat.Nat.lt_ge_cases (length p_str) pos).
-      destruct H.
-      + assert (skipn pos p_str = []).
-        apply skipn_all_iff. lia. rewrite H0 in Hskip.
-        Search ([] = _ ).
-
-        exfalso.
-        assert (fst (get_str_macro1 instr_nat n n' k) = []).
-        eapply nil_equals_ht_implies_nil. eauto.
-        apply (macro_never_empty instr_nat n n' k), H1.
-      + unfold ge. lia. 
-    } lia.
-Qed.
-
 
 (** * Incrementar uma string sempre resulta em uma lista não vazia *)
 
@@ -1361,7 +1330,81 @@ Qed.
    não ocorrem em H. *)
 
 
-(* TODO: Preciso que a decomposição diga que n' >= max_label_str h *)
+
+
+(* Preciso referenciar que a primeira linha label vem dos 
+   naturais. Acrescentar que a label l está nos naturais *)
+Lemma macro_max_label : forall p_nat instr n n' k
+  macro max_n,
+  (* implica que n é maior que a label em instr *)
+  n >= max_label_nat (instr :: p_nat) ->
+  (macro, max_n) = get_str_macro1 instr n n' k ->
+  max_label_str macro <= n' + n + max_n.
+Proof.
+Admitted.
+
+
+Lemma max_label_split : forall h t,
+  max_label_str (h ++ t) = 
+  PeanoNat.Nat.max (max_label_str h) (max_label_str t).
+Proof.
+Admitted.
+
+Lemma simulated_program_decomposition:
+  forall i p_nat instr_nat a b c p_str,
+  nth_error p_nat i = Some instr_nat ->
+  p_str = get_str_prg_rec p_nat a b c ->
+  b >= max_label_nat p_nat ->
+
+  exists n n' k t,
+    p_str = (firstn (get_equiv_simulated_position p_nat i) p_str)
+            ++ fst (get_str_macro1 instr_nat n n' k) ++ t /\ 
+               (n' + n >= max_label_str (firstn (get_equiv_simulated_position p_nat i) p_str)) /\ n + n' >= b + a.
+Proof.
+  induction i as [|i']; intros; rewrite H0.
+  - destruct p_nat as [|instr p_nat_t].
+    + simpl in H. discriminate H.
+    + simpl. remember (get_str_macro1 instr b0 a0 c).
+      destruct p. exists b0, a0, c. simpl in H. inversion H.
+      rewrite <- H3. rewrite <- Heqp. simpl.
+      exists (get_str_prg_rec p_nat_t (a0 + n) b0 c).
+      split; auto. split.
+      ++ cbv; lia.
+      ++ lia.
+  - destruct p_nat as [|instr p_nat_t] eqn:E1.
+    + simpl in H. discriminate H.
+    + simpl in *. remember (get_str_macro1 instr b0 a0 c).
+      destruct p as [macro max_n].
+      pose proof H as hcopy.
+      eapply IHi' with (p_str := get_str_prg_rec p_nat_t (a0 + max_n) b0 c)
+      in H; eauto. destruct H as [n_ind [n'_ind [k_ind [t_ind]]]].
+      destruct H. rewrite get_equiv_simulated_position_cons.
+      assert (macro_length instr = 
+      length (fst (get_str_macro1 instr b0 a0 c))). 
+      { unfold macro_length. apply macros_same_size. }
+      rewrite <- Heqp in H3. simpl in H3. rewrite H3.
+      rewrite firstn_app_2. exists n_ind, n'_ind, k_ind, t_ind.
+      split.
+      ++ rewrite <- app_assoc with 
+         (l := macro)
+         (m := firstn (get_equiv_simulated_position p_nat_t i')
+               (get_str_prg_rec p_nat_t (a0 + max_n) b0 c))
+         (n := (fst (get_str_macro1 instr_nat n_ind n'_ind k_ind)) ++ t_ind).
+         rewrite <- H. reflexivity.
+      ++ rewrite max_label_split. unfold ge. destruct H2. split.
+         +++ apply PeanoNat.Nat.max_lub; auto.
+             assert (max_label_str macro <= a0 + b0 + max_n).
+             { eapply macro_max_label; eauto. } lia.
+         +++  lia.
+      ++ apply PeanoNat.Nat.le_trans with 
+         (m := max_label_nat (instr :: p_nat_t)).
+         +++ apply max_label_nat_ht_ge_t.
+         +++ lia.
+Qed.
+
+Print Assumptions simulated_program_decomposition.
+
+
 
 Lemma labels_of_macro_not_in_prefix :
   forall p_nat i instr_nat a b c
