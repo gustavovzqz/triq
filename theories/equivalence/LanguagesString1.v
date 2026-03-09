@@ -1325,26 +1325,22 @@ Proof.
 Qed.
 
 
-(* Vai mudar, vou usar o fato de que p_str = h ++ macro ++ t e que
-   as labels que ocorrem em macro (exceto a da instrução principal)
-   não ocorrem em H. *)
 
 
 
+(* A maior label da macro é "maior que ou igual" a n' + n + max_n *)
 
-(* Preciso referenciar que a primeira linha label vem dos 
-   naturais. Acrescentar que a label l está nos naturais *)
-Lemma macro_max_label : forall p_nat instr n n' k
-  macro max_n,
-  (* implica que n é maior que a label em instr *)
+Lemma macro_max_label_bounds :
+  forall p_nat instr n n' k macro max_n,
   n >= max_label_nat (instr :: p_nat) ->
+  (* Assim, n é maior que ou igual a primeira label do programa *)
   (macro, max_n) = get_str_macro1 instr n n' k ->
   max_label_str macro <= n' + n + max_n.
 Proof.
 Admitted.
 
 
-Lemma max_label_split : forall h t,
+Lemma max_label_str_split : forall h t,
   max_label_str (h ++ t) = 
   PeanoNat.Nat.max (max_label_str h) (max_label_str t).
 Proof.
@@ -1391,10 +1387,10 @@ Proof.
                (get_str_prg_rec p_nat_t (a0 + max_n) b0 c))
          (n := (fst (get_str_macro1 instr_nat n_ind n'_ind k_ind)) ++ t_ind).
          rewrite <- H. reflexivity.
-      ++ rewrite max_label_split. unfold ge. destruct H2. split.
+      ++ rewrite max_label_str_split. unfold ge. destruct H2. split.
          +++ apply PeanoNat.Nat.max_lub; auto.
              assert (max_label_str macro <= a0 + b0 + max_n).
-             { eapply macro_max_label; eauto. } lia.
+             { eapply macro_max_label_bounds; eauto. } lia.
          +++  lia.
       ++ apply PeanoNat.Nat.le_trans with 
          (m := max_label_nat (instr :: p_nat_t)).
@@ -1405,7 +1401,7 @@ Qed.
 Print Assumptions simulated_program_decomposition.
 
 
-
+(* Definição antiga *)
 Lemma labels_of_macro_not_in_prefix :
   forall p_nat i instr_nat a b c
          n n' k h t lbl o s,
