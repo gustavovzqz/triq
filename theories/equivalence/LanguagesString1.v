@@ -32,7 +32,7 @@ Definition b := 1.
 (** Para lidar com as variáveis auxiliares, basta padronizar o seguinte:
     Seja _k_ o maior valor de _n_ na variável _Z n_ no programa dos naturais.
     Para o programa de strings, sempre usaremos _aux_ como Z (k + 2) e
-  _z_ como Z (k + 1). Para usarmos Z de maneira segura, vamos sempre
+_z_ como Z (k + 1). Para usarmos Z de maneira segura, vamos sempre
 zerar o seu valor ao final de cada macro, garantindo que estará
     "limpo" para a execução da próxima macro. A variável aux será
     usada apenas para simular o GOTO, então a argumentação deve
@@ -360,9 +360,34 @@ end.
 (** A noção de equivalência de estados implica que qualquer variável que aparece
   no estado de p_nat deve possuir o mesmo valor no estado de p_str *)
 
-Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state) :=
+(** Definição Antiga *)
+
+
+(* Não faz sentido, é o mesmo que 
+   forall (x : variable)
+   nat_to_string (s_nat x) = (s_str x)
+*)
+
+Definition state_equiv' (s_nat : NatLang.state) (s_str : StringLang.state) :=
 forall (x : variable) (v : StringLang.string),
 nat_to_string1 (s_nat x) = v -> s_str x = v.
+
+(** Definição Nova *)
+
+Fixpoint var_in_program (p : NatLang.program) (var : variable) : bool :=
+  match p with 
+  | NatLang.Instr _ (NatLang.INCR x) :: t
+  | NatLang.Instr _ (NatLang.DECR x) :: t
+  | NatLang.Instr _ (NatLang.IF_GOTO x _) :: t =>
+      (eqb_var var x) || var_in_program t var
+  | [] => false
+  end.
+
+Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state) 
+  (p_nat : NatLang.program) :=
+  forall (x : variable),
+  var_in_program p_nat x = true ->
+  nat_to_string1 (s_nat x) = s_str x.
 
 (** Para a noção de equivalência de snapshot, unimos as definições de equivalência
   de posição e a equivalência de estado. *)
@@ -376,7 +401,7 @@ match snap_nat with
 | NatLang.SNAP n state_nat => (
     match snap_str with
     | StringLang.SNAP n' state_str =>
-    state_equiv state_nat state_str  /\ equiv_pos p_nat n p_str n' /\
+    state_equiv state_nat state_str p_nat  /\ equiv_pos p_nat n p_str n' /\
     state_str (Z ((max_label_nat p_nat) + 1)) = []
     end)
 end.
@@ -390,13 +415,11 @@ Definition get_equiv_state nat_state : (StringLang.state ) :=
 (** É trivial provar que a função anterior retorna um estado equivalente
   ao argumento. *)
 
-Lemma get_equiv_state_correct : forall state_nat,
-state_equiv state_nat (get_equiv_state state_nat).
+Lemma get_equiv_state_correct : forall p_nat state_nat,
+state_equiv state_nat (get_equiv_state state_nat) p_nat.
 Proof.
-  intros state_nat. unfold get_equiv_state. unfold state_equiv.
-  intros x v state_x_eq_v. destruct (state_nat x) eqn:E.
-  + simpl. rewrite <- state_x_eq_v. reflexivity.
-  + rewrite <- state_x_eq_v. reflexivity.
+  intros. unfold get_equiv_state. unfold state_equiv.
+  intros x state_x_eq_v. destruct (state_nat x) eqn:E; reflexivity.
 Qed.
 
 (** Para mostrar que o programa em strings está em string 1,
@@ -616,17 +639,19 @@ Proof.
   + destruct (n =? a); intros H; discriminate H.
 Qed.
 
-Lemma state_nat_Sn_implies_non_empty : forall v state_nat state_str n,
-state_equiv state_nat state_str ->
-state_nat v = S n -> exists h t, state_str v = h :: t.
+Lemma state_nat_Sn_implies_non_empty : forall v state_nat state_str n p_nat,
+  state_equiv state_nat state_str p_nat ->
+  var_in_program p_nat v = true ->
+  state_nat v = S n -> exists h t, state_str v = h :: t.
 Proof.
   intros. unfold get_equiv_state in H. 
   remember (state_str v). unfold state_equiv in H.
-  assert (state_str v = (nat_to_string1 (state_nat v))).
-  { apply H, eq_refl. } rewrite H1, H0 in Heqs.
-  simpl in Heqs. destruct s eqn:E.
+  assert (nat_to_string1 (state_nat v) = state_str v).
+  { apply H; auto. } rewrite H1 in H2.
+  rewrite <- Heqs in H2. simpl in H2.
+  destruct s eqn:E.
   + pose proof (incr_string_not_empty (nat_to_string1 n)).
-    rewrite Heqs in H2. contradiction.
+   contradiction.
   + exists n0, s0; reflexivity.
 Qed.
 
@@ -1493,19 +1518,23 @@ Lemma incr_macro_simulates_p1 :
     SNAP i s = compute_program p_str (SNAP pos_str state_str) m /\ 
     i = pos_str + 25 (* get_labeled_instr k0 *) /\
     (s (z_aux)) = incr_string1 (state_str x) /\
+    (* aqui ta errado, não tem como s x = [] e state_equiv juntos *)
     s x = [] /\
-    s z_aux = incr_string1 (state_str x).
+    s z_aux = incr_string1 (state_str x) /\
+    (* dizer que todo o resto ta inalterado *)
+    state_equiv state_nat s p_nat.
 Proof.
 Admitted.
 
 Lemma incr_macro_simulates_p2 :
-  forall p_nat pos_nat state_str o x ,
+  forall p_nat pos_nat state_str state_nat o x ,
 
   let z_aux :=  Z ((max_label_nat p_nat) + 1) in
   let p_str := get_simulated_program p_nat in
   let pos_str := (get_equiv_simulated_position p_nat pos_nat) + 25 in
 
-
+  (* mudar hipotese inicial *)
+  state_equiv state_nat state_str p_nat ->
 
   state_str x = [] ->
 
@@ -1515,7 +1544,11 @@ Lemma incr_macro_simulates_p2 :
   SNAP i s = compute_program p_str (SNAP pos_str state_str) m /\
   i = pos_str + 2 /\
   s z_aux = [] /\
-  s x = state_str z_aux.
+  s x = state_str z_aux /\
+  (* mudar para: e todo o resto ta inalterado *)
+  state_equiv state_nat s p_nat.
+
+  
 
 Proof.
 Admitted.
@@ -1550,10 +1583,12 @@ Proof.
   simpl in P1. destruct P1; auto. rewrite <- Heqinstr_nat. auto.
   destruct H as [i [s [HsnapP1 [HlineP1 [HstateP1]]]]]; auto.
   replace p_str with (get_simulated_program p_nat) by auto.
-  pose proof (incr_macro_simulates_p2 p_nat pos_nat  s o x) as P2.
-  destruct P2; auto. destruct H; auto.
+  pose proof (incr_macro_simulates_p2 p_nat pos_nat s state_nat o x) as P2.
+  unfold snap_equiv in P2.
+  destruct P2; destruct H; destruct H1; auto.
   rewrite <- Heqinstr_nat. auto.
-  destruct H1 as [i' [s' [HsnapP2 [HlineP2 [Hz_auxP2 HxP2]]]]].
+  destruct H1 as [s' [HsnapP2 [HlineP2 [Hz_auxP2]]]].
+  destruct H1 as [HxP2 HequivP2].
   exists (x1 + x0). rewrite StringLangProperties.compute_program_add.
   rewrite <- HsnapP1. rewrite HlineP1. rewrite H3. rewrite <- HsnapP2.
   unfold snap_equiv. split.
@@ -1653,7 +1688,8 @@ Proof.
                { replace pos_str with (pos_str + 0).
                  rewrite <- nth_error_skipn, H4; reflexivity. lia. }
                rewrite H5. assert (state_str v = []). 
-               { apply H1. rewrite E. reflexivity. }
+               { unfold state_equiv in H1.
+                 rewrite <- H1. rewrite E. reflexivity. admit. }
                rewrite H6. simpl.
                assert ((nth_error p_str (pos_str + 1))
                = (Some [o] (IF v ENDS b GOTO o0))).
@@ -1669,7 +1705,7 @@ Proof.
             (* v = S n *)
            +++ assert (exists h t,  state_str v = h :: t).
                { eapply state_nat_Sn_implies_non_empty, E.
-                 apply H1. }
+                 apply H1. admit. }
                destruct H5 as [char [string_t]].
                assert (char = 0 \/ char = 1). 
                { admit. } destruct H6.
@@ -1681,7 +1717,7 @@ Proof.
                rewrite H7. rewrite H5, H6. simpl. split.
                ** apply H1.
                ** destruct o0.
-                  (* GOTO GOTO None E *)
+                  (* GOTO None E *)
                   *** destruct (label_in_instr p_nat l) eqn:lbl_in.
                       **** rewrite Heqp_str. unfold get_simulated_program.
                            split; auto. apply labels_equiv_position_in. auto. constructor.
