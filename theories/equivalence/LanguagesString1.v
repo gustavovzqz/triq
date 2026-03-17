@@ -1516,8 +1516,8 @@ Lemma incr_macro_simulates_p1 :
 
   nth_error p_nat pos_nat = Some (NatLang.Instr o (NatLang.INCR x)) ->
 
-  exists m i s,
-    SNAP i s = compute_program p_str (SNAP pos_str state_str) m /\ 
+  exists m,
+    let (i, s) := split_snap  (compute_program p_str (SNAP pos_str state_str) m) in
     i = pos_str + LABEL_K0_POSITION /\
     (s (z_aux)) = incr_string1 (state_str x) /\
 
@@ -1542,8 +1542,9 @@ Lemma incr_macro_simulates_p2 :
 
   nth_error p_nat pos_nat = Some (NatLang.Instr o (NatLang.INCR x)) ->
 
-  exists m i s,
-  SNAP i s = compute_program p_str (SNAP pos_str state_str) m /\
+  exists m,
+
+  let (i, s)  := split_snap (compute_program p_str (SNAP pos_str state_str) m) in
   i = (get_equiv_simulated_position p_nat pos_nat) + INCR_MACRO_LENGHT /\
   s z_aux = [] /\
   s x = state_str z_aux /\
@@ -1554,6 +1555,18 @@ Lemma incr_macro_simulates_p2 :
 
 Proof.
   intros.
+  assert (exists (n n' k : nat) (t : list instruction),
+         p_str =
+         firstn (get_equiv_simulated_position p_nat pos_nat) p_str ++
+         fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' k) ++ t /\
+         n' + n >=
+         max_label_str (firstn (get_equiv_simulated_position p_nat pos_nat) p_str) /\
+         n + n' >= (max_label_nat p_nat) + a).
+  { unfold p_str, get_simulated_program. eapply simulated_program_decomposition; eauto. }
+  destruct H1 as [n [n' [k [t]]]].
+  destruct H1 as [p_str_decomposition [macro_labels_prop  Huseless]].
+
+  Search (simulated_program_decomposition).
 Admitted.
 
 Lemma macro_length_incr_27 : forall o x,
@@ -1584,16 +1597,25 @@ Proof.
   (incr_macro_simulates_p1 p_nat pos_nat state_nat pos_str state_str o x)
   as P1.
   simpl in P1. destruct P1; auto. rewrite <- Heqinstr_nat. auto.
-  destruct H as [i [s [HsnapP1 [HlineP1 [HstateP1]]]]]; auto.
+  destruct (compute_program (get_simulated_program p_nat) 
+           (SNAP pos_str state_str) x0) eqn:HsnapP1.
+  simpl in H.
+  destruct H as [HlineP1 [HstateP1]]; auto.
+  destruct H as [Hsx0 [HsZaux Hsinvariant]].
   replace p_str with (get_simulated_program p_nat) by auto.
   pose proof (incr_macro_simulates_p2 p_nat pos_nat s o x) as P2.
-  unfold snap_equiv in P2.
-  destruct P2; destruct H; destruct H1; auto.
+  simpl in P2.
+  destruct P2; auto.
   rewrite <- Heqinstr_nat. auto.
-  destruct H1 as [s' [HsnapP2 [HlineP2 [Hz_auxP2]]]].
-  destruct H1 as [HxP2 HequivP2].
+  destruct (compute_program (get_simulated_program p_nat) 
+           (SNAP (get_equiv_simulated_position p_nat pos_nat + LABEL_K0_POSITION) s) x1)
+           eqn:HsnapP2.
+          
+  simpl in H.
+  destruct H as [HlineP2 [Hs0_aux]].
+  destruct H as [Hs0_x HequivP2].
   exists (x1 + x0). rewrite StringLangProperties.compute_program_add.
-  rewrite <- HsnapP1. rewrite HlineP1. rewrite H3. rewrite <- HsnapP2.
+  rewrite  HsnapP1. rewrite HlineP1. rewrite H3. rewrite  HsnapP2.
   unfold snap_equiv. split.
   + unfold state_equiv in *. admit. 
     (* var <> Z (...) por conta de max_z nat + 1 *)
@@ -1603,7 +1625,7 @@ Proof.
   + split.
     ++ subst. simpl. unfold equiv_pos. 
        pose proof (get_equiv_simulated_Sn p_nat pos_nat _ H0).
-       rewrite H1. rewrite macro_length_incr_27. reflexivity.
+       rewrite H. rewrite macro_length_incr_27. reflexivity.
     ++ auto.
 Admitted.
 

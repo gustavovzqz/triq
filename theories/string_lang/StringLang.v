@@ -230,6 +230,12 @@ Definition get_state (p : program ) n :=
   | SNAP _ s => s
   end.
 
+
+Definition split_snap (snap : snapshot) :=
+  match snap with
+  | SNAP i s => (i, s)
+  end.
+
 Definition HALT (s : state) (p : program) (n : nat) :=
   let initial_snap := SNAP 0 s in 
   let nth_snap := compute_program p initial_snap n in 
