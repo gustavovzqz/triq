@@ -1433,7 +1433,8 @@ Lemma simulated_program_decomposition:
   exists n n' k t,
     p_str = (firstn (get_equiv_simulated_position p_nat i) p_str)
             ++ fst (get_str_macro1 instr_nat n n' k) ++ t /\ 
-               (n' + n >= max_label_str (firstn (get_equiv_simulated_position p_nat i) p_str)) /\ n + n' >= b + a.
+               (n' + n >= max_label_str (firstn (get_equiv_simulated_position p_nat i) p_str)) /\ n + n' >= b + a /\
+               length (firstn (get_equiv_simulated_position p_nat i) p_str) = (get_equiv_simulated_position p_nat i).
 Proof.
   induction i as [|i']; intros; rewrite H0.
   - destruct p_nat as [|instr p_nat_t].
@@ -1444,7 +1445,9 @@ Proof.
       exists (get_str_prg_rec p_nat_t (a0 + n) b0 c).
       split; auto. split.
       ++ cbv; lia.
-      ++ lia.
+      ++ split. 
+         +++ lia.
+         +++ reflexivity.
   - destruct p_nat as [|instr p_nat_t] eqn:E1.
     + simpl in H. discriminate H.
     + simpl in *. remember (get_str_macro1 instr b0 a0 c).
@@ -1469,8 +1472,9 @@ Proof.
          +++ apply PeanoNat.Nat.max_lub; auto.
              assert (max_label_str macro <= a0 + b0 + max_n).
              { eapply macro_max_label_bounds; eauto. } lia.
-         +++  lia.
-
+         +++ split.
+             * lia.
+             * Search (length). rewrite length_app. lia.
       ++ apply PeanoNat.Nat.le_trans with 
          (m := max_label_nat (instr :: p_nat_t)).
          +++ apply max_label_nat_ht_ge_t.
@@ -1530,6 +1534,7 @@ Lemma incr_macro_simulates_p1 :
 Proof.
 Admitted.
 
+
 Lemma incr_macro_simulates_p2 :
   forall p_nat pos_nat state_str o x ,
 
@@ -1561,12 +1566,32 @@ Proof.
          fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' k) ++ t /\
          n' + n >=
          max_label_str (firstn (get_equiv_simulated_position p_nat pos_nat) p_str) /\
-         n + n' >= (max_label_nat p_nat) + a).
+         n + n' >= (max_label_nat p_nat) + a /\
+         length (firstn (get_equiv_simulated_position p_nat pos_nat) p_str) =
+         (get_equiv_simulated_position p_nat pos_nat)).
   { unfold p_str, get_simulated_program. eapply simulated_program_decomposition; eauto. }
   destruct H1 as [n [n' [k [t]]]].
-  destruct H1 as [p_str_decomposition [macro_labels_prop  Huseless]].
+  destruct H1 as [p_str_decomposition [macro_labels_prop  [Huseless Hlength]]].
+    assert ((nth_error
+           (firstn (get_equiv_simulated_position p_nat pos_nat) p_str ++
+            fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' k) ++
+            t) (get_equiv_simulated_position p_nat pos_nat + LABEL_K0_POSITION))
+            = (nth_error (fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' k) ++
+            t) LABEL_K0_POSITION)).
+    { rewrite nth_error_app2.
+      + rewrite Hlength. 
+        replace (get_equiv_simulated_position p_nat pos_nat + LABEL_K0_POSITION
+                  - get_equiv_simulated_position p_nat pos_nat) with 
+                 (LABEL_K0_POSITION) by lia. reflexivity.
+      + lia. } 
+    induction (state_str (Z (max_z_nat p_nat + 1))) eqn:E.
+  + exists 2. simpl. unfold pos_str. rewrite p_str_decomposition.
+    rewrite H1. unfold LABEL_K0_POSITION. simpl. unfold ends_with.
+    (* Preciso dizer que o K é exatamente max_z_nat. Mudar na decomposição *)
+    admit.
+   
+    
 
-  Search (simulated_program_decomposition).
 Admitted.
 
 Lemma macro_length_incr_27 : forall o x,
