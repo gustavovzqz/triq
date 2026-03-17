@@ -92,7 +92,7 @@ Definition incr_macro_1:=
 
       [K1] z <- -;
       [  ] x <- + a;
-      goto K0;
+      [  ] IF x ENDS a GOTO K0;
 
       [K2] z <- -;
       [  ] x <- +b;
@@ -1553,6 +1553,7 @@ Lemma incr_macro_simulates_p2 :
   s var = state_str var.
 
 Proof.
+  intros.
 Admitted.
 
 Lemma macro_length_incr_27 : forall o x,
