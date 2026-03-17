@@ -103,6 +103,9 @@ Definition incr_macro_1:=
 
 End incr_macro.
 
+Definition INCR_MACRO_LENGHT := 27.
+Definition LABEL_K0_POSITION := 25.
+
 Compute (StringLang.get (X 0) (incr_macro_1 (X 0) None 0 0 0) ([b]) 80).
 
 (** ** Macro Subtrai Um *)
@@ -402,7 +405,7 @@ match snap_nat with
     match snap_str with
     | StringLang.SNAP n' state_str =>
     state_equiv state_nat state_str p_nat  /\ equiv_pos p_nat n p_str n' /\
-    state_str (Z ((max_label_nat p_nat) + 1)) = []
+    state_str (Z ((max_z_nat p_nat) + 1)) = []
     end)
 end.
 
@@ -1515,7 +1518,7 @@ Lemma incr_macro_simulates_p1 :
 
   exists m i s,
     SNAP i s = compute_program p_str (SNAP pos_str state_str) m /\ 
-    i = pos_str + 25 (* get_labeled_instr k0 *) /\
+    i = pos_str + LABEL_K0_POSITION /\
     (s (z_aux)) = incr_string1 (state_str x) /\
 
     s x = [] /\
@@ -1532,7 +1535,7 @@ Lemma incr_macro_simulates_p2 :
 
   let z_aux :=  Z ((max_z_nat p_nat) + 1) in
   let p_str := get_simulated_program p_nat in
-  let pos_str := (get_equiv_simulated_position p_nat pos_nat) + 25 in
+  let pos_str := (get_equiv_simulated_position p_nat pos_nat) + LABEL_K0_POSITION in
 
 
   state_str x = [] ->
@@ -1541,7 +1544,7 @@ Lemma incr_macro_simulates_p2 :
 
   exists m i s,
   SNAP i s = compute_program p_str (SNAP pos_str state_str) m /\
-  i = pos_str + 2 (* programa finaliza *) /\
+  i = (get_equiv_simulated_position p_nat pos_nat) + INCR_MACRO_LENGHT /\
   s z_aux = [] /\
   s x = state_str z_aux /\
   (* todo o resto do estado está inalterado *)
@@ -1552,7 +1555,7 @@ Lemma incr_macro_simulates_p2 :
 Proof.
 Admitted.
 
-Lemma macro_length_incr_25 : forall o x,
+Lemma macro_length_incr_27 : forall o x,
   macro_length (NatLang.Instr o (NatLang.INCR x)) = 27.
 Proof.
   intros. unfold macro_length. 
@@ -1599,7 +1602,7 @@ Proof.
   + split.
     ++ subst. simpl. unfold equiv_pos. 
        pose proof (get_equiv_simulated_Sn p_nat pos_nat _ H0).
-       rewrite H1. rewrite macro_length_incr_25. lia.
+       rewrite H1. rewrite macro_length_incr_27. reflexivity.
     ++ auto.
 Admitted.
 
