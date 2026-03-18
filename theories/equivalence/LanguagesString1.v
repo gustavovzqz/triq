@@ -92,7 +92,7 @@ Definition incr_macro_1:=
 
       [K1] z <- -;
       [  ] x <- + a;
-      [  ] IF x ENDS a GOTO K0;
+      goto K0;
 
       [K2] z <- -;
       [  ] x <- +b;
@@ -1237,6 +1237,33 @@ Proof.
       destruct (eqb_opt_label_label o1 l); auto.
 Qed.
 
+Lemma nth_error_implies_label_in_instr :
+forall p_nat pos_nat o s,
+  nth_error p_nat pos_nat =
+    Some (NatLang.Instr (Some o) s) ->
+  label_in_instr p_nat o = true.
+Proof.
+  induction p_nat as [| h t IH]; intros.
+  - (* lista vazia *)
+    rewrite nth_error_nil in H.
+    discriminate H.
+
+  - (* h :: t *)
+    simpl.
+    destruct pos_nat as [| pos'].
+    + simpl in H. inversion H; subst.
+      simpl. unfold eqb_opt_label_label.
+      rewrite eqb_lbl_refl.
+      reflexivity.
+    + (* pos_nat = S pos' *)
+      simpl in H.
+      apply IH in H.
+      destruct h. destruct s; 
+      destruct (eqb_opt_label_label o0 o); auto.
+Qed.
+
+
+
 Lemma label_in_p_nat_implies_not_in_if :
 forall p_nat n k a1 a2 a3,
 a2 >= get_max_label p_nat k ->
@@ -1534,6 +1561,12 @@ Lemma incr_macro_simulates_p1 :
 Proof.
 Admitted.
 
+Lemma bool_sym : forall (b1 b2 : bool),
+  b1 = b2 <-> b2 = b1.
+Proof.
+  intros. destruct b1; destruct b2; lia.
+Qed.
+
 
 
 
@@ -1615,17 +1648,52 @@ Proof.
                                            está em string 1 *)
     destruct H2.
     (* Caso a0 = 0 *)
-    ++ eexists (_ + 4). rewrite StringLangProperties.compute_program_add.
+    ++ eexists (1 +4). rewrite StringLangProperties.compute_program_add.
        (* Colocar estrategia do Heqrest aqui *)
-       simpl. rewrite p_str_decomposition. unfold pos_str. rewrite H1. simpl.
-       unfold ends_with. rewrite E. rewrite H2. simpl.
+       simpl. rewrite p_str_decomposition. unfold pos_str. rewrite H1. 
+      remember (fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n'
+             (max_z_nat p_nat)) ++
+        t) as rest. rewrite Heqrest. simpl.
+       unfold ends_with. rewrite E. rewrite H2. simpl. simpl in Heqrest.
+       rewrite <- Heqrest.
        rewrite get_labeled_instr_app.
-
-      
-
-    admit.
-
+       rewrite nth_error_app2. rewrite Hlength.
+       replace ((get_equiv_simulated_position p_nat pos_nat +
+                  get_labeled_instr rest (Some (A (n + n' + 8))) -
+                  get_equiv_simulated_position p_nat pos_nat))
+       with  (get_labeled_instr rest (Some (A (n + n' + 8)))) by lia.
+       rewrite Heqrest. simpl. rewrite <- Heqrest.
+       assert (n + n' >= max_label_nat p_nat) by lia.
+       assert (match o with
+                   | Some lbl_a => eqb_lbl lbl_a (A (n + n' + 8))
+                   | None => false
+                   end = false).
+      { destruct o eqn:Eo; auto. destruct l0 eqn:L0.
+        assert (max_label_nat p_nat >= n0).
+        { apply get_max_label_ge_label_in with (label_nat := (A n0)); auto.
+          eapply nth_error_implies_label_in_instr; eauto. }
+        simpl. rewrite PeanoNat.Nat.eqb_neq. lia. }
+      rewrite H4. simpl. rewrite  PeanoNat.Nat.eqb_refl. simpl.
+      (replace (n + n' + _ =? n + n' + _) with false).
+      (replace (n + n' + _ =? n + n' + _) with false).
+      (replace (n + n' + _ =? n + n' + _) with false).
+      (replace (n + n' + _ =? n + n' + _) with false).
+      (replace (n + n' + _ =? n + n' + _) with false).
+      (replace (n + n' + _ =? n + n' + _) with false).
+      Search (?a = ?b <-> ?b = ?a).
+      all : try (rewrite bool_sym; rewrite PeanoNat.Nat.eqb_neq; lia).
+      rewrite Heqrest. simpl. rewrite <- Heqrest. rewrite nth_error_app2.
+      rewrite Hlength. replace (get_equiv_simulated_position p_nat pos_nat + 20 + 1 -
+               get_equiv_simulated_position p_nat pos_nat) with 21 by lia.
+      rewrite Heqrest; simpl; rewrite <- Heqrest. rewrite nth_error_app2.
+      rewrite Hlength. replace (get_equiv_simulated_position p_nat pos_nat + 20 + 1 + 1 -
+            get_equiv_simulated_position p_nat pos_nat) with 22 by lia.
+      rewrite Heqrest; simpl; rewrite <- Heqrest. unfold ends_with.
+      (* Precisamos receber a hipótese de que aux termina com a *)
+      admit.
 Admitted.
+
+
 
 Lemma macro_length_incr_27 : forall o x,
   macro_length (NatLang.Instr o (NatLang.INCR x)) = 27.
