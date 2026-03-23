@@ -5,6 +5,7 @@ From Triq Require Import NatLang.
 From Coq Require Import Nat.
 From Coq Require Import List.
 From Coq Require Import FunctionalExtensionality.
+From Coq Require Import Lia.
 Import ListNotations.
 Open Scope nat_lang_scope.
 
@@ -25,7 +26,7 @@ Definition id_prg :=
   let e := Some (A 10) in 
 
   <{[[a] IF x GOTO b;
-     [ ] z <- + 1;
+  [ ] z <- + 1;
      [ ] IF z GOTO e;
      [b] x <- - 1;
      [ ] y <- + 1;
@@ -50,26 +51,43 @@ Proof.
   - simpl. rewrite IHn. reflexivity.
 Qed.
 
-Lemma id_prg_works : forall state k v,
+Lemma id_prg_works : forall k state  v,
   state (X 0) = k ->
   state (Y) = v ->
   exists m, 
   let (i, s) := split_snap (compute_program id_prg (SNAP 0 state) m) in 
 
-  state (X 0) = 0 /\
-  state Y = v + k /\
+  s (X 0) = 0 /\
+  s Y = v + k /\
   i = 6.
 Proof.
   induction k; intros.
-  + exists 3. simpl. rewrite H. rewrite H0. simpl. 
+  + exists 3. simpl. rewrite H. unfold id_prg. simpl.
     unfold incr. unfold update. rewrite eqb_var_refl.
-    rewrite PeanoNat.Nat.add_comm. simpl. split; auto.
-  + eexists (_ + 4). rewrite compute_program_add.
-    simpl. rewrite H. simpl. unfold incr. unfold update.
+    rewrite PeanoNat.Nat.add_comm. simpl. split; lia.
+  + cut (exists m n : nat,
+          let (i, s) := split_snap (compute_program id_prg (compute_program id_prg (SNAP 0 state) m) n) in
+          s (X 0) = 0 /\ s Y = v + S k /\ i = 6).
+      { intros. destruct H1 as [m [n]]. exists (n + m). 
+        rewrite compute_program_add. auto. } 
+    exists 4. simpl. rewrite H. simpl. unfold incr. unfold update.
     rewrite eqb_var_refl. rewrite PeanoNat.Nat.add_comm. simpl.
-    (* estou em um momento onde novo_estado (X 0) = k
-       e novo_estado (Y) = v + 1 *)
-Admitted.
+    remember (fun x' : variable =>
+           if match x' with
+              | Y => true
+              | _ => false
+              end
+           then S (decr state (X 0) Y)
+           else decr state (X 0) x') as new_state.
+   pose proof (IHk new_state (S v)).
+   destruct H1. 
+   ++ rewrite Heqnew_state. unfold decr. unfold update. rewrite eqb_var_refl.
+      rewrite H. lia.
+   ++ rewrite Heqnew_state. unfold decr. unfold update. simpl. f_equal. auto.
+   ++ exists x. destruct (compute_program id_prg (SNAP 0 new_state) x). simpl in *.
+      destruct H1 as [H1 [H2 H3]]. split; auto. split; auto.
+      lia.
+Qed.
   
 
 
