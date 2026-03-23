@@ -1579,7 +1579,6 @@ Lemma incr_macro_simulates_p2 :
   let pos_str := (get_equiv_simulated_position p_nat pos_nat) + LABEL_K0_POSITION in
 
 
-  state_str x = [] ->
 
   nth_error p_nat pos_nat = Some (NatLang.Instr o (NatLang.INCR x)) ->
 
@@ -1608,8 +1607,8 @@ Proof.
          length (firstn (get_equiv_simulated_position p_nat pos_nat) p_str) =
          (get_equiv_simulated_position p_nat pos_nat)).
   { unfold p_str, get_simulated_program. eapply simulated_program_decomposition; eauto. }
-  destruct H1 as [n [n' [t]]].
-  destruct H1 as [p_str_decomposition [macro_labels_prop  [Huseless Hlength]]].
+  destruct H0 as [n [n' [t]]].
+  destruct H0 as [p_str_decomposition [macro_labels_prop  [Huseless Hlength]]].
     assert (forall k0, ((nth_error
            (firstn (get_equiv_simulated_position p_nat pos_nat) p_str ++
             fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' (max_z_nat p_nat)) ++
@@ -1626,12 +1625,12 @@ Proof.
    (* Caso Base: Em dois passos saímos. *)
   + exists 2. simpl. unfold pos_str. rewrite p_str_decomposition.
 
-    rewrite H1. unfold LABEL_K0_POSITION. 
+    rewrite H0. unfold LABEL_K0_POSITION. 
     remember (fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n'
              (max_z_nat p_nat)) ++
         t) as rest.
 
-    simpl. unfold ends_with. clear H1.
+    simpl. unfold ends_with. clear H0.
     rewrite Heqrest. simpl.
     rewrite E. simpl.
     rewrite nth_error_app2. rewrite Hlength.
@@ -1646,15 +1645,15 @@ Proof.
   (* Passo da indução. state_str z_aux = a0 :: l. Precisamos executar até chegar em l. *)
   + assert (a0 = 0 \/ a0 = 1) by admit. (* para realizar essa quebra preciso da hipótese de que o estado
                                            está em string 1 *)
-    destruct H2.
+    destruct H1.
     (* Caso a0 = 0 *)
-    ++ eexists (1 +4). rewrite StringLangProperties.compute_program_add.
+    ++ eexists (_ + 4). rewrite StringLangProperties.compute_program_add.
        (* Colocar estrategia do Heqrest aqui *)
-       simpl. rewrite p_str_decomposition. unfold pos_str. rewrite H1. 
+       simpl. rewrite p_str_decomposition. unfold pos_str. rewrite H0. 
       remember (fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n'
              (max_z_nat p_nat)) ++
         t) as rest. rewrite Heqrest. simpl.
-       unfold ends_with. rewrite E. rewrite H2. simpl. simpl in Heqrest.
+       unfold ends_with. rewrite E. rewrite H1. simpl. simpl in Heqrest.
        rewrite <- Heqrest.
        rewrite get_labeled_instr_app.
        rewrite nth_error_app2. rewrite Hlength.
@@ -1668,12 +1667,12 @@ Proof.
                    | Some lbl_a => eqb_lbl lbl_a (A (n + n' + 8))
                    | None => false
                    end = false).
-      { destruct o eqn:Eo; auto. destruct l0 eqn:L0.
+      { destruct o eqn:Eo; auto. destruct l eqn:L0.
         assert (max_label_nat p_nat >= n0).
         { apply get_max_label_ge_label_in with (label_nat := (A n0)); auto.
           eapply nth_error_implies_label_in_instr; eauto. }
         simpl. rewrite PeanoNat.Nat.eqb_neq. lia. }
-      rewrite H4. simpl. rewrite  PeanoNat.Nat.eqb_refl. simpl.
+      rewrite H3. simpl. rewrite  PeanoNat.Nat.eqb_refl. simpl.
       (replace (n + n' + _ =? n + n' + _) with false).
       (replace (n + n' + _ =? n + n' + _) with false).
       (replace (n + n' + _ =? n + n' + _) with false).
@@ -1682,15 +1681,17 @@ Proof.
       (replace (n + n' + _ =? n + n' + _) with false).
       Search (?a = ?b <-> ?b = ?a).
       all : try (rewrite bool_sym; rewrite PeanoNat.Nat.eqb_neq; lia).
+
       rewrite Heqrest. simpl. rewrite <- Heqrest. rewrite nth_error_app2.
       rewrite Hlength. replace (get_equiv_simulated_position p_nat pos_nat + 20 + 1 -
                get_equiv_simulated_position p_nat pos_nat) with 21 by lia.
       rewrite Heqrest; simpl; rewrite <- Heqrest. rewrite nth_error_app2.
       rewrite Hlength. replace (get_equiv_simulated_position p_nat pos_nat + 20 + 1 + 1 -
             get_equiv_simulated_position p_nat pos_nat) with 22 by lia.
-      rewrite Heqrest; simpl; rewrite <- Heqrest. unfold ends_with.
-      (* Precisamos receber a hipótese de que aux termina com a *)
-      admit.
+      rewrite Heqrest; simpl; rewrite <- Heqrest. 
+      replace (ends_with (append a (del state_str (Z (max_z_nat p_nat + 1))) x
+              (Z (max_z_nat p_nat + 2))) a) with true.
+      simpl. rewrite get_labeled_instr_app. rewrite Hlength.
 Admitted.
 
 

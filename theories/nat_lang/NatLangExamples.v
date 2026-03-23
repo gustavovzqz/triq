@@ -51,7 +51,7 @@ Theorem id_prg_halts' : forall (x0 : nat) (y0 : nat) (z0 : nat),
   exists (t : nat), HALT
   (update (update (update empty (X 0) x0) (Z 0) z0) Y y0) id_prg t.
 Proof.
-  intros x0. unfold HALT. induction x0 as [| m]; intros.
+ intros x0. unfold HALT. induction x0 as [| m]; intros.
   - exists 3. destruct z0; destruct y0; reflexivity.
   - destruct IHm with (y0 + 1) (z0 + 1). exists (5 + x). 
     simpl compute_program. 
