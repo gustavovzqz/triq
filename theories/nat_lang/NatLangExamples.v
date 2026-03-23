@@ -11,6 +11,9 @@ Open Scope nat_lang_scope.
 
 (** Programa Exemplo: Função Identidade *)
 
+
+
+
 Definition id_prg := 
 
   let x := X 0 in
@@ -26,9 +29,48 @@ Definition id_prg :=
      [ ] IF z GOTO e;
      [b] x <- - 1;
      [ ] y <- + 1;
-     [ ] z <- + 1;
-     [ ] IF z GOTO a]
+     [ ] IF y GOTO a] (* goto a *)
     }>.
+
+
+Definition split_snap (snap : snapshot) :=
+  match snap with
+  | SNAP i s => (i, s)
+  end.
+
+
+
+Theorem compute_program_add : forall 
+  p_nat n n' snap, 
+  compute_program p_nat snap (n + n') =
+  compute_program p_nat (compute_program p_nat snap n') n.
+Proof.
+  intros p_str. induction n; intros n' snap.
+  - reflexivity.
+  - simpl. rewrite IHn. reflexivity.
+Qed.
+
+Lemma id_prg_works : forall state k v,
+  state (X 0) = k ->
+  state (Y) = v ->
+  exists m, 
+  let (i, s) := split_snap (compute_program id_prg (SNAP 0 state) m) in 
+
+  state (X 0) = 0 /\
+  state Y = v + k /\
+  i = 6.
+Proof.
+  induction k; intros.
+  + exists 3. simpl. rewrite H. rewrite H0. simpl. 
+    unfold incr. unfold update. rewrite eqb_var_refl.
+    rewrite PeanoNat.Nat.add_comm. simpl. split; auto.
+  + eexists (_ + 4). rewrite compute_program_add.
+    simpl. rewrite H. simpl. unfold incr. unfold update.
+    rewrite eqb_var_refl. rewrite PeanoNat.Nat.add_comm. simpl.
+    (* estou em um momento onde novo_estado (X 0) = k
+       e novo_estado (Y) = v + 1 *)
+Admitted.
+  
 
 
 (**  O programa para com o número 8 como entrada *)
@@ -46,6 +88,7 @@ Qed.
 
 (** O programa para para quaisquer que sejam 
     os valores iniciais de x0, y0 e z0 *)
+
 
 Theorem id_prg_halts' : forall (x0 : nat) (y0 : nat) (z0 : nat),
   exists (t : nat), HALT
