@@ -1599,54 +1599,63 @@ Lemma incr_macro_simulates_p2 :
   s var = state_str var.
 
 Proof.
-  intros.
-  assert (exists (n n' : nat) (t : list instruction),
-         p_str =
-         firstn (get_equiv_simulated_position p_nat pos_nat) p_str ++
-         fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' (max_z_nat p_nat)) ++ t /\
-         n' + n >=
-         max_label_str (firstn (get_equiv_simulated_position p_nat pos_nat) p_str) /\
-         n + n' >= (max_label_nat p_nat) + a /\
-         length (firstn (get_equiv_simulated_position p_nat pos_nat) p_str) =
-         (get_equiv_simulated_position p_nat pos_nat)).
-  { unfold p_str, get_simulated_program. eapply simulated_program_decomposition; eauto. }
-  destruct H1 as [n [n' [t]]].
-  destruct H1 as [p_str_decomposition [macro_labels_prop  [Huseless Hlength]]].
-    assert (forall k0, ((nth_error
-           (firstn (get_equiv_simulated_position p_nat pos_nat) p_str ++
-            fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' (max_z_nat p_nat)) ++
-            t) (get_equiv_simulated_position p_nat pos_nat + k0))
-            = (nth_error (fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' (max_z_nat p_nat)) ++
-            t) k0))).
-    { intros k0. rewrite nth_error_app2.
-      + rewrite Hlength. 
-        replace (get_equiv_simulated_position p_nat pos_nat + k0 
-                  - get_equiv_simulated_position p_nat pos_nat) with 
-                 (k0) by lia. reflexivity.
-      + lia. } 
+  (* Vars *)
+  intros p_nat pos_nat state_str o x z_aux_v z_aux p_str pos_str.
+  (* Hipóteses *)
+  intros z_aux_pc pos_nat_pc.
+  (* Decomposition of p_str *)
+  assert (
+  exists (n n' : nat) (t : list instruction),
+    (p_str = firstn (get_equiv_simulated_position p_nat pos_nat) p_str ++
+    fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' 
+    (max_z_nat p_nat)) ++ t)
+    /\ (n' + n >= max_label_str (firstn (get_equiv_simulated_position p_nat 
+    pos_nat) p_str)) 
+    /\ (n + n' >= (max_label_nat p_nat) + a)
+    /\ (length (firstn (get_equiv_simulated_position p_nat pos_nat) p_str) =
+       (get_equiv_simulated_position p_nat pos_nat))
+  ) as H_decomposition.
+  { unfold p_str, get_simulated_program. 
+    eapply simulated_program_decomposition; eauto. }
+  destruct H_decomposition as [n [n' [t p_str_decomp_facts]]].
+  destruct p_str_decomp_facts as [p_str_decomposition [nn'_ge_max_str 
+  [nn'_ge_max_nat length_sim_equiv]]].
+  (* nth_firstn_skip *)
+  assert (
+    forall m,
+      nth_error (
+        firstn (get_equiv_simulated_position p_nat pos_nat) p_str 
+        ++ fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' 
+        (max_z_nat p_nat)) ++ t
+        )  (get_equiv_simulated_position p_nat pos_nat + m)
+      = 
+      nth_error (
+      fst ( get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' 
+      (max_z_nat p_nat) ) ++ t
+      ) m) as nth_firstn_skip.
+    { intros m. rewrite nth_error_app2; try lia.
+      rewrite length_sim_equiv. replace (_ + m - _) with m by lia. 
+      reflexivity. } 
     generalize dependent state_str.
     induction (z_aux_v).
    (* Caso Base: Em dois passos saímos. *)
   + exists 2. simpl. unfold pos_str. rewrite p_str_decomposition.
 
-    rewrite H1. unfold LABEL_K0_POSITION. 
-    remember (fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n'
-             (max_z_nat p_nat)) ++
-        t) as rest.
-
-    simpl. unfold ends_with. clear H0.
-    rewrite Heqrest. simpl. unfold z_aux in H.
-    rewrite <- H. simpl.
-    rewrite nth_error_app2. rewrite Hlength.
-    simpl in Heqrest.
-    rewrite <- Heqrest. 
-    replace (get_equiv_simulated_position p_nat pos_nat + 25 + 1 -
-              get_equiv_simulated_position p_nat pos_nat) with 26 by lia.
-              rewrite Heqrest.  simpl. unfold ends_with. rewrite <- H. 
-              simpl. split.
-    unfold INCR_MACRO_LENGHT. lia. split. auto.
-    split. unfold z_aux. subst. rewrite <- H. auto.
-    intros. rewrite app_nil_r. reflexivity. auto. lia.
+    rewrite nth_firstn_skip. unfold LABEL_K0_POSITION. 
+    remember
+    (fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n'
+    (max_z_nat p_nat)) ++ t) as rest eqn:rest_eq.
+    simpl. unfold ends_with. rewrite rest_eq.
+    simpl. unfold z_aux in z_aux_pc.
+    rewrite <- z_aux_pc. simpl. rewrite nth_error_app2 by lia.
+    rewrite length_sim_equiv.
+    simpl in rest_eq. rewrite <- rest_eq. 
+    replace (_ + 25 + 1 - _ p_nat pos_nat) with 26 by lia.
+    rewrite rest_eq. simpl. unfold ends_with. 
+    rewrite <- z_aux_pc. simpl.
+    unfold INCR_MACRO_LENGHT. unfold z_aux.
+    rewrite <- z_aux_pc. rewrite app_nil_r.
+    repeat split; try lia; auto.
   (* Passo da indução. state_str z_aux = a0 :: l. Precisamos executar até chegar em l. *)
   + assert (a0 = 0 \/ a0 = 1) by admit. (* para realizar essa quebra preciso da hipótese de que o estado
                                            está em string 1 *)
