@@ -1628,7 +1628,6 @@ Proof.
   (* Ainda não tenho argumentos para isso? :O *) 
   assert (eqb_var x z_aux = false /\ eqb_var x z_aux_2 = false ) 
   as [x_diff_z x_diff_z_2] by admit.
-  
   (* Decomposition of p_str *)
   assert (
     exists (n n' : nat) (t : list instruction),
@@ -1707,6 +1706,9 @@ Proof.
        unfold ends_with. rewrite <- z_aux_pc. simpl. simpl in rest_eq.
        rewrite <- rest_eq.
        (* resolver admit dps *)
+       (* label_in_instr_str
+          (firstn (get_equiv_simulated_position p_nat pos_nat) p_str)
+          (A (n + n' + 8)) = false *)
        rewrite get_labeled_instr_app by admit. simpl.
        rewrite nth_error_app2 by lia. rewrite length_sim_equiv.
        replace_sub_assoc.
@@ -1745,30 +1747,44 @@ Proof.
       rewrite <- p_str_decomposition.
       assert ((get_equiv_simulated_position p_nat pos_nat +
                get_labeled_instr rest (Some (A (n + n' + 7))))
-               = pos_str).
+               = pos_str) as pos_str_equiv.
      { rewrite rest_eq. simpl. rewrite Hlabel_neq by lia.
        repeat simplify_equalities. rewrite PeanoNat.Nat.eqb_refl.
        auto. }
-     rewrite H5.
+     (* Aqui é o que seria aproveitado nos dois casos. TODO: Ver certinho
+        o que eu preciso dos passos para escrever o assert que o Pablo
+        comentou *)
+     clear rest_eq.
+     rewrite pos_str_equiv.
      remember ((append a (del state_str (Z (max_z_nat p_nat + 1)))) x) as
      four_steps_state.
-     pose proof (IHs four_steps_state).
-     destruct H6. rewrite Heqfour_steps_state. unfold append.
-     unfold del. unfold update. unfold z_aux. 
-     replace (eqb_var x (Z (max_z_nat p_nat + 1))) with false.
-     rewrite eqb_var_refl. rewrite <- H2. simpl. reflexivity.
-     admit.  
-     destruct (compute_program p_str (SNAP pos_str four_steps_state) x0)
-     as [new_line new_state] eqn:E. simpl in H6.
-     destruct H6 as [new_line_eq [new_state_z_aux [new_state_x new_state_fa]]].
-     exists x0. rewrite E. simpl. split. auto. split. auto.
-     split. rewrite new_state_x.
-     rewrite Heqfour_steps_state.  unfold append. unfold update.
-     replace (eqb_var x z_aux) with false.
-     rewrite eqb_var_refl. unfold del. unfold update.
-     unfold z_aux. rewrite eqb_var_refl.
-     replace (eqb_var (Z (max_z_nat p_nat + 1)) x) with false.
-     rewrite <- H2. simpl. 
+     pose proof (IHs' four_steps_state) as IH_4_steps.
+     destruct IH_4_steps as [steps_ind IH4]; auto. 
+     +++ rewrite Heqfour_steps_state. unfold append.
+     unfold del. unfold update. unfold z_aux.
+     rewrite x_diff_z, eqb_var_refl. rewrite <- z_aux_pc. simpl. reflexivity.
+     +++ destruct (compute_program p_str (SNAP pos_str four_steps_state) 
+     steps_ind)
+     as [new_line new_state] eqn:new_snap. simpl in IH4.
+     fold pos_str in IH4. rewrite new_snap in IH4.
+     destruct IH4 as [new_line_eq [new_state_z_aux 
+     [new_state_x new_state_fa]]].
+     exists steps_ind. rewrite new_snap. 
+     repeat (split; auto).
+     * rewrite new_state_x. rewrite Heqfour_steps_state. unfold append.
+       unfold del. unfold update. 
+       repeat (rewrite eqb_var_refl || rewrite x_diff_z).
+       rewrite eqb_var_symm. rewrite x_diff_z.
+       rewrite <- app_assoc. simpl. rewrite <- z_aux_pc.
+       simpl. reflexivity.
+     * intros var [var_diff_x var_diff_z]. rewrite new_state_fa; auto. 
+       subst. unfold append, del, update.
+       rewrite <- var_eqb_neq in var_diff_x.
+       rewrite <- var_eqb_neq in var_diff_z. 
+       rewrite eqb_var_symm, var_diff_x.
+       rewrite eqb_var_symm, var_diff_z. reflexivity.
+    (* a0 = 1 *)
+    ++
 Admitted.
 
 
