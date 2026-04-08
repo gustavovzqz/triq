@@ -1590,6 +1590,41 @@ Ltac fold_constants :=
       repeat(rewrite <- PeanoNat.Nat.add_assoc); simpl;
       repeat(rewrite PeanoNat.Nat.add_assoc).
 
+Ltac clean_rewrites :=
+  repeat (
+    match goal with
+    | H: eqb_var _ _ = _ |- _ => rewrite H in *
+    | H: ends_with _ _ = _ |- _ => rewrite H in *
+    end;
+    simpl in *
+  ).
+
+Ltac step_instr hlen :=
+  rewrite nth_error_app2 by lia;
+  rewrite hlen;
+  fold_constants;
+  replace_sub_assoc;
+  simpl.
+
+Ltac solve_ends_with_hyp H_state :=
+  match goal with
+  | |- context [ends_with ?s ?c] =>
+      first [ 
+        (* Tenta True *)
+        replace (ends_with s c) with true; 
+        [ simpl | 
+          solve [ rewrite <- H_state; reflexivity 
+                | unfold ends_with; rewrite <- H_state; reflexivity 
+                | unfold append, del, update; clean_rewrites; simplify_equalities; auto ] ]
+      | (* Tenta False *)
+        replace (ends_with s c) with false; 
+        [ simpl | 
+          solve [ rewrite <- H_state; reflexivity 
+                | unfold ends_with; rewrite <- H_state; reflexivity 
+                | unfold append, del, update; clean_rewrites; simplify_equalities; auto ] ]
+      ]
+  end.
+
 
 Lemma incr_macro_simulates_p2 :
   forall p_nat pos_nat state_str o x z_aux_v,
@@ -1671,19 +1706,17 @@ Proof.
           unfolds. *)
     rewrite p_str_decomposition; unfold LABEL_K0_POSITION in *. 
     (* Objetivo é match (nth_error ...esse basta aplicar uma vez *)
-    rewrite nth_firstn_skip.
-    (* Tem instrução que depende de ends_with, uso z_aux_pc  *)
-    simpl. unfold ends_with. rewrite <- z_aux_pc. simpl. 
+    rewrite nth_firstn_skip. simpl.
+
+    solve_ends_with_hyp z_aux_pc.
     (* Próxima linha -> *)
-    rewrite nth_error_app2 by lia;
-    rewrite length_sim_equiv;
-    fold_constants;
-    replace_sub_assoc;
+    step_instr length_sim_equiv.
     simpl. 
     (* Outra instrução de GOTO *)
-    unfold ends_with. rewrite <- z_aux_pc. simpl.
+    replace (ends_with _ _ ) with false .
+    Focus 2. rewrite <- z_aux_pc. reflexivity.
     (* Aqui já não há mais computação de programa, a tática viria até aqui *)
-    unfold INCR_MACRO_LENGHT. unfold z_aux.
+    unfold INCR_MACRO_LENGHT. unfold z_aux. simpl.
     rewrite <- z_aux_pc. rewrite app_nil_r.
     repeat split; try lia; auto.
   (* Passo da indução. state_str z_aux = a0 :: l. 
@@ -1708,19 +1741,11 @@ Proof.
     (* Caso a0 = 0 *)
     ++ exists 4. simpl. rewrite p_str_decomposition. unfold pos_str.
        rewrite nth_firstn_skip.
-       rewrite char0 in *.
-       (* Simplificar um passo *)
-       simpl.
-       (* É um GOTO *)
-       unfold ends_with; rewrite <- z_aux_pc; simpl. 
-       (* resolver admit dps *)
-       (* label_in_instr_str
-          (firstn (get_equiv_simulated_position p_nat pos_nat) p_str)
-          (A (n + n' + 8)) = false *)
+       rewrite char0 in *. unfold z_aux_2 in *. simpl.
+       solve_ends_with_hyp z_aux_pc.
 
-       (* GOTO é verdadeiro, preciso usar isso  *)
+       (* GOTO Verdadeiro, onde é próxima instrução *)
        rewrite get_labeled_instr_app by admit. 
-
        assert (n + n' >= max_label_nat p_nat) as nn'max_nat_get by lia.
        assert (forall k, k > 0 -> match o with
                    | Some lbl_a => eqb_lbl lbl_a (A (n + n' + k))
@@ -1735,42 +1760,22 @@ Proof.
        repeat rewrite Hlabel_neq by lia.
        repeat simplify_equalities.
        rewrite PeanoNat.Nat.eqb_refl. simpl.
+       (* Daqui até o comentário anterior precisa ser automatizado *)
 
-      (* Próximo passo, procedimento padrão *)
-       rewrite nth_error_app2 by lia; rewrite length_sim_equiv;
-       fold_constants; replace_sub_assoc; simpl.
-       (* Próximo passo, procedimento padrão *)
-       rewrite nth_error_app2 by lia; rewrite length_sim_equiv;
-       fold_constants; replace_sub_assoc; simpl.
-       (* Próximo passo, procedimento padrão *)
-       rewrite nth_error_app2 by lia; rewrite length_sim_equiv;
-       fold_constants; replace_sub_assoc; simpl.
-       fold_constants. 
-       (* Criar uma especializada para essa *)
-       assert ((ends_with (append a (del state_str
-       (Z (max_z_nat p_nat + 1))) x (Z (max_z_nat p_nat + 2))) a) = true)
-       as ends_char_true.
-       { unfold append. unfold del. unfold update. simpl.
-         simpl. unfold z_aux_2 in *.  rewrite x_diff_z_2.
-         simplify_equalities. auto. }
-       rewrite ends_char_true.
+       repeat (step_instr length_sim_equiv).
+       solve_ends_with_hyp z_aux_pc.
+       (* pode ser provado antes de forma gen[erica *)
        assert (forall k,
         label_in_instr_str (firstn (get_equiv_simulated_position 
         p_nat pos_nat) p_str) (A (n + n' + k)) = false
        ) as aux_lbl_not_in by admit.
        simpl. rewrite get_labeled_instr_app; auto. 
-       rewrite length_sim_equiv.
-       rewrite <- p_str_decomposition.
-       (* Acho que isso aqui foi desnecessário, sem rest é só simpl
-          mais oq eu ja fiz antes *)
-       assert ((get_equiv_simulated_position p_nat pos_nat +
-                get_labeled_instr rest (Some (A (n + n' + 7))))
-                = pos_str) as pos_str_equiv.
-       {rewrite rest_eq. simpl. rewrite Hlabel_neq by lia.
-        repeat simplify_equalities. rewrite PeanoNat.Nat.eqb_refl.
-        auto. }
-       clear rest_eq.
-       rewrite pos_str_equiv.
+       rewrite length_sim_equiv. simpl.
+       rewrite Hlabel_neq by lia.
+       repeat simplify_equalities.
+       rewrite PeanoNat.Nat.eqb_refl.
+       (* Aqui está tudo computado *)
+
        remember ((append a (del state_str (Z (max_z_nat p_nat + 1)))) x) as
        four_steps_state.
        pose proof (IHs' four_steps_state) as IH_4_steps.
