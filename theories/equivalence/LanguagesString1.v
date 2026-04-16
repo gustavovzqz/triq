@@ -249,17 +249,15 @@ Fixpoint max_label_str (l : StringLang.program) : nat :=
 
 (** ** Obtendo a Maior Variável Z em p_nat *)
 
-Fixpoint get_max_z (l : NatLang.program) (k : nat) : nat :=
+Fixpoint max_z_nat (l : NatLang.program) : nat :=
     match l with
-    | [] => k
+    | [] => 0
     | NatLang.Instr opt_lbl (NatLang.INCR (Z n))  :: t 
     | NatLang.Instr opt_lbl (NatLang.DECR (Z n))  :: t 
-    | NatLang.Instr opt_lbl (NatLang.IF_GOTO (Z n) _ )  :: t  => get_max_z t (max n k)
-    | _ :: t => get_max_z t k
+    | NatLang.Instr opt_lbl (NatLang.IF_GOTO (Z n) _ )  :: t  =>
+      Nat.max n (max_z_nat t) 
+    | _ :: t => max_z_nat t
     end.
-
-Definition max_z_nat (nat_prg : NatLang.program) : nat :=
- get_max_z nat_prg 0.
 
 
 (** ** Obtendo a Macro *)
@@ -377,12 +375,18 @@ nat_to_string1 (s_nat x) = v -> s_str x = v.
 
 (** Definição Nova *)
 
+Definition var_in_instr (i : NatLang.instruction) 
+  (var : variable) : bool :=
+  match i with 
+  | NatLang.Instr _ (NatLang.INCR x)
+  | NatLang.Instr _ (NatLang.DECR x)
+  | NatLang.Instr _ (NatLang.IF_GOTO x _) => (eqb_var var x)
+  end.
+
+
 Fixpoint var_in_program (p : NatLang.program) (var : variable) : bool :=
   match p with 
-  | NatLang.Instr _ (NatLang.INCR x) :: t
-  |NatLang.Instr _ (NatLang.DECR x) :: t
-  | NatLang.Instr _ (NatLang.IF_GOTO x _) :: t =>
-      (eqb_var var x) || var_in_program t var
+  | h :: t => (var_in_instr h var) || var_in_program t var
   | [] => false
   end.
 
@@ -1645,6 +1649,50 @@ Ltac compute_macro_step hlen hlbl hstate :=
   ].
 
 
+Lemma var_in_p_implies_max :
+  forall n p_nat,
+  var_in_program p_nat (Z n) = true ->
+  n <= max_z_nat p_nat.
+Proof.
+  intros. induction p_nat.
+  - simpl in H. discriminate H.
+  - simpl in H. destruct a0. destruct s; destruct v; auto;
+    simpl in *; destruct (n =? n0) eqn:eqb_n_n0;
+    try (simpl in *; apply PeanoNat.Nat.le_trans with
+    (m := max_z_nat p_nat); auto; lia);
+    try (rewrite PeanoNat.Nat.eqb_eq in eqb_n_n0;
+    apply PeanoNat.Nat.le_trans with (m := n0); simpl; lia).
+Qed.
+
+Lemma var_in_instr_implies_in_program:
+  forall p_nat pos_nat instr var,
+  nth_error p_nat pos_nat = Some instr ->
+  var_in_instr instr var = true ->
+  var_in_program p_nat var = true.
+Proof.
+  induction p_nat; intros.
+  + rewrite nth_error_nil in H. discriminate.
+  + simpl in *. destruct pos_nat as [| pos'].
+    ++ replace (var_in_instr a0 var) with true; auto.
+       rewrite <- H0. simpl in H. injection H as eq.
+       rewrite eq. reflexivity.
+    ++ simpl in H. replace (var_in_program p_nat var) with true.
+       lia. symmetry. eauto.
+Qed.
+
+
+Lemma var_diff_aux : forall p_nat x k,
+  var_in_program p_nat x = true ->
+  k > max_z_nat p_nat ->
+  eqb_var x (Z k) = false.
+Proof.
+  intros. destruct x; auto.
+  assert (n <= max_z_nat p_nat).
+  { apply var_in_p_implies_max; auto. }
+  simpl. rewrite PeanoNat.Nat.eqb_neq. lia.
+Qed.
+
+
 
 (** PENDÊNCIAS DOS ASSERTS 
 
@@ -1692,9 +1740,15 @@ Proof.
   intros z_aux_pc z_aux_2_pc pos_nat_pc.
 
   (* x != z_aux /\ x != z_aux_2 *)
-  (* Ainda não tenho argumentos para isso? :O *) 
   assert (eqb_var x z_aux = false /\ eqb_var x z_aux_2 = false ) 
-  as [x_diff_z x_diff_z_2] by admit.
+  as [x_diff_z x_diff_z_2].
+  { split.
+    + apply var_diff_aux with p_nat. apply var_in_instr_implies_in_program
+      with pos_nat (NatLang.Instr o (NatLang.INCR x)); auto.
+      simpl. rewrite eqb_var_refl. reflexivity. lia.
+    + apply var_diff_aux with p_nat. apply var_in_instr_implies_in_program
+      with pos_nat (NatLang.Instr o (NatLang.INCR x)); auto.
+      simpl. rewrite eqb_var_refl. reflexivity. lia. }
   (* Decomposition of p_str *)
   assert (
     exists (n n' : nat) (t : list instruction),
