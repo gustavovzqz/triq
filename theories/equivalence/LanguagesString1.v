@@ -1645,6 +1645,19 @@ Ltac compute_macro_step hlen hlbl hstate :=
   ].
 
 
+
+(** PENDÊNCIAS DOS ASSERTS 
+
+  1. Se uma variável X pertence ao programa dos naturais, 
+     então ela é diferente de qualquer variável auxiliar.
+
+  2. O estate state_str está delimitado em string1, ou seja,
+     seus resultados podem ser apenas 0 ou 1.
+
+  3. Labels A (n n' + k) não estão no programa dos naturais
+
+ *)
+
 Lemma incr_macro_simulates_p2 :
   forall p_nat pos_nat state_str o x z_aux_v,
 
