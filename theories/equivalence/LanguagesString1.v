@@ -142,12 +142,12 @@ Definition decr_macro_1 :=
         goto K0;
 
     [A2] x <- -;
-[  ] z <- + a;
+    [  ] z <- + a;
          goto C;
 
     [A1] x <- -;
     (* IF X != 0 GOTO C2 *)
-  [  ] IF x ENDS a GOTO C2;
+    [  ] IF x ENDS a GOTO C2;
     [  ] IF x ENDS b GOTO C2;
          goto K0;
 
@@ -181,7 +181,7 @@ End decr_macro.
 
 Compute (StringLang.get (X 0) (decr_macro_1 (X 0) None 0 0 0) ([b; b]) 100).
 
-(**** Macro IF GOTO *)
+(** ** Macro IF GOTO *)
 
 Section if_macro.
 
@@ -1692,18 +1692,6 @@ Proof.
   simpl. rewrite PeanoNat.Nat.eqb_neq. lia.
 Qed.
 
-(** PENDÊNCIAS DOS ASSERTS 
-
-  1. Se uma variável X pertence ao programa dos naturais, 
-     então ela é diferente de qualquer variável auxiliar.
-
-  2. O estate state_str está delimitado em string1, ou seja,
-     seus resultados podem ser apenas 0 ou 1.
-
-   3. Labels A (n + n' + k) não estão no programa dos naturais
-
- *)
-
 Lemma incr_macro_simulates_p2 :
   forall p_nat pos_nat state_str o x z_aux_v,
 
@@ -1837,7 +1825,6 @@ Proof.
        unfold z_aux in H.
        unfold string_over in H. rewrite <- z_aux_pc in H.
        apply H. }
-       
      destruct H_char as [char0 | char1].
      (* Caso a0 = 0 *)
      ++ exists 4. simpl.
@@ -1970,28 +1957,6 @@ Proof.
   replace p_str with (get_simulated_program p_nat) by auto.
   pose proof (incr_macro_simulates_p2 p_nat pos_nat s o x) as P2.
   simpl in P2.
-  destruct P2; auto.
-  rewrite <- Heqinstr_nat. auto.
-  destruct (compute_program (get_simulated_program p_nat) 
-           (SNAP (get_equiv_simulated_position p_nat pos_nat + LABEL_K0_POSITION) s) x1)
-           eqn:HsnapP2.
-          
-  simpl in H.
-  destruct H as [HlineP2 [Hs0_aux]].
-  destruct H as [Hs0_x HequivP2].
-  exists (x1 + x0). rewrite StringLangProperties.compute_program_add.
-  rewrite  HsnapP1. rewrite HlineP1. rewrite H3. rewrite  HsnapP2.
-  unfold snap_equiv. split.
-  + unfold state_equiv in *. admit. 
-    (* var <> Z (...) por conta de max_z nat + 1 *)
-    (* destruct no x = var
-       1. Caso x <> var -> usa HequivP2, H5 e H2 
-       2. Caso x = var -> mesma coisa *)
-  + split.
-    ++ subst. simpl. unfold equiv_pos. 
-       pose proof (get_equiv_simulated_Sn p_nat pos_nat _ H0).
-       rewrite H. rewrite macro_length_incr_27. reflexivity.
-    ++ auto.
 Admitted.
 
 
@@ -2070,7 +2035,7 @@ Proof.
         ++ assert (exists m : nat, snap_equiv p_nat (NatLang.SNAP (pos_nat + 1) 
            (NatLang.incr state_nat v)) p_str 
            (compute_program p_str (SNAP pos_str state_str) m)).
-           {admit.  }
+           {admit. }
            destruct H5. exists x. rewrite H0, snap_str_eq. apply H5. 
 
         ++ admit.
