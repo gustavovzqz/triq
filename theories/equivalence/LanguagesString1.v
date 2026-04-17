@@ -1692,8 +1692,6 @@ Proof.
   simpl. rewrite PeanoNat.Nat.eqb_neq. lia.
 Qed.
 
-
-
 (** PENDÊNCIAS DOS ASSERTS 
 
   1. Se uma variável X pertence ao programa dos naturais, 
@@ -1716,6 +1714,7 @@ Lemma incr_macro_simulates_p2 :
 
   z_aux_v = state_str (z_aux) ->
   ends_with (state_str z_aux_2) a = true ->
+  StringLang.state_over state_str 1 ->
 
 
   nth_error p_nat pos_nat = Some (NatLang.Instr o (NatLang.INCR x)) ->
@@ -1737,7 +1736,7 @@ Proof.
   (* Vars *)
   intros p_nat pos_nat state_str o x z_aux_v z_aux z_aux_2 p_str pos_str.
   (* Hipóteses *)
-  intros z_aux_pc z_aux_2_pc pos_nat_pc.
+  intros z_aux_pc z_aux_2_pc state_over_str_1 pos_nat_pc.
 
   (* x != z_aux /\ x != z_aux_2 *)
   assert (eqb_var x z_aux = false /\ eqb_var x z_aux_2 = false ) 
@@ -1817,8 +1816,7 @@ Proof.
      repeat split; try lia; auto.
   (* Passo da indução. state_str z_aux = a0 :: l. 
   Precisamos executar até chegar em l. *)
-   + assert (char = 0 \/ char = 1) as H_char by admit. 
-     intros state_str z_aux_pc z_aux_2_pc.
+   + intros state_str z_aux_pc z_aux_2_pc state_over_str_1.
      cut (
       exists m m': nat,
          let (i, s) := split_snap 
@@ -1833,6 +1831,13 @@ Proof.
      ).
      {intros cH. destruct cH as [m [m']]. exists (m' + m). 
      rewrite StringLangProperties.compute_program_add. auto. }
+     assert (char = 0 \/ char = 1) as H_char.
+     { cut (char <= 1). lia. unfold state_over in *.
+       pose proof (state_over_str_1 z_aux).
+       unfold z_aux in H.
+       unfold string_over in H. rewrite <- z_aux_pc in H.
+       apply H. }
+       
      destruct H_char as [char0 | char1].
      (* Caso a0 = 0 *)
      ++ exists 4. simpl.
@@ -1856,6 +1861,7 @@ Proof.
             unfold append, del, update.
             rewrite x_diff_z_2. simpl.
             simplify_equalities. auto.
+        +++ rewrite Heqfour_steps_state. solve_string.
         +++ destruct (compute_program p_str (SNAP pos_str four_steps_state) 
             steps_ind) as [new_line new_state] eqn:new_snap. simpl in IH4.
             fold pos_str in IH4. rewrite new_snap in IH4.
@@ -1888,7 +1894,6 @@ Proof.
         repeat (compute_macro_step length_sim_equiv Hlabel_neq z_aux_pc).
 
        (* Aqui está tudo computado *)
-
         remember ((append b (del state_str (Z (max_z_nat p_nat + 1)))) x) as
         four_steps_state.
         pose proof (IHs' four_steps_state) as IH_4_steps.
@@ -1901,6 +1906,7 @@ Proof.
             unfold append, del, update.
             rewrite x_diff_z_2. simpl.
             simplify_equalities. auto.
+        +++ rewrite Heqfour_steps_state. solve_string.
         +++ destruct (compute_program p_str (SNAP pos_str four_steps_state) 
             steps_ind) as [new_line new_state] eqn:new_snap. simpl in IH4.
             fold pos_str in IH4. rewrite new_snap in IH4.
@@ -1924,7 +1930,7 @@ Proof.
               rewrite <- var_eqb_neq in var_diff_z.
               rewrite eqb_var_symm, var_diff_x.
               rewrite eqb_var_symm, var_diff_z. reflexivity.
-Admitted.
+Qed.
 
 
 

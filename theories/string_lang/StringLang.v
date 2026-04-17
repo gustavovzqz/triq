@@ -44,6 +44,8 @@ Fixpoint string_over s n :=
 Definition state_over (st : state) n :=
   forall x, string_over (st x) n.
 
+  
+
 Definition empty : state  := fun _ => [].
 
 (** Auxiliares **)
@@ -79,6 +81,51 @@ Definition del (m : state) (x : variable) :=
 
 Inductive snapshot :=
   | SNAP : nat -> state -> snapshot.
+
+
+Lemma state_over_iter (st : state) (n : nat) :
+  state_over st n ->
+  forall str var,
+  string_over str n ->
+  state_over (update st var str) n.
+Proof.
+  intros. unfold state_over in *. 
+  intros x. unfold update. destruct (eqb_var var x); auto.
+Qed.
+
+Lemma string_over_tl : forall st n,
+  state_over st n ->
+  forall x,
+  string_over (tl (st x)) n.
+Proof.
+  intros. unfold state_over in *.
+  destruct (st x) eqn:E.
+  + simpl. auto.
+  + simpl. pose proof (H x). rewrite E in H0.
+    simpl in H0. apply H0.
+Qed.
+
+Lemma string_over_app : forall h t n,
+  string_over h n ->
+  string_over t n ->
+  string_over (h ++ t) n.
+Proof.
+  intros. induction h; auto.
+  + simpl in *. destruct H; split; auto.
+Qed.
+
+Ltac solve_string :=
+  repeat (
+    match goal with
+    | |- _ => apply StringLang.state_over_iter
+    | |- _ => apply string_over_tl
+    | |- _ => apply string_over_app
+    | |- _ => apply state_over_iter
+    end; simpl; auto
+  ).
+
+
+
 
 Declare Custom Entry com'.
 Declare Scope string_lang_scope.
