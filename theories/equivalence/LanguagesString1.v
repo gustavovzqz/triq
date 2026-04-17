@@ -1702,7 +1702,7 @@ Qed.
   2. O estate state_str está delimitado em string1, ou seja,
      seus resultados podem ser apenas 0 ou 1.
 
-  3. Labels A (n n' + k) não estão no programa dos naturais
+   3. Labels A (n + n' + k) não estão no programa dos naturais
 
  *)
 
@@ -1793,10 +1793,12 @@ Proof.
           eapply nth_error_implies_label_in_instr; eauto. }
         simpl. intros k hk. rewrite PeanoNat.Nat.eqb_neq. lia. }
    assert (forall k,
-    label_in_instr_str (firstn (get_equiv_simulated_position 
+    k <> 0 ->
+    label_in_instr_str (firstn (get_equiv_simulated_position
      p_nat pos_nat) p_str) (A (n + n' + k)) = false
-    ) as aux_lbl_not_in by admit.
-
+    ) as aux_lbl_not_in.
+    { intros k Hk_diff_z. apply label_sum_not_in_instr; auto.
+      rewrite PeanoNat.Nat.add_comm; auto. }
    generalize dependent state_str.
    unfold z_aux in *.
    unfold pos_str in *.
