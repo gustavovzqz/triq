@@ -37,6 +37,20 @@ Proof.
   destruct v; try (apply PeanoNat.Nat.eqb_refl); reflexivity.
 Qed.
 
+Lemma bool_symm : forall n m, (n =? m) = (m =? n).
+Proof.
+  induction n; destruct m; auto.
+  simpl. auto.
+Qed.
+
+
+Theorem eqb_var_symm : forall x y, eqb_var x y = eqb_var y x.
+Proof.
+  destruct x; destruct y; auto.
+  + simpl. apply bool_symm.
+  + simpl. apply bool_symm.
+Qed.
+
 Theorem var_eqb_eq : forall v1 v2 : variable, eqb_var v1 v2 = true <-> v1 = v2.
 Proof.
   intros v1 v2. split; intros H.
