@@ -348,7 +348,7 @@ Fixpoint incr_string1 (s : StringLang.string ) : (StringLang.string ) :=
 match s with
 | h :: t => if h =? a then b :: t
             else a :: incr_string1 t 
-| []     => [b] 
+| []     => [a] 
 end.
 
 (** Com a função de incremento, podemos implementar a conversão
