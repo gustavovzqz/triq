@@ -1,7 +1,7 @@
-(** * Prova de Equivalência do programa dos naturais para o programa de alfabeto com dois dígitos *)
+
 
 (** O objetivo deste arquivo é provar a equivalência entre o programa dos naturais
-    para o programa de strings, no caso especial em que este possui apenas dois
+para o programa de strings, no caso especial em que este possui apenas dois
     símbolos.  *)
 
 From Triq Require NatLang.
@@ -94,7 +94,7 @@ Definition incr_macro_1:=
       [  ] x <- + a;
       goto K0;
 
-      [K2] z <- -;
+[K2] z <- -;
       [  ] x <- +b;
 
       [K0] IF z ENDS a GOTO K1;
@@ -1864,6 +1864,7 @@ Proof.
               rewrite eqb_var_symm, var_diff_x. reflexivity.
 Qed.
 
+
 Lemma incr_macro_simulates_p1:
   forall p_nat pos_nat state_str o x x_value,
 
@@ -1974,11 +1975,132 @@ Proof.
            rewrite <- var_eqb_neq in H, H0. rewrite eqb_var_symm, H0.
            reflexivity.
     (* passo *)
-    +
+    + intros state_str x_aux_pc z_aux_2_pc state_over_str_1.
+      fold pos_str.
+      cut (
+      exists m m': nat,
+         let (i, s) := split_snap 
+         (compute_program p_str (compute_program p_str
+         (SNAP pos_str state_str) m) m') in
+         i = get_equiv_simulated_position p_nat pos_nat 
+             + LABEL_K0_POSITION /\
+         s x = [] /\
+         s z_aux = state_str z_aux ++ incr_string1 (state_str x) /\
+         (forall var : variable, var <> x /\ 
+          var <> z_aux -> s var = state_str var)
+      ).
+      {intros cH. destruct cH as [m [m']]. exists (m' + m). 
+      rewrite StringLangProperties.compute_program_add. 
+      auto. }
+      assert (char = 0 \/ char = 1) as H_char.
+      { cut (char <= 1). lia. unfold state_over in *.
+       pose proof (state_over_str_1 x).
+       unfold z_aux in H.
+       unfold string_over in H. rewrite <- x_aux_pc in H.
+       apply H. }
+       destruct H_char as [char0 | char1].
+
+       (* caso 1 a0 = 0 *)
+        ++ exists 4. simpl.
+          rewrite p_str_decomposition. unfold pos_str.
+          rewrite nth_firstn_skip.
+          rewrite char0 in *. unfold z_aux_2 in *. simpl.
+          repeat (compute_macro_step length_sim_equiv Hlabel_neq x_aux_pc).
+          fold LABEL_C_POSITION.
+          rewrite length_sim_equiv; auto.
+          simpl in p_str_decomposition.
+          rewrite <- p_str_decomposition.
+          clear p_str_decomposition.
+          (* == *)
+          remember (append b (del state_str x) (Z (max_z_nat p_nat + 1)))
+          as new_state.
+          assert (exists m' : nat,
+            let (i, s) :=
+            split_snap (compute_program p_str
+            (SNAP
+            (get_equiv_simulated_position p_nat pos_nat + LABEL_C_POSITION)
+            new_state)
+             m') in
+            i = get_equiv_simulated_position p_nat pos_nat 
+                + LABEL_K0_POSITION /\
+            s x = [] /\
+            s z_aux = new_state z_aux ++ (new_state x) /\
+            (forall var : variable, var <> x 
+                    /\ var <> z_aux -> s var = new_state var)).
+          { eapply incr_macro_simulates_p1_aux; eauto.
+            rewrite Heqnew_state. solve_ends_with_hyp z_aux_pc.
+            reflexivity. rewrite Heqnew_state. solve_string. }
+          destruct H as [steps]. exists steps.
+          destruct  (compute_program p_str
+          (SNAP (get_equiv_simulated_position p_nat pos_nat + 
+          LABEL_C_POSITION) new_state) steps).
+          simpl in H. simpl. destruct H as [n0_H [sx_H [sz_H state_H]]].
+          repeat (split; auto).
+          * rewrite sz_H. rewrite Heqnew_state. unfold append, del, update.
+            unfold z_aux. rewrite eqb_var_refl. rewrite x_diff_z.
+            rewrite eqb_var_symm, x_diff_z, eqb_var_refl.
+            rewrite <- x_aux_pc. simpl.
+            rewrite <- app_assoc. simpl. reflexivity.
+          * intros. pose proof (state_H var H). destruct H.
+            rewrite <- var_eqb_neq in *.  rewrite  H0.
+            rewrite Heqnew_state. unfold append, del, update.
+            rewrite x_diff_z, eqb_var_symm. fold z_aux. rewrite H1.
+            rewrite eqb_var_symm, H. reflexivity.
+
+          (* == *)
+        ++ exists 5. simpl.
+          rewrite p_str_decomposition. unfold pos_str.
+          rewrite nth_firstn_skip.
+          rewrite char1 in *. unfold z_aux_2 in *. simpl.
+          repeat (compute_macro_step length_sim_equiv Hlabel_neq x_aux_pc).
+          rewrite length_sim_equiv; auto.
+          simpl in p_str_decomposition.
+          rewrite <- p_str_decomposition.
+          clear p_str_decomposition.
+          remember (append a (del state_str x) (Z (max_z_nat p_nat + 1)))
+          as five_steps_state.
+          pose proof (IHs' five_steps_state) as IH_5_steps.
+          destruct IH_5_steps as [steps_ind IH5].
+          * rewrite Heqfive_steps_state.
+            unfold append, del, update. rewrite <- x_aux_pc.
+            rewrite x_diff_z. rewrite eqb_var_symm, x_diff_z, eqb_var_refl.
+            simpl. reflexivity.
+          * rewrite Heqfive_steps_state. unfold append, del, update.
+            simpl. simplify_equalities. rewrite x_diff_z_2.
+            auto.
+          * rewrite Heqfive_steps_state. solve_string.
+          * exists steps_ind. unfold LABEL_B_POSITION in *.
+            destruct (compute_program p_str
+            (SNAP (get_equiv_simulated_position p_nat pos_nat + 1)
+            five_steps_state) steps_ind). simpl. simpl in IH5.
+            destruct IH5 as [n0_H [sx_H [sz_H state_H]]].
+            repeat (split; auto).
+            ** unfold z_aux. rewrite sz_H. rewrite Heqfive_steps_state.
+               unfold append, del, update. rewrite eqb_var_refl.
+               rewrite x_diff_z. rewrite eqb_var_symm, x_diff_z.
+               rewrite eqb_var_refl. rewrite <- x_aux_pc.
+               simpl.  replace (a :: incr_string1 s') with 
+               ([a] ++ incr_string1 s') by reflexivity.
+               rewrite app_assoc. reflexivity.
+            ** intros.  pose proof (state_H var); auto.
+               fold z_aux in H0. apply H0 in H as H'.
+               rewrite H'. rewrite Heqfive_steps_state.
+               unfold append, del, update. destruct H.
+               rewrite <- var_eqb_neq in H.
+               rewrite <- var_eqb_neq in H1.
+               unfold z_aux in H1.
+               rewrite x_diff_z. rewrite eqb_var_symm, H1.
+               rewrite eqb_var_symm, H. reflexivity.
+Qed.
 
 
-
-Admitted.
+Lemma app_cons_comm :  forall {A} (h : list A) e t,
+  (h ++ [e]) ++ t =
+  h ++ (e :: t).
+Proof.
+  intros.
+  replace (e :: t) with ([e] ++ t) by reflexivity.
+  Search (_ ++ _ ++ _).
  
 
 Lemma incr_macro_simulates_p2 :
