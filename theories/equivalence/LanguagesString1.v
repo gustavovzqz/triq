@@ -25,7 +25,7 @@ Definition b := 1.
 (** * Definições das Macros para o Caso de Dois Dígitos *)
 
 (** Diferente do caso "string 0" em que há uma associação direta
-    entre as instruções dos naturais com as instruções em strings,
+  entre as instruções dos naturais com as instruções em strings,
     aqui precisaremos definir macros mais complexas e que precisam
     de variáveis e labels próprias. *)
 
@@ -64,11 +64,11 @@ Let goto l := [ ] IF aux ENDS a GOTO l.
 
 Definition incr_macro_1:=
   <{[
-      [lbl] aux <- + a;
+  [lbl] aux <- + a;
       [B] IF x ENDS a GOTO A1;
       [ ] IF x ENDS b GOTO A2;
-      [ ] z <- + a;
-      goto K0;
+[ ] z <- + a;
+  goto K0;
 
       [A1] x <- -;
       [  ] z <- + b;
@@ -2094,14 +2094,7 @@ Proof.
 Qed.
 
 
-Lemma app_cons_comm :  forall {A} (h : list A) e t,
-  (h ++ [e]) ++ t =
-  h ++ (e :: t).
-Proof.
-  intros.
-  replace (e :: t) with ([e] ++ t) by reflexivity.
-  Search (_ ++ _ ++ _).
- 
+
 
 Lemma incr_macro_simulates_p2 :
   forall p_nat pos_nat state_str o x z_aux_v,
@@ -2331,6 +2324,16 @@ Proof.
 Qed.
 
 
+Lemma ends_with_app :
+  forall h t value,
+  ends_with h value = true ->
+  ends_with (h ++ t) value = true.
+Proof.
+  intros.
+  destruct h.
+  + discriminate H.
+  + auto.
+Qed.
 
 Lemma macro_length_incr_27 : forall o x,
   macro_length (NatLang.Instr o (NatLang.INCR x)) = 27.
@@ -2344,31 +2347,135 @@ Lemma incr_macro_simulates :
 
   let p_str := get_simulated_program p_nat in
 
+  let z_aux_2 := Z ((max_z_nat p_nat) + 2) in 
+
+  ((state_str z_aux_2) = [] \/ 
+  ends_with (state_str z_aux_2) 0 = true) ->
+  StringLang.state_over state_str 1 ->
+
   (* Snapshots iniciais são equivalentes *)
   snap_equiv p_nat (NatLang.SNAP pos_nat state_nat)
              p_str (StringLang.SNAP pos_str state_str) ->
+  
+
 
 
   nth_error p_nat pos_nat = Some (NatLang.Instr o (NatLang.INCR x)) ->
 
-  exists m, snap_equiv p_nat (NatLang.SNAP (pos_nat + 1) (NatLang.incr state_nat x))
-                       p_str (compute_program p_str (SNAP pos_str state_str) m).
+  exists m, 
+    let (i, s) := split_snap (compute_program p_str 
+                  (SNAP pos_str state_str) m) in
+
+    snap_equiv p_nat (NatLang.SNAP (pos_nat + 1) (NatLang.incr state_nat x))
+               p_str  (StringLang.SNAP i s) /\
+    ends_with (s z_aux_2) 0 = true.
 Proof.
-  intros. unfold snap_equiv in H. destruct H as [H2 [H3 H4]].
-  remember (NatLang.Instr o (NatLang.INCR x)) as instr_nat.
-  pose proof 
-  (incr_macro_simulates_p1 p_nat pos_nat state_nat pos_str state_str o x)
-  as P1.
-  simpl in P1. destruct P1; auto. rewrite <- Heqinstr_nat. auto.
-  destruct (compute_program (get_simulated_program p_nat) 
-           (SNAP pos_str state_str) x0) eqn:HsnapP1.
-  simpl in H.
-  destruct H as [HlineP1 [HstateP1]]; auto.
-  destruct H as [Hsx0 [HsZaux Hsinvariant]].
-  replace p_str with (get_simulated_program p_nat) by auto.
-  pose proof (incr_macro_simulates_p2 p_nat pos_nat s o x) as P2.
-  simpl in P2.
-Admitted.
+  intros p_nat pos_nat state_nat pos_str state_str o x p_str z_aux_2.
+
+  intros z_aux_empty_or_ends_a state_over_str_1 snap_equiv pos_nat_pc.
+
+  (* Decomposição do Programa de Strings *)
+  assert (exists (n n' : nat) (t : list instruction),
+   (p_str = firstn (get_equiv_simulated_position p_nat pos_nat) p_str ++
+   fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' 
+   (max_z_nat p_nat)) ++ t) /\ 
+   (n' + n >= max_label_str (firstn (get_equiv_simulated_position p_nat 
+   pos_nat) p_str)) /\ 
+   (n + n' >= (max_label_nat p_nat) + a) /\ 
+   (length (firstn (get_equiv_simulated_position p_nat pos_nat) p_str) =
+    (get_equiv_simulated_position p_nat pos_nat))
+    ) as H_decomposition.
+  { unfold p_str, get_simulated_program. 
+    eapply simulated_program_decomposition; eauto. }
+
+  destruct H_decomposition as [n [n' [t p_str_decomp_facts]]].
+  destruct p_str_decomp_facts as [p_str_decomposition [nn'_ge_max_str 
+  [nn'_ge_max_nat length_sim_equiv]]].
+  
+  (* Auxiliar nth_error *)
+  assert (forall m,
+   nth_error (firstn (get_equiv_simulated_position p_nat pos_nat) p_str 
+   ++ fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' 
+   (max_z_nat p_nat)) ++ t) (get_equiv_simulated_position p_nat pos_nat + m)
+   = nth_error (fst (get_str_macro1 (NatLang.Instr o (NatLang.INCR x)) n n' 
+     (max_z_nat p_nat)) ++ t) m) as nth_firstn_skip.
+    { intros m. rewrite nth_error_app2; try lia.
+      rewrite length_sim_equiv. replace_sub_assoc.
+      reflexivity. } 
+
+  (* Extraindo Informações de Snap Equiv *)
+
+  simpl in snap_equiv. 
+  destruct snap_equiv as [initial_state_equiv [initial_pos_equiv z_aux_pc]].
+  unfold equiv_pos in initial_pos_equiv.
+
+  (* 1. Computo um passo e chego na label [B]. Uso z_aux_empty_or_ends_a
+        para mostrar que, no estado em que cheguei após computar um passo,
+        z_aux_2 termina com a. *)
+
+  (* Mudando objetivo para (1 + m) *)
+   cut (exists m m' m'': nat,
+        let (i, s) := split_snap 
+        (compute_program p_str (
+        (compute_program p_str (compute_program p_str
+        (SNAP pos_str state_str) m) m')) m'') in
+        snap_equiv p_nat (NatLang.SNAP (pos_nat + 1) 
+        (NatLang.incr state_nat x)) p_str (SNAP i s) 
+        /\ ends_with (s z_aux_2) 0 = true).
+    {intros cH. destruct cH as [m [m' [m'']]]. exists (m'' + m' + m). 
+    rewrite StringLangProperties.compute_program_add.
+    rewrite StringLangProperties.compute_program_add. auto. }
+       
+  (* Computando *)
+
+  exists 1. simpl. rewrite initial_pos_equiv. rewrite p_str_decomposition.
+  pose proof (nth_firstn_skip 0);
+  replace (get_equiv_simulated_position p_nat pos_nat + 0) with 
+  (get_equiv_simulated_position p_nat pos_nat) in H by lia;
+  rewrite H; clear H. simpl. simpl in p_str_decomposition.
+  rewrite <- p_str_decomposition; clear p_str_decomposition.
+
+  remember (append a state_str (Z (max_z_nat p_nat + 2))) as one_step_state.
+
+  (* Provando que no estado de um passo, z_aux_2 termina com a *)
+
+  assert (ends_with (one_step_state z_aux_2) 0 = true) as
+  ends_with_z2_true.
+  { rewrite Heqone_step_state. unfold append, update.
+    unfold z_aux_2 in *. rewrite eqb_var_refl. 
+    destruct z_aux_empty_or_ends_a as [z_empty | z_tl_a].
+    + rewrite z_empty. reflexivity.
+    + unfold ends_with. apply ends_with_app; auto. }
+
+  (* 2. Usando p1 *)
+
+  pose proof (incr_macro_simulates_p1 p_nat pos_nat
+  one_step_state o x (one_step_state x)). simpl in H.
+  destruct H; auto.
+  rewrite Heqone_step_state. solve_string.
+  exists x0. rewrite <- initial_pos_equiv in *.
+  unfold LABEL_B_POSITION in *. fold p_str in H.
+  destruct (compute_program p_str 
+  (SNAP (pos_str + 1) one_step_state) x0). 
+  simpl in H. destruct H as [n0_eq [sx_empty [s_z_aux s_pos_cond]]].
+  rewrite n0_eq.
+
+  (* 3. Usando p2 *)
+
+  pose proof (incr_macro_simulates_p2 p_nat pos_nat
+  s o x (s (Z (max_z_nat p_nat + 1)))). simpl in H. destruct H; auto.
+  replace (s (Z (max_z_nat p_nat + 2))) with 
+  (one_step_state (Z (max_z_nat p_nat + 2))); auto.
+  symmetry. apply s_pos_cond. admit. (* preciso de hipoteses *)
+  admit. (* facil *)
+  simpl in H. 
+  exists x1. fold p_str in H. rewrite <- initial_pos_equiv in H.
+  destruct (compute_program p_str (SNAP (pos_str + LABEL_K0_POSITION) s) x1). 
+  simpl in H. simpl.
+
+  (* Terminar admits anteriores e finalizar a prova *)
+  
+ Admitted.
 
 
 
