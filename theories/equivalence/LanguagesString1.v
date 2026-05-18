@@ -68,7 +68,7 @@ Definition incr_macro_1:=
       [B] IF x ENDS a GOTO A1;
       [ ] IF x ENDS b GOTO A2;
       [ ] z <- + a;
-      goto K0;
+goto K0;
 
       [A1] x <- -;
       [  ] z <- + b;
@@ -2342,6 +2342,19 @@ Proof.
   destruct o; reflexivity.
 Qed.
 
+Lemma var_diff_nm : forall (x : variable) n m,
+  (x <> n /\ x <> m) \/ 
+  (x = n) \/
+  (x = m).
+Proof.
+  intros. destruct (var_eqb_dec x n) as [x_eq_n | x_diff_n].
+  + right. left. auto.
+  + destruct (var_eqb_dec x m) as [x_eq_m | x_diff_m ].
+    - right. right. auto.
+    - left. split; auto.
+Qed.
+
+
 Lemma incr_macro_simulates :
   forall p_nat pos_nat state_nat pos_str state_str o x,
 
@@ -2463,23 +2476,26 @@ Proof.
   (* 2. Usando p1 *)
 
   pose proof (incr_macro_simulates_p1 p_nat pos_nat
-  one_step_state o x (one_step_state x)). simpl in H.
-  destruct H; auto.
+  one_step_state o x (one_step_state x)) as incr_macro_p1. simpl in incr_macro_p1.
+  destruct incr_macro_p1 as [p1_steps p1_hip]; auto.
   rewrite Heqone_step_state. solve_string.
-  exists x0. rewrite <- initial_pos_equiv in *.
-  unfold LABEL_B_POSITION in *. fold p_str in H.
+  exists p1_steps. rewrite <- initial_pos_equiv in *.
+  unfold LABEL_B_POSITION in *. fold p_str in p1_hip.
   destruct (compute_program p_str 
-  (SNAP (pos_str + 1) one_step_state) x0). 
-  simpl in H. destruct H as [n0_eq [sx_empty [s_z_aux s_pos_cond]]].
-  rewrite n0_eq.
+  (SNAP (pos_str + 1) one_step_state) p1_steps) as [p1_line p1_state]. 
+  simpl in p1_hip. destruct p1_hip as [p1_line_pos [p1_sx
+  [p1_z1 p1_forall_var]]].
+  rewrite p1_line_pos.
+
 
   (* 3. Usando p2 *)
 
   pose proof (incr_macro_simulates_p2 p_nat pos_nat
-  s o x (s (Z (max_z_nat p_nat + 1)))). simpl in H. destruct H; auto.
-  replace (s (Z (max_z_nat p_nat + 2))) with 
+  p1_state o x (p1_state (Z (max_z_nat p_nat + 1)))) as incr_macro_p2. 
+  simpl in incr_macro_p2. destruct incr_macro_p2 as [p2_steps p2_hip]; auto.
+  replace (p1_state (Z (max_z_nat p_nat + 2))) with 
   (one_step_state (Z (max_z_nat p_nat + 2))); auto.
-  symmetry. apply s_pos_cond. 
+  symmetry. apply p1_forall_var. 
   split.
   + symmetry. rewrite <- var_eqb_neq. fold z_aux_2. rewrite x_diff_z_2.
     reflexivity.
@@ -2488,28 +2504,30 @@ Proof.
   + unfold state_over.
     intros x1.
     assert ((x1 <> x  /\ x1 <> Z (max_z_nat p_nat + 1))
-            \/ (x1 = x \/ x1 = Z (max_z_nat p_nat + 1))).
-    { admit. }
-    destruct H.
-   ++ replace (s x1) with (one_step_state x1).
+            \/ (x1 = x \/ x1 = Z (max_z_nat p_nat + 1)))
+            as [x1_diff | x1_eq].
+    { apply var_diff_nm. }
+   ++ replace (p1_state x1) with (one_step_state x1).
       * rewrite Heqone_step_state. solve_string.
       * symmetry; auto.
-   ++ destruct H.
-      * rewrite H. rewrite sx_empty. reflexivity.
-      * rewrite H. rewrite s_z_aux. rewrite Heqone_step_state.
-        solve_string. admit. (* preciso adicionar incr_string no 
-                                solve string *)
-  + simpl in H. exists x1. fold p_str in H.
-    rewrite <- initial_pos_equiv in H.
+   ++ destruct x1_eq as [x1_eq_x | x1_eq_z].
+      * rewrite x1_eq_x. rewrite p1_sx. reflexivity.
+      * rewrite x1_eq_z. rewrite p1_z1. rewrite Heqone_step_state.
+        solve_string. apply incr_string_over.
+        solve_string.
+  + simpl in p2_hip. exists p2_steps. fold p_str in p2_hip.
+    rewrite <- initial_pos_equiv in p2_hip.
     destruct (compute_program p_str (SNAP (pos_str + 
-    LABEL_K0_POSITION) s) x1). 
-    simpl in H. simpl.
-    destruct H as [H1 [H2 [H3 H4]]].
+    LABEL_K0_POSITION) p1_state) p2_steps) as [p2_line p2_state]. 
+    simpl in p2_hip. simpl.
+    destruct p2_hip as [p2_line_pos [p2_sx [p2_z1 p2_forall_var]]].
     repeat (split; auto).
    ++ admit.
-   ++ rewrite H1. unfold equiv_pos. 
-      (* nao lembro exatamente como eu fazia isso *) admit.
-
+   ++ rewrite H1. Search equiv_pos.
+      unfold equiv_pos. 
+      erewrite get_equiv_simulated_Sn; eauto. simpl.
+      unfold INCR_MACRO_LENGHT. unfold macro_length. simpl.
+      lia.
       (* usar assert que eu preciso pra usar H4 e s_pos_cond *)
    ++ assert ((s0 z_aux_2) = (s z_aux_2)).
       { apply H4. split.
