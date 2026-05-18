@@ -32,8 +32,8 @@ Definition b := 1.
 (** Para lidar com as variáveis auxiliares, basta padronizar o seguinte:
     Seja _k_ o maior valor de _n_ na variável _Z n_ no programa dos naturais.
     Para o programa de strings, sempre usaremos _aux_ como Z (k + 2) e
-_z_como Z (k + 1). Para usarmos Z de maneira segura, vamos sempre
-zerar o seu valor ao final de cada macro, garantindo que estará
+    _z_como Z (k + 1). Para usarmos Z de maneira segura, vamos sempre
+    zerar o seu valor ao final de cada macro, garantindo que estará
     "limpo" para a execução da próxima macro. A variável aux será
     usada apenas para simular o GOTO, então a argumentação deve
     seguir um caminho um pouco diferente. *)
@@ -64,15 +64,15 @@ Let goto l := [ ] IF aux ENDS a GOTO l.
 
 Definition incr_macro_1:=
   <{[
-  [lbl] aux <- + a;
+      [lbl] aux <- + a;
       [B] IF x ENDS a GOTO A1;
       [ ] IF x ENDS b GOTO A2;
-[ ] z <- + a;
-  goto K0;
+      [ ] z <- + a;
+      goto K0;
 
       [A1] x <- -;
       [  ] z <- + b;
-  goto C;
+      goto C;
 
       [A2] x <- -;
       [  ] z <- + a;
@@ -94,7 +94,7 @@ Definition incr_macro_1:=
       [  ] x <- + a;
       goto K0;
 
-[K2] z <- -;
+      [K2] z <- -;
       [  ] x <- +b;
 
       [K0] IF z ENDS a GOTO K1;
@@ -2466,15 +2466,42 @@ Proof.
   s o x (s (Z (max_z_nat p_nat + 1)))). simpl in H. destruct H; auto.
   replace (s (Z (max_z_nat p_nat + 2))) with 
   (one_step_state (Z (max_z_nat p_nat + 2))); auto.
-  symmetry. apply s_pos_cond. admit. (* preciso de hipoteses *)
-  admit. (* facil *)
-  simpl in H. 
-  exists x1. fold p_str in H. rewrite <- initial_pos_equiv in H.
-  destruct (compute_program p_str (SNAP (pos_str + LABEL_K0_POSITION) s) x1). 
-  simpl in H. simpl.
-
-  (* Terminar admits anteriores e finalizar a prova *)
-  
+  symmetry. apply s_pos_cond. 
+  split.
+  + admit.
+  + rewrite <- var_eqb_neq. simpl. rewrite PeanoNat.Nat.eqb_neq.
+    lia.
+  + unfold state_over.
+    intros x1.
+    assert ((x1 <> x  /\ x1 <> Z (max_z_nat p_nat + 1))
+            \/ (x1 = x \/ x1 = Z (max_z_nat p_nat + 1))).
+    { admit. }
+    destruct H.
+   ++ replace (s x1) with (one_step_state x1).
+      * rewrite Heqone_step_state. solve_string.
+      * symmetry; auto.
+   ++ destruct H.
+      * rewrite H. rewrite sx_empty. reflexivity.
+      * rewrite H. rewrite s_z_aux. rewrite Heqone_step_state.
+        solve_string. admit. (* preciso adicionar incr_string no 
+                                solve string *)
+  + simpl in H. exists x1. fold p_str in H.
+    rewrite <- initial_pos_equiv in H.
+    destruct (compute_program p_str (SNAP (pos_str + 
+    LABEL_K0_POSITION) s) x1). 
+    simpl in H. simpl.
+    destruct H as [H1 [H2 [H3 H4]]].
+    repeat (split; auto).
+   ++ admit.
+   ++ rewrite H1. unfold equiv_pos. 
+      (* nao lembro exatamente como eu fazia isso *) admit.
+   ++ assert ((s0 z_aux_2) = (s z_aux_2)).
+      { apply H4. split.
+        + admit.
+        + unfold z_aux_2. admit. }
+          rewrite H. (* mais um passo *) admit.
+    (* Relacionar x != zaux e etc *)
+    (* relacionar zaux1_diff zaux2 e etc *)
  Admitted.
 
 
