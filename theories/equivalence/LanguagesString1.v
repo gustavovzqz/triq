@@ -2347,6 +2347,7 @@ Lemma incr_macro_simulates :
 
   let p_str := get_simulated_program p_nat in
 
+  let z_aux := Z ((max_z_nat p_nat) + 1) in
   let z_aux_2 := Z ((max_z_nat p_nat) + 2) in 
 
   ((state_str z_aux_2) = [] \/ 
@@ -2370,7 +2371,7 @@ Lemma incr_macro_simulates :
                p_str  (StringLang.SNAP i s) /\
     ends_with (s z_aux_2) 0 = true.
 Proof.
-  intros p_nat pos_nat state_nat pos_str state_str o x p_str z_aux_2.
+  intros p_nat pos_nat state_nat pos_str state_str o x p_str z_aux z_aux_2.
 
   intros z_aux_empty_or_ends_a state_over_str_1 snap_equiv pos_nat_pc.
 
@@ -2402,6 +2403,18 @@ Proof.
     { intros m. rewrite nth_error_app2; try lia.
       rewrite length_sim_equiv. replace_sub_assoc.
       reflexivity. } 
+
+
+  (* x != z_aux /\ x != z_aux_2 *)
+  assert (eqb_var x z_aux = false /\ eqb_var x z_aux_2 = false ) 
+  as [x_diff_z x_diff_z_2].
+  { split.
+    + apply var_diff_aux with p_nat. apply var_in_instr_implies_in_program
+      with pos_nat (NatLang.Instr o (NatLang.INCR x)); auto.
+      simpl. rewrite eqb_var_refl. reflexivity. lia.
+    + apply var_diff_aux with p_nat. apply var_in_instr_implies_in_program
+      with pos_nat (NatLang.Instr o (NatLang.INCR x)); auto.
+      simpl. rewrite eqb_var_refl. reflexivity. lia. }
 
   (* Extraindo Informações de Snap Equiv *)
 
@@ -2468,7 +2481,8 @@ Proof.
   (one_step_state (Z (max_z_nat p_nat + 2))); auto.
   symmetry. apply s_pos_cond. 
   split.
-  + admit.
+  + symmetry. rewrite <- var_eqb_neq. fold z_aux_2. rewrite x_diff_z_2.
+    reflexivity.
   + rewrite <- var_eqb_neq. simpl. rewrite PeanoNat.Nat.eqb_neq.
     lia.
   + unfold state_over.
@@ -2495,13 +2509,17 @@ Proof.
    ++ admit.
    ++ rewrite H1. unfold equiv_pos. 
       (* nao lembro exatamente como eu fazia isso *) admit.
+
+      (* usar assert que eu preciso pra usar H4 e s_pos_cond *)
    ++ assert ((s0 z_aux_2) = (s z_aux_2)).
       { apply H4. split.
-        + admit.
-        + unfold z_aux_2. admit. }
+        + symmetry. rewrite <- var_eqb_neq. rewrite x_diff_z_2. reflexivity.
+        + unfold z_aux_2. rewrite <- var_eqb_neq. 
+          simpl. rewrite PeanoNat.Nat.eqb_neq. lia. }
           rewrite H. (* mais um passo *) admit.
     (* Relacionar x != zaux e etc *)
     (* relacionar zaux1_diff zaux2 e etc *)
+    (* mudar todos os nomes e ajustar a prova *)
  Admitted.
 
 
