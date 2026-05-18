@@ -81,3 +81,11 @@ Proof.
     + apply var_eqb_eq in Heq. contradiction. 
     + reflexivity.
 Qed.
+
+
+Theorem var_eqb_dec : forall v1 v2 : variable, {v1 = v2} + {v1 <> v2}.
+Proof.
+  intros v1 v2. destruct (eqb_var v1 v2) eqn:Heq.
+  - apply var_eqb_eq in Heq. left. assumption.
+  - apply var_eqb_neq in Heq. right. assumption.
+Qed.
