@@ -2523,21 +2523,29 @@ Proof.
     destruct p2_hip as [p2_line_pos [p2_sx [p2_z1 p2_forall_var]]].
     repeat (split; auto).
    ++ admit.
-   ++ rewrite H1. Search equiv_pos.
+   ++ rewrite p2_line_pos.
       unfold equiv_pos. 
       erewrite get_equiv_simulated_Sn; eauto. simpl.
       unfold INCR_MACRO_LENGHT. unfold macro_length. simpl.
       lia.
-      (* usar assert que eu preciso pra usar H4 e s_pos_cond *)
-   ++ assert ((s0 z_aux_2) = (s z_aux_2)).
-      { apply H4. split.
-        + symmetry. rewrite <- var_eqb_neq. rewrite x_diff_z_2. reflexivity.
+   ++ assert ((p2_state z_aux_2) = (p1_state z_aux_2))
+      as p2_z2_eq_p1_z2.
+      { apply p2_forall_var. split.
+        + symmetry. rewrite <- var_eqb_neq. rewrite x_diff_z_2. 
+          reflexivity.
         + unfold z_aux_2. rewrite <- var_eqb_neq. 
-          simpl. rewrite PeanoNat.Nat.eqb_neq. lia. }
-          rewrite H. (* mais um passo *) admit.
-    (* Relacionar x != zaux e etc *)
-    (* relacionar zaux1_diff zaux2 e etc *)
-    (* mudar todos os nomes e ajustar a prova *)
+          simpl. rewrite PeanoNat.Nat.eqb_neq. lia. 
+      }
+      rewrite p2_z2_eq_p1_z2.
+      assert ((p1_state z_aux_2) = (one_step_state z_aux_2))
+      as p1_z2_eq_oss_z2.
+      { apply p1_forall_var. split.
+        + symmetry. rewrite <- var_eqb_neq. rewrite x_diff_z_2. 
+          reflexivity.
+        + unfold z_aux_2. rewrite <- var_eqb_neq. 
+          simpl. rewrite PeanoNat.Nat.eqb_neq. lia. 
+      }
+      rewrite p1_z2_eq_oss_z2. auto. 
  Admitted.
 
 
