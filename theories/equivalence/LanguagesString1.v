@@ -2355,6 +2355,18 @@ Proof.
 Qed.
 
 
+Definition is_incr_of_state state' state (x : variable) :=
+  forall var,
+    (var <> x -> state var = state' var) /\
+    (var = x -> state' var = incr_string1 (state var)).
+
+Lemma state_equiv_incr : forall p_nat state_nat state_str state_str' x,
+  state_equiv state_nat state_str p_nat ->
+  is_incr_of_state state_str' state_str x ->
+  state_equiv (NatLang.incr state_nat x) state_str' p_nat.
+Admitted.
+
+
 Lemma incr_macro_simulates :
   forall p_nat pos_nat state_nat pos_str state_str o x,
 
@@ -2473,6 +2485,21 @@ Proof.
     + rewrite z_empty. reflexivity.
     + unfold ends_with. apply ends_with_app; auto. }
 
+  (* E que o valor de x é o mesmo*)
+  assert (one_step_state x = state_str x) as one_step_eq_state_str_x.
+  {rewrite Heqone_step_state. unfold append, update. fold z_aux_2. 
+   rewrite eqb_var_symm, x_diff_z_2. reflexivity.
+  }
+
+  (* Assim como o valor de Z *)
+
+  assert (one_step_state z_aux = state_str z_aux) as one_step_eq_state_str_z.
+  {rewrite Heqone_step_state. unfold append, update. fold z_aux_2. 
+   unfold z_aux_2, z_aux. simpl. replace (max_z_nat p_nat + 2 =? max_z_nat p_nat + 1)
+   with false. reflexivity. symmetry.
+   rewrite  PeanoNat.Nat.eqb_neq. lia.
+  }
+
   (* 2. Usando p1 *)
 
   pose proof (incr_macro_simulates_p1 p_nat pos_nat
@@ -2520,9 +2547,19 @@ Proof.
     destruct (compute_program p_str (SNAP (pos_str + 
     LABEL_K0_POSITION) p1_state) p2_steps) as [p2_line p2_state]. 
     simpl in p2_hip. simpl.
-    destruct p2_hip as [p2_line_pos [p2_sx [p2_z1 p2_forall_var]]].
+    destruct p2_hip as [p2_line_pos [p2_z1 [p2_sx p2_forall_var]]].
     repeat (split; auto).
-   ++ admit.
+   ++ assert (is_incr_of_state p2_state state_str x).
+      { unfold is_incr_of_state. intros var. split.
+        * admit. (* Vejo se é diferente de Z. Se for, então é igual a p1 e state_str
+                  se não for, então é state_str z = [] que é o state_str z*)
+        * intros var_eq_x. rewrite var_eq_x.
+          rewrite p2_sx. rewrite p1_sx. simpl. rewrite p1_z1.
+          rewrite one_step_eq_state_str_x. fold z_aux.
+          rewrite one_step_eq_state_str_z. unfold z_aux. rewrite z_aux_pc.
+          reflexivity. }
+       apply state_equiv_incr with state_str; auto. 
+   
    ++ rewrite p2_line_pos.
       unfold equiv_pos. 
       erewrite get_equiv_simulated_Sn; eauto. simpl.
