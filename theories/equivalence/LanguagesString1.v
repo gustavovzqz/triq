@@ -393,10 +393,8 @@ Fixpoint var_in_program (p : NatLang.program) (var : variable) : bool :=
   | [] => false
   end.
 
-Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state) 
-  (p_nat : NatLang.program) :=
+Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state) :=
   forall (x : variable),
-  var_in_program p_nat x = true ->
   nat_to_string1 (s_nat x) = s_str x.
 
 (** Para a noção de equivalência de snapshot, unimos as definições de equivalência
@@ -411,7 +409,7 @@ match snap_nat with
 | NatLang.SNAP n state_nat => (
     match snap_str with
     | StringLang.SNAP n' state_str =>
-    state_equiv state_nat state_str p_nat  /\ equiv_pos p_nat n p_str n' /\
+    state_equiv state_nat state_str  /\ equiv_pos p_nat n p_str n' /\
     state_str (Z ((max_z_nat p_nat) + 1)) = []
     end)
 end.
@@ -425,11 +423,11 @@ Definition get_equiv_state nat_state : (StringLang.state ) :=
 (** É trivial provar que a função anterior retorna um estado equivalente
   ao argumento. *)
 
-Lemma get_equiv_state_correct : forall p_nat state_nat,
-state_equiv state_nat (get_equiv_state state_nat) p_nat.
+Lemma get_equiv_state_correct : forall  state_nat,
+state_equiv state_nat (get_equiv_state state_nat).
 Proof.
   intros. unfold get_equiv_state. unfold state_equiv.
-  intros x state_x_eq_v. destruct (state_nat x) eqn:E; reflexivity.
+  intros x. destruct (state_nat x) eqn:E; reflexivity.
 Qed.
 
 (** Para mostrar que o programa em strings está em string 1,
@@ -649,20 +647,16 @@ Proof.
   + destruct (n =? a); intros H; discriminate H.
 Qed.
 
-Lemma state_nat_Sn_implies_non_empty : forall v state_nat state_str n p_nat,
-  state_equiv state_nat state_str p_nat ->
-  var_in_program p_nat v = true ->
+Lemma state_nat_Sn_implies_non_empty : forall v state_nat state_str n ,
+  state_equiv state_nat state_str ->
   state_nat v = S n -> exists h t, state_str v = h :: t.
 Proof.
-  intros. unfold get_equiv_state in H. 
-  remember (state_str v). unfold state_equiv in H.
-  assert (nat_to_string1 (state_nat v) = state_str v).
-  { apply H; auto. } rewrite H1 in H2.
-  rewrite <- Heqs in H2. simpl in H2.
-  destruct s eqn:E.
-  + pose proof (incr_string_not_empty (nat_to_string1 n)).
-   contradiction.
-  + exists n0, s0; reflexivity.
+  intros v state_nat state_str n Hequiv Hnat.
+  unfold state_equiv in Hequiv. specialize (Hequiv v).
+  rewrite Hnat in Hequiv. destruct (state_str v) eqn:E.
+  + simpl in Hequiv. pose proof incr_string_not_empty (nat_to_string1 n).
+    contradiction.
+  + exists n0, s. reflexivity.
 Qed.
 
 Lemma firstn_S_nth_error :
@@ -2383,17 +2377,40 @@ Proof.
 Qed.
 
 
+Lemma state_equiv_incr_aux : forall x state_nat state_str,
+  nat_to_string1 (state_nat x) = state_str x ->
+  nat_to_string1 (NatLang.incr state_nat x x) =
+  incr_string1 (state_str x).
+Admitted.
+
+
 Definition is_incr_of_state state' state (x : variable) :=
   forall var,
     (var <> x -> state var = state' var) /\
     (var = x -> state' var = incr_string1 (state var)).
 
-Lemma state_equiv_incr : forall p_nat state_nat state_str state_str' x,
-  state_equiv state_nat state_str p_nat ->
+Lemma state_equiv_incr : forall  state_nat state_str state_str' x,
+  state_equiv state_nat state_str ->
   is_incr_of_state state_str' state_str x ->
-  state_equiv (NatLang.incr state_nat x) state_str' p_nat.
-Admitted.
-
+  state_equiv (NatLang.incr state_nat x) state_str'.
+Proof.
+  intros state_nat state_str state_str' x.
+  intros H_equiv H_incr.
+  unfold state_equiv. intros var.
+  unfold is_incr_of_state in H_incr. 
+  specialize (H_incr var). destruct H_incr as [H_var_diff_x H_var_eq_x].
+  destruct (var_eqb_dec var x) as [var_eq_x | var_diff_x].
+  (* var = x  *)  
+  - rewrite var_eq_x. apply H_var_eq_x in var_eq_x as state_str_var.
+    subst. specialize (H_equiv x). rewrite state_str_var.
+    apply state_equiv_incr_aux; auto.
+  (* var != x *)
+  - unfold NatLang.incr, NatLang.update. 
+    assert (eqb_var x var = false).
+    { rewrite eqb_var_symm. rewrite var_eqb_neq. auto. }
+    rewrite H. unfold state_equiv in H_equiv. specialize (H_equiv var).
+    apply H_var_diff_x in var_diff_x. rewrite <- var_diff_x. auto.
+Qed.
 
 Lemma incr_macro_simulates :
   forall p_nat pos_nat state_nat pos_str state_str o x,
