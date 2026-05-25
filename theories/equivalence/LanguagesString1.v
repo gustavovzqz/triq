@@ -2381,8 +2381,13 @@ Lemma state_equiv_incr_aux : forall x state_nat state_str,
   nat_to_string1 (state_nat x) = state_str x ->
   nat_to_string1 (NatLang.incr state_nat x x) =
   incr_string1 (state_str x).
-Admitted.
-
+Proof.
+  intros. 
+  unfold NatLang.incr, NatLang.update. rewrite eqb_var_refl. 
+  destruct (state_nat x) as [| n'].
+  + simpl. rewrite <- H. reflexivity.
+  + simpl. replace (n' + 1) with (S n') by lia. rewrite H. reflexivity.
+Qed.
 
 Definition is_incr_of_state state' state (x : variable) :=
   forall var,
