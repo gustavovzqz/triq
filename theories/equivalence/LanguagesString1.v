@@ -177,7 +177,8 @@ Definition decr_macro_1 :=
     [  ] x <- +b;
 
     [K0] IF z ENDS a GOTO K1;
-    [  ] IF z ENDS b GOTO K2
+    [  ] IF z ENDS b GOTO K2;
+    [  ] aux <- -
   ]}>.
 
 End decr_macro.
