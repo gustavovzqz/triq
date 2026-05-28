@@ -2635,6 +2635,7 @@ Theorem nat_implies_string :
   equiv_pos p_nat line_nat p_str line_str /\
   (* Posso obter isso de state_equiv, mas é mais fácil carregar a informação como
     invariante *)
+  (* preciso adicionar state_over 1 do state_str *)
   state_str (Z (max_z_nat p_nat + 1)) = [] /\
   state_str (Z (max_z_nat p_nat + 2)) = [].
 
@@ -2699,7 +2700,15 @@ Proof.
       rewrite <- Heqp_str in macro_decomposition.
       destruct i, s.
       (* x <- x + 1 *)
-      ++ admit.
+      ++ pose proof (incr_macro_simulates p_nat pos_nat state_nat pos_str state_str o v)
+         as incr_macro_H. destruct incr_macro_H as [steps_macro incr_H]; auto.
+         +++ admit.
+         +++ unfold snap_equiv; auto.
+         +++ exists steps_macro. simpl. rewrite <- Heqp_str in incr_H.
+             destruct (compute_program p_str (SNAP pos_str state_str) steps_macro).
+             simpl in incr_H. simpl. replace (S pos_nat) with (pos_nat + 1) by lia.
+             destruct incr_H as [[state_equiv_incr equiv_pos_incr ] [sz1_empty sz2_empty]]. 
+             repeat (split; auto).
       (* x <- x - 1 *)
       ++ admit.
       (* if v != 0 goto a *)
