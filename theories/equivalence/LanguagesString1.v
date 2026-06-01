@@ -2989,15 +2989,28 @@ Lemma f_equal_incr : forall s1 s2,
 Proof. 
   induction s1; destruct s2; intros; auto.
   (* Contradição em H1 *)
-  + simpl in H1. admit.
+  + simpl in H1. destruct (n =? a).
+    ++ discriminate H1.
+    ++ pose proof (incr_string_not_empty s2).
+       destruct (incr_string1 s2); try contradiction.
+       discriminate H1. 
   (* contradição em H1 *)
-  + simpl in H1. admit.
-  + simpl in H1.
-    (* a0 precisa ser igual a n, se n H1 é contradição 
-       b :: algo n pode ser igual a a:: algo. depois temos que,
-       incr_string1 s1 é igual a incr_string1 s2, usamos hipotese e caimos
-       no que precisamos *)
-Admitted.
+  + simpl in H1. destruct (a0 =? a).
+    ++ discriminate H1.
+    ++ pose proof (incr_string_not_empty s1).
+       destruct (incr_string1 s1); try contradiction.
+       discriminate H1. 
+  + simpl in *. destruct H, H0.
+    assert (a0 = 0 \/ a0 = 1) by lia.
+    assert (n = 0 \/ n = 1) by lia.
+    destruct H4; destruct H5; subst; simpl in *.
+    ++ simpl in *. injection H1 as H4.
+       rewrite H4; reflexivity.
+    ++ discriminate H1.
+    ++ discriminate H1.
+    ++ injection H1 as H4. f_equal.
+       apply IHs1; auto.
+Qed.
 
 
 Lemma state_equiv_decr_aux : forall x state_nat state_str,
