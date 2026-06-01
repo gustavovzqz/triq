@@ -18,7 +18,7 @@ Import ListNotations.
 
 (** "a" e "b" são os caracteres básicos do alfabeto de dois dígitos. *)
 
-Definition a  := 0.
+Definition a := 0.
 Definition b := 1.
 
 (** * Definições das Macros para o Caso de Dois Dígitos *)
@@ -356,11 +356,14 @@ end.
 
 Fixpoint decr_string1 (s: StringLang.string) : (StringLang.string) :=
 match s with 
-| h :: t => if h =? b then a :: t 
-            else b :: decr_string1 t 
-| []     => []
+| [ ]    => []
+| h :: t => match t with 
+            | [] => if h =? a then [] else [a]
+            |  _ => if h =? b then a :: t
+            else b :: decr_string1 t
+            end
 end.
- 
+
 (** Com a função de incremento, podemos implementar a conversão
   de natural para string utilizando _n_ incrementos. *)
 
@@ -2957,38 +2960,45 @@ Qed.
 
 
 
-(* auxiliar *)
 
-Search (_ =? _).
 
-Lemma incr_rev_decr' : forall s,
+Lemma incr_rev_decr : forall s,
+  StringLang.string_over s 1 ->
   s <> [] ->
   incr_string1 (decr_string1 s) = s.
 Proof.
   induction s; intros.
   + contradiction.
-  + simpl. destruct (a0 =? b) eqn:E.
-    ++ simpl. rewrite PeanoNat.Nat.eqb_eq in E. rewrite E. reflexivity.
-    ++ simpl. (* Não consigo usar pois S pode ser vazio. *)
-Abort. 
+  + destruct s. 
+    ++ simpl in *. destruct H. assert (a0 = 0 \/ a0 = 1) by lia.
+       destruct H2; rewrite H2; auto.
+    ++ simpl in *. assert (a0 = 0 \/ a0 = 1) by lia.
+       destruct H1 as [char0  | char1].
+       +++ rewrite char0. simpl. rewrite IHs; auto.
+           destruct H as [H1 [H2 H3]]; auto. intros falso. 
+           discriminate falso.
+       +++ rewrite char1. simpl. reflexivity.
+Qed.
 
-Lemma incr_rev_decr : forall k s,
-  k = decr_string1 s ->
-  s <> [] ->
-  incr_string1 (k) = s.
-Proof.
-  induction k; intros.
-  + (* Se decr_string s = [], então S precisa ser [a] *) admit.
-  + simpl. destruct (a0 =? a) eqn:E1.
-    ++ (* Se decr_string s = a0 :: k, então s é b :: k *) admit.
-    ++ (* Se a0 = b, então s = a :: incr_string1 k *)
-Abort. 
 
 Lemma f_equal_incr : forall s1 s2, 
+  StringLang.string_over s1 1 ->
+  StringLang.string_over s2 1 ->
   incr_string1 s1 = incr_string1 s2 ->
   s1 = s2.
 Proof. 
+  induction s1; destruct s2; intros; auto.
+  (* Contradição em H1 *)
+  + simpl in H1. admit.
+  (* contradição em H1 *)
+  + simpl in H1. admit.
+  + simpl in H1.
+    (* a0 precisa ser igual a n, se n H1 é contradição 
+       b :: algo n pode ser igual a a:: algo. depois temos que,
+       incr_string1 s1 é igual a incr_string1 s2, usamos hipotese e caimos
+       no que precisamos *)
 Admitted.
+
 
 Lemma state_equiv_decr_aux : forall x state_nat state_str,
   nat_to_string1 (state_nat x) = state_str x ->
