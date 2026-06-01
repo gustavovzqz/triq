@@ -286,7 +286,10 @@ Fixpoint compute_program (p : program) snap n :=
   | O    => snap
   end.
 
-
+Definition split_snap (snap : snapshot) :=
+  match snap with
+  | SNAP i s => (i, s)
+  end.
 
 
 (* TODO: Vou fazer com o estado inicial por enquanto, mas provavelmente vai ser

@@ -34,12 +34,6 @@ Definition id_prg :=
     }>.
 
 
-Definition split_snap (snap : snapshot) :=
-  match snap with
-  | SNAP i s => (i, s)
-  end.
-
-
 
 Theorem compute_program_add : forall 
   p_nat n n' snap, 
