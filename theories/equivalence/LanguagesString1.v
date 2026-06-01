@@ -2423,7 +2423,8 @@ Lemma incr_macro_simulates :
     snap_equiv p_nat (NatLang.SNAP (pos_nat + 1) (NatLang.incr state_nat x))
                p_str  (StringLang.SNAP i s) /\
     (s z_aux ) = [] /\
-    (s z_aux_2) = [].
+    (s z_aux_2) = [] /\
+    StringLang.state_over s 1.
 Proof.
   intros p_nat pos_nat state_nat pos_str state_str o x p_str z_aux z_aux_2.
 
@@ -2489,7 +2490,8 @@ Proof.
         snap_equiv p_nat (NatLang.SNAP (pos_nat + 1) 
         (NatLang.incr state_nat x)) p_str (SNAP i s) 
         /\ s z_aux = []
-        /\ s z_aux_2 = []).
+        /\ s z_aux_2 = []
+        /\ StringLang.state_over s 1).
     {intros cH. destruct cH as [m [m' [m'']]]. exists (m'' + m' + m). 
     rewrite StringLangProperties.compute_program_add.
     rewrite StringLangProperties.compute_program_add. auto. }
@@ -2606,6 +2608,19 @@ Proof.
       erewrite get_equiv_simulated_Sn; eauto. simpl.
       unfold INCR_MACRO_LENGHT. unfold macro_length. simpl.
       lia.
+   ++ unfold state_over. intros x0.
+      pose proof (var_eqb_dec x0 x) as x_eqb_x0. destruct x_eqb_x0.
+      * rewrite e, p2_sx. solve_string. rewrite p1_sx. reflexivity. 
+        rewrite p1_z1. solve_string.  fold z_aux. rewrite one_step_eq_state_str_z.
+        auto. rewrite one_step_eq_state_str_x. apply incr_string_over. auto.
+      * pose proof (var_eqb_dec x0 z_aux) as z_eqb_x0. destruct z_eqb_x0.
+        ** rewrite e. unfold z_aux. rewrite p2_z1. simpl. auto.
+        ** pose proof (var_eqb_dec x0 z_aux_2) as x0_eqb_z_aux_2. destruct x0_eqb_z_aux_2.
+           unfold z_aux_2 in e. rewrite e. rewrite p2_z2. simpl. auto.
+           replace (p2_state x0) with (p1_state x0).
+           replace (p1_state x0) with (one_step_state x0).
+           rewrite Heqone_step_state. solve_string.
+           symmetry. auto. symmetry. auto.
 Qed.
 
 
@@ -2637,7 +2652,8 @@ Theorem nat_implies_string :
     invariante *)
   (* preciso adicionar state_over 1 do state_str *)
   state_str (Z (max_z_nat p_nat + 1)) = [] /\
-  state_str (Z (max_z_nat p_nat + 2)) = [].
+  state_str (Z (max_z_nat p_nat + 2)) = [] /\
+  StringLang.state_over state_str 1.
 
 
 Proof.
@@ -2656,7 +2672,9 @@ Proof.
     + apply get_equiv_state_correct.
     + split.
       ++ reflexivity.
-      ++ split; rewrite get_equiv_state_initial; auto.
+      ++ split; rewrite get_equiv_state_initial; auto. split; auto.
+         apply equiv_state_string1.
+         
   (* Passo da indução *)
   - destruct (NatLang.compute_program p_nat (NatLang.SNAP 0 initial_state_nat)
     steps_nat) as [pos_nat state_nat] eqn:snap_nat_eq.
@@ -2664,7 +2682,7 @@ Proof.
     destruct (StringLang.compute_program p_str (SNAP 0 
     (get_equiv_state initial_state_nat)) steps_str) as [pos_str state_str] 
     eqn:snap_str_eq. simpl in H_ind.
-    destruct H_ind as [H_state_equiv [H_equiv_pos [z_1_pc z_2_pc]]].
+    destruct H_ind as [H_state_equiv [H_equiv_pos [z_1_pc [z_2_pc state_over_pc]]]].
     
     (* Trocando objetivo por exists, (...) steps_str + m *)
     cut (exists m : nat,
@@ -2680,7 +2698,8 @@ Proof.
           state_equiv state_nat0 state_str0 /\
           equiv_pos p_nat line_nat p_str line_str /\
           state_str0 (Z (max_z_nat p_nat + 1)) = [] /\ 
-          state_str0 (Z (max_z_nat p_nat + 2)) = []).
+          state_str0 (Z (max_z_nat p_nat + 2)) = [] /\
+          state_over state_str0 1).
     {intros [x cut_hip]. exists (x + steps_str). 
     rewrite StringLangProperties.compute_program_add. auto. }
     rewrite snap_str_eq.
@@ -2702,7 +2721,6 @@ Proof.
       (* x <- x + 1 *)
       ++ pose proof (incr_macro_simulates p_nat pos_nat state_nat pos_str state_str o v)
          as incr_macro_H. destruct incr_macro_H as [steps_macro incr_H]; auto.
-         +++ admit.
          +++ unfold snap_equiv; auto.
          +++ exists steps_macro. simpl. rewrite <- Heqp_str in incr_H.
              destruct (compute_program p_str (SNAP pos_str state_str) steps_macro).
@@ -2722,7 +2740,8 @@ Proof.
                 macro_decomposition; reflexivity. }
 
               rewrite next_string_line. assert (state_str v = []) as state_str_v_empty.  
-              {  admit. }
+              {  unfold state_equiv in H_state_equiv. pose proof (H_state_equiv v).
+                  rewrite <- H. rewrite v_value. reflexivity. }
               rewrite state_str_v_empty. simpl.
               assert ((nth_error p_str (pos_str + 1))
               = (Some [o] (IF v ENDS b GOTO o0))) as next_string_line'.
@@ -2741,7 +2760,10 @@ Proof.
             { eapply state_nat_Sn_implies_non_empty with state_nat _; eauto. }
             destruct v_not_empty as [char [string_t v_not_empty]].
             assert (char = 0 \/ char = 1) as char_string_1. 
-            { admit. } destruct char_string_1 as [char_0 | char_1].
+            { cut (char <= 1). lia. unfold state_over in *.
+              pose proof (state_over_pc v).
+              unfold string_over in H. rewrite v_not_empty in H.
+              apply H. } destruct char_string_1 as [char_0 | char_1].
             (* char = 0 *)
             * exists 1.  simpl in *.
               assert ((nth_error p_str pos_str) = (Some [o] (IF v ENDS a GOTO o0)))
@@ -2779,4 +2801,4 @@ Proof.
       (* Se não há instrução, eu não faço nada no programa de strings *)
       + simpl. exists 0. replace (steps_str + 0) with steps_str by lia.
         repeat (split; auto).
-Abort.
+Admitted.
