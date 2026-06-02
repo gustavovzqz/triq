@@ -3014,6 +3014,7 @@ Qed.
 
 
 Lemma state_equiv_decr_aux : forall x state_nat state_str,
+  state_over state_str 1 ->
   nat_to_string1 (state_nat x) = state_str x ->
   nat_to_string1 (NatLang.decr state_nat x x) =
   decr_string1 (state_str x).
@@ -3021,10 +3022,17 @@ Proof.
   intros. 
   unfold NatLang.decr, NatLang.update. rewrite eqb_var_refl. 
   destruct (state_nat x) as [| n'].
-  + simpl. rewrite <- H. reflexivity.
+  + simpl. rewrite <- H0. reflexivity.
   + simpl. replace (n' - 0) with n' by lia. simpl in H.
-    apply f_equal_incr. rewrite H. rewrite incr_rev_decr. reflexivity. 
-Qed.
+    apply f_equal_incr. 
+    ++ (* string_over nat_to_string1 *) admit.
+    ++ (* string_over (nat_to_string1 n' ') *) admit.
+    ++ simpl in *. rewrite H0. destruct (state_str x) eqn:E.
+       +++ (* contradição em H0 *) admit.
+       +++  rewrite incr_rev_decr; auto. 
+           * admit.
+           * intros falso. discriminate.
+Admitted.
 
 
 (** 3. Lema Principal *)
@@ -3243,4 +3251,4 @@ Proof.
       (* Se não há instrução, eu não faço nada no programa de strings *)
       + simpl. exists 0. replace (steps_str + 0) with steps_str by lia.
         repeat (split; auto).
-Admitted.
+Qed.
