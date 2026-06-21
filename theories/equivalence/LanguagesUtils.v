@@ -18,10 +18,10 @@ Import ListNotations.
    [1, 0, 0, 2, 1]
    2 * 3^4 + 1 * 3 *)
 
-Definition string_to_nat (s : StringLang.string) (base : nat) :=
+Definition string_to_nat (s : StringLang.string) (max_char : nat) :=
   let fix aux l k {struct l} :=
     match l with
-    | h :: t => (h + 1) * ((base + 1) ^ k) + aux t (S k)
+    | h :: t => (h + 1) * ((max_char + 1) ^ k) + aux t (S k)
     | [] => 0
     end
   in aux s 0.
@@ -59,3 +59,8 @@ match s with
             else max_char :: decr_string t max_char
             end
 end.
+
+(* Exemplos *)
+
+Compute nat_to_string 11 3.
+Compute string_to_nat [2; 1] 3.
