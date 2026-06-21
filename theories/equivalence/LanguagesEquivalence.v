@@ -36,9 +36,13 @@ fold_left
 0.
 
 Definition equiv_pos 
-(p_nat : NatLang.program) (n : nat)
-(p_str : StringLang.program ) (n' : nat) (max_char : nat) :=
-n' = get_equiv_simulated_position p_nat n max_char.
+(p_nat : NatLang.program) (opt_n : option nat)
+(p_str : StringLang.program ) (opt_n' : option nat) (max_char : nat) :=
+match opt_n, opt_n' with 
+| Some n, Some n' => n' = get_equiv_simulated_position p_nat n max_char
+| None, None => True (* None = None *)
+| _, _=> False
+end.
 
 
 (** Teorema Principal *)
@@ -58,10 +62,10 @@ Theorem nat_implies_string :
   exists (n' : nat),
 
   let (line_nat, state_nat) := NatLang.split_snap 
-      (NatLang.compute_program p_nat (NatLang.SNAP 0 initial_state_nat) n)  in
+    (NatLang.compute_program p_nat (NatLang.SNAP (Some (length p_nat - 1)) initial_state_nat) n)  in
 
   let (line_str , state_str) := StringLang.split_snap
-            (StringLang.compute_program p_str (StringLang.SNAP 0 initial_state_str) n') in
+    (StringLang.compute_program p_str (StringLang.SNAP (Some (length p_str - 1)) initial_state_str) n') in
 
   state_equiv state_nat state_str max_char /\
   equiv_pos p_nat line_nat p_str line_str max_char /\

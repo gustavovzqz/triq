@@ -56,13 +56,19 @@ Definition eq_inst_label  (instr : instruction ) (opt_lbl : option label) :=
   | _, _                => false
   end.
 
-Fixpoint get_labeled_instr (p : program) (lbl : option label) : nat :=
+Fixpoint get_labeled_instr (p : program)
+                                (lbl : option label)
+                                : option nat :=
   match p with
-  | [] => 0
+  | [] => None
   | h :: t =>
-      if eq_inst_label h lbl
-      then 0
-      else 1 + get_labeled_instr t lbl
+      match get_labeled_instr t lbl with
+      | Some n => Some (S n)
+      | None =>
+          if eq_inst_label h lbl
+          then Some 0
+          else None
+      end
   end.
 
 Definition update (m : state ) (x : variable) (v : string ) :=
@@ -80,7 +86,7 @@ Definition del (m : state) (x : variable) :=
   update m x (tl v).
 
 Inductive snapshot :=
-  | SNAP : nat -> state -> snapshot.
+  | SNAP : option nat -> state -> snapshot.
 
 
 Lemma state_over_iter (st : state) (n : nat) :
@@ -156,7 +162,7 @@ Notation "[ ] s " := (Instr None s)
   (at level 0, s custom com' at level 200) : string_lang_scope.
 
 
-Notation "'[ i1 ; .. ; iN ]'" := (cons i1 .. (cons iN nil) ..)
+Notation "'[ i1 ; .. ; iN ]'" := (cons iN .. (cons i1 nil) ..)
   (at level 0, i1 custom com', iN custom com') : string_lang_scope.
 
 Open Scope string_lang_scope.
@@ -169,99 +175,30 @@ Definition ends_with (s : string) (n : nat) :=
   | h :: t => h =? n
   end.
 
-
-(** Propriedade de Passo de Computação: *)
-
- Inductive steps_to : program -> snapshot -> snapshot -> Prop :=
-
-  (* V <- s V *)
-  | S_Append : forall (h : nat) 
-      (p : program) (i : nat) (instr : instruction) (st : state)
-      (x : variable) opt_lbl,
-      nth_error p i = Some instr -> 
-      instr = <{[opt_lbl] x <- + h}> ->
-      steps_to p (SNAP i st) (SNAP (i + 1) (append h st x))
-
-  (* V <- v- *)
-  | S_Del: forall
-      (p : program) (i : nat) (instr : instruction) (st : state)
-      (x : variable) opt_lbl,
-      nth_error p i = Some instr -> 
-      instr = <{[opt_lbl] x <- - }> ->
-      steps_to p (SNAP i st) (SNAP (i + 1) (del st x))
-
-  (* IF V ends s GOTO l -> if = true *)
-  | S_If_True: forall (h : nat)
-      (p : program) (i : nat) (instr : instruction) (st : state)
-      (x : variable) opt_lbl l j,
-      nth_error p i = Some instr ->
-      instr = <{[opt_lbl] IF x ENDS h GOTO l}> ->
-      ends_with (st x) h = true ->
-      get_labeled_instr p l = j ->
-      steps_to p (SNAP i st) (SNAP j st)
-
-  (* IF V ends s GOTO l -> if = false *)
-  | S_If_False: forall (h : nat)
-      (p : program) (i : nat) (instr : instruction) (st : state)
-      (x : variable) opt_lbl l,
-      nth_error p i = Some instr ->
-      instr = <{[opt_lbl] IF x ENDS h GOTO l}> ->
-      ends_with (st x) h = false ->
-      steps_to p (SNAP i st) (SNAP (i + 1) st)
-
-  (* Fora dos limites do programa *)
-  | S_Out : forall (p : program) (i : nat) (st : state),
-      nth_error p i = None ->
-      steps_to p (SNAP i st) (SNAP i st).
-
-
-
-
-
-(* f é parcialmente computável em NatLang ->
-   f é parcialmente computável em StringLang n para todo n ->
-   f é computável estritamente por um programa Post-Turing ->
-   f é computável por um programa Post-Turing ->
-   f é parcialmente computável em NatLang. *)
-
-
-Definition next_step (p : program) (snap : snapshot) :=
-  match snap with 
-  | SNAP n s =>
-      match nth_error p n with 
-      | Some <{[_] x <- + v }> => SNAP (n + 1) (append v s x)
-      | Some <{[_] x <- -   }> => SNAP (n + 1) (del s x)
-      | Some <{[_] IF x ENDS v GOTO l}> =>
-          match (ends_with (s x) v ) with 
-          | true  => SNAP (get_labeled_instr p l) s
-          | false => SNAP (n + 1) s
-          end
-      | None => SNAP n s
-      end
+Definition decr_option n :=
+  match n with 
+  | 0 => None
+  | S n => Some n 
   end.
 
-
-(** Prova de Equivalência da Versão Funcional e da Propriedade *)
-
-Theorem next_step_equivalence :
-  forall (p : program) snap1 snap2,
-  (next_step p snap1) = snap2 <-> steps_to p snap1 snap2.
-Proof.
-  intros. split.
-  (* -> *)
-  - intros. destruct snap1. simpl in H. destruct (nth_error p n) eqn:E.
-    + destruct i. destruct s0; subst; try(econstructor); try(eassumption);
-      try(reflexivity).
-      ++ destruct (ends_with (s v) n0) eqn:E1.
-         +++ eapply S_If_True; try(reflexivity); try(eassumption).
-         +++ eapply S_If_False; try(reflexivity); try(eassumption).
-    + subst. apply S_Out. assumption.
-  (* <- *)
-  - intros. unfold next_step. inversion H; subst; rewrite H0; try(reflexivity).
-    + rewrite H2. reflexivity.
-    + rewrite H2. reflexivity.
-Qed.
-
+Definition next_step (prog : program) (snap : snapshot) : snapshot :=
+  match snap with
+  | SNAP opt_line s => 
+         match opt_line with
+         | None   => SNAP None s
+         | Some n => let decr_line := decr_option n in
+            match nth_error prog n with
+            | Some <{[_] x <- + v }> => SNAP decr_line (append v s x)
+            | Some <{[_] x <- -   }> => SNAP decr_line (del s x)
+            | Some <{[_] IF x ENDS v GOTO l}> =>
+                match (ends_with (s x) v ) with 
+                | true  => SNAP (get_labeled_instr prog l) s
+                | false => SNAP decr_line s
+                end
+            | None => SNAP None s (* Caso impossível com snap começando certo *)
+            end
+         end
+ end.
 
 
 Fixpoint compute_program (p : program ) snap n :=
@@ -271,18 +208,13 @@ Fixpoint compute_program (p : program ) snap n :=
   end.
 
 
-Definition get_state (p : program ) n :=
-  let initial_snapshot := SNAP 0 (empty) in 
-  match (compute_program p initial_snapshot n) with 
-  | SNAP _ s => s
-  end.
-
-
 Definition split_snap (snap : snapshot) :=
   match snap with
   | SNAP i s => (i, s)
   end.
 
+
+(* 
 Definition HALT (s : state) (p : program) (n : nat) :=
   let initial_snap := SNAP 0 s in 
   let nth_snap := compute_program p initial_snap n in 
@@ -313,5 +245,6 @@ Definition partially_computable_by_p (n : nat)
     (f x <> None -> exists (k : nat), HALT (create_state x) p k /\ 
     Some (get Y  p x k) = (f x)).
 
+ *) 
 
 (* ################################################################ *)
