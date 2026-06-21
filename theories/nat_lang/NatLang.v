@@ -93,7 +93,7 @@ Notation "[ ] s " := (Instr None s)
   (at level 0, s custom com at level 200) : nat_lang_scope.
 
 
-Notation "'[ i1 ; .. ; iN ]'" := (cons i1 .. (cons iN nil) ..)
+Notation "'[ i1 ; .. ; iN ]'" := (cons iN .. (cons i1 nil) ..)
   (at level 0, i1 custom com, iN custom com) : nat_lang_scope.
 
 Open Scope nat_lang_scope.
@@ -121,11 +121,12 @@ Definition decr (m : state ) (x : variable) :=
   update m x (v - 1).
 
 Inductive snapshot :=
-  | SNAP : nat -> state -> snapshot.
+  | SNAP : option nat -> state -> snapshot.
 
 (* Veja que uma snapshot inicial de um programa possivelmente possuirá
   valores de x1, x2, x3... inicialmente atribuídos *)
-Definition initial_snapshot := SNAP 0 empty.
+
+Definition initial_snapshot := SNAP (Some 0) empty.
 
 Definition create_state x :=
   update empty (X 0) x.
@@ -143,142 +144,53 @@ Definition eq_inst_label (instr : instruction ) (opt_lbl : option label) :=
 (** Função para encontrar a posição da primeira instrução com certa label 
     em um programa *)
 
+(** MUDOU COM INV *)
 
-Fixpoint get_labeled_instr (p : list instruction) (lbl : option label) : nat :=
+Fixpoint get_labeled_instr (p : list instruction)
+                                (lbl : option label)
+                                : option nat :=
   match p with
-  | [] => 0
+  | [] => None
   | h :: t =>
-      if eq_inst_label h lbl
-      then 0
-      else 1 + get_labeled_instr t lbl
+      match get_labeled_instr t lbl with
+      | Some n => Some (S n)      (* já existe uma ocorrência mais à frente *)
+      | None =>
+          if eq_inst_label h lbl
+          then Some 0             (* ocorrência atual *)
+          else None
+      end
   end.
 
 
-(** Propriedade de Passo de Pomputação:
-
-    steps_to programa s s' :=
-    O programa de snapshot s possui como próxima snapshot s' *)
-
-Inductive steps_to : program -> snapshot -> snapshot -> Prop :=
-  (* x <- x + 1 *)
-  | S_Incr : forall program x i opt_lbl instruction st,
-      nth_error program i = Some instruction ->
-      instruction = <{[opt_lbl] x <- + 1}>    ->
-      steps_to program (SNAP i st) (SNAP (i + 1) (incr st x))
-
-  (* x <- x - 1 *)
-  | S_Decr: forall program x i opt_lbl instruction st,
-      nth_error program i = Some instruction ->
-      instruction = <{[opt_lbl] x <- - 1}>  ->
-      steps_to program (SNAP i st) (SNAP (i + 1) (decr st x))
-
-  (* IF X != 0 GOTO l, x = 0 *)
-  | S_If_0: forall program x i opt_lbl l instruction st,
-      nth_error program i = Some instruction   ->
-      st x = 0                                 ->
-      instruction = <{[opt_lbl] IF x GOTO l }> ->
-      steps_to program (SNAP i st) (SNAP (i + 1) st)
-
-  (* IF X != 0 GOTO l, x != 0 *)
-  | S_If_S: forall program x i j opt_lbl l instruction st,
-      nth_error program i = Some instruction  ->
-      st x <> 0                               ->
-      instruction = <{[opt_lbl] IF x GOTO l}>  ->
-      (get_labeled_instr program l = j) ->
-      steps_to program (SNAP i st) (SNAP j st )
-
-  (* Linha fora dos limites do programa *)
-  | S_Out: forall program i st,
-      nth_error program i = None ->
-      steps_to program (SNAP i st) (SNAP i st).
-
-Hint Constructors steps_to : stepdb.
-
-
-
-(** Unicidade do Passo de Computação *)
-
-Theorem step_unique : forall p snap1 snap2 snap3,
-  steps_to p snap1 snap2 ->
-  steps_to p snap1 snap3 ->
-  snap2 = snap3.
-Proof.
-  intros. destruct snap1. inversion H.
-  + inversion H0; subst.
-    ++ rewrite H4 in H10. inversion H10. reflexivity.
-    ++ rewrite H4 in H10. inversion H10. 
-    ++ rewrite H4 in H9. inversion H9. 
-    ++ rewrite H4 in H9.  inversion H9. 
-    ++ rewrite H4 in H11. inversion H11. 
-  + inversion H0; subst.
-    ++ rewrite H4 in H10. inversion H10. 
-    ++ rewrite H4 in H10. inversion H10. reflexivity.
-    ++ rewrite H4 in H9. inversion H9. 
-    ++ rewrite H4 in H9.  inversion H9. 
-    ++ rewrite H4 in H11. inversion H11. 
-  + inversion H0; subst.
-    ++ rewrite H3 in H11. inversion H11. 
-    ++ rewrite H3 in H11. inversion H11. 
-    ++ rewrite H3 in H10. inversion H10. reflexivity.
-    ++ rewrite H3 in H10.  inversion H10. subst. apply H11 in H5. destruct H5.
-    ++ rewrite H3 in H12.  inversion H12. 
-  + inversion H0; subst.
-    ++ rewrite H3 in H12. inversion H12. 
-    ++ rewrite H3 in H12. inversion H12. 
-    ++ rewrite H3 in H11. inversion H11.  subst. apply H4 in H13. destruct H13.
-    ++ rewrite H3 in H11. inversion H11. reflexivity.
-    ++ rewrite H3 in H13. inversion H13.
-  + inversion H0; subst.
-    ++ rewrite H5 in H9. inversion H9. 
-    ++ rewrite H5 in H9. inversion H9. 
-    ++ rewrite H5 in H8. inversion H8. 
-    ++ rewrite H5 in H8. inversion H8. 
-    ++ reflexivity.
-Qed.
 
 (** Definição Funcional de Passo de Computação . *)
 
-Definition next_step (prog : program) (snap : snapshot) : snapshot :=
-  match snap with
-  | SNAP n s =>
-    match nth_error prog n with
-    | Some ([l] x <- + 1) => SNAP (n + 1) (incr s x)
-    | Some ([l] x <- - 1) => SNAP (n + 1) (decr s x)
-    | Some ([l] IF x GOTO j) =>
-        match s x with
-        | S m => SNAP (get_labeled_instr prog j) s
-        | 0   => SNAP (n + 1) s
-        end
-    | None => SNAP n s
-    end
+
+Definition decr_option n :=
+  match n with 
+  | 0 => None
+  | S n => Some n 
   end.
 
-(** Prova de Equivalência da Versão Funcional e da Propriedade *)
+Definition next_step (prog : program) (snap : snapshot) : snapshot :=
+  match snap with
+  | SNAP opt_line s => 
+         match opt_line with
+         | None   => SNAP None s
+         | Some n => let decr_line := decr_option n in
+            match nth_error prog n with
+            | Some ([l] x <- + 1) => SNAP decr_line (incr s x)
+            | Some ([l] x <- - 1) => SNAP decr_line (decr s x)
+            | Some ([l] IF x GOTO j) =>
+                match s x with
+                | S m => SNAP (get_labeled_instr prog j) s
+                | 0   => SNAP decr_line s
+                end
+            | None => SNAP None s (* Caso impossível com snap começando certo *)
+            end
+         end
+ end.
 
-Theorem next_step_equivalence:
-  forall p snap1 snap2,
-  (next_step p snap1) = snap2 <-> steps_to p snap1 snap2.
-Proof.
-  intros. split.
-  - intros. destruct snap1. simpl in H. destruct (nth_error p n) eqn:E.
-    + destruct i. destruct s0; subst; try (econstructor); (try reflexivity);
-      try(eassumption).
-     ++ destruct (s v) eqn:E2.
-        +++ eapply S_If_0; try (eassumption); reflexivity.
-        +++ eapply S_If_S; try (eassumption); try (reflexivity).
-            * intros H. rewrite E2 in H. discriminate H.
-    + subst. apply S_Out. assumption.
-  - intros H. unfold next_step. inversion H; subst; rewrite H0;
-    try(reflexivity).
-     ++ rewrite H1; reflexivity.
-     ++ destruct (st x).
-        +++ exfalso. apply H1. reflexivity.
-        +++ reflexivity.
-Qed.
-
-(** Computação : Não é o mesmo conceito de computação do livro, já que não
-    precisamos finalizar na snapshot terminal.
-    Aqui é basicamente uma aplicação sucessiva de next_steps. *)
 
 Fixpoint compute_program (p : program) snap n :=
   match n with
@@ -301,6 +213,8 @@ Definition get_state (p : program) n :=
   end.
 
 
+(* Não é usado, mas vai ser em algum momento *) 
+(* 
 Definition HALT (s : state) (p : program) (n : nat) :=
   let inital_snap := SNAP 0 s in 
   let nth_snap := compute_program p inital_snap n in 
@@ -329,7 +243,7 @@ Definition partially_computable_by_p (f : nat -> option nat) p :=
     (f x = None -> forall (k : nat), ~ (HALT (create_state x) p k)) /\ 
     (f x <> None -> exists (k : nat), HALT (create_state x) p k /\ 
     Some (get_Y  p x k) = (f x)).
-
+*)
 
 
 (* ################################################################# *)
