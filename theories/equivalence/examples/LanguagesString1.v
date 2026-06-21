@@ -6,6 +6,7 @@ para o programa de strings, no caso especial em que este possui apenas dois
 
 From Triq Require NatLang.
 From Triq Require NatLangProperties.
+
 From Triq Require Import StringLang.
 From Triq Require StringLangProperties.
 From Triq Require Import LanguagesCommon.
@@ -15,6 +16,10 @@ From Stdlib Require Import List.
 From Stdlib Require Extraction.
 From Stdlib Require Import Lia.
 Import ListNotations.
+
+
+
+
 
 (** "a" e "b" são os caracteres básicos do alfabeto de dois dígitos. *)
 
@@ -1346,18 +1351,14 @@ Proof.
 Qed.
 
 
-(** Definições de Estado Inicial *)
-Definition is_initial_state (state_nat : NatLang.state) :=
-state_nat Y = 0 /\ forall n, state_nat (Z n) = 0.
-
 
 (** get_equiv_state retorna um estado onde state_str (Z n) = 0 *)
 
 Lemma get_equiv_state_initial : forall state_nat,
-is_initial_state state_nat ->
+NatLangProperties.is_initial_state state_nat ->
 forall n, (get_equiv_state state_nat) (Z n) = [].
 Proof.
-  intros. unfold is_initial_state in H. unfold get_equiv_state.
+  intros. unfold NatLangProperties.is_initial_state in H. unfold get_equiv_state.
   destruct H. rewrite H0. reflexivity.
 Qed.
 
@@ -3726,7 +3727,7 @@ Qed.
 Theorem nat_implies_string :
   forall (p_nat : NatLang.program)
         (initial_state_nat : NatLang.state),
-  is_initial_state initial_state_nat ->
+  NatLangProperties.is_initial_state initial_state_nat ->
 
   exists (p_str : StringLang.program)
         (initial_state_str : StringLang.state),

@@ -1,14 +1,23 @@
 -Q theories Triq
 
+# Common
 theories/common/LanguagesCommon.v
 
-theories/equivalence/LanguagesUtils.v
-theories/equivalence/LanguagesString0.v
-theories/equivalence/LanguagesString1.v
-
-
+# NatLang
 theories/nat_lang/NatLang.v
 theories/nat_lang/NatLangProperties.v
 
+# StringLang
 theories/string_lang/StringLang.v
 theories/string_lang/StringLangProperties.v
+
+# Macros
+theories/equivalence/StringMacros.v
+
+# Equivalence
+theories/equivalence/LanguagesUtils.v
+theories/equivalence/LanguagesEquivalence.v
+
+# Examples
+# theories/equivalence/examples/LanguagesString0.v
+# theories/equivalence/examples/LanguagesString1.v
