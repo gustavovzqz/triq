@@ -20,4 +20,4 @@ theories/equivalence/LanguagesEquivalence.v
 
 # Examples
 # theories/equivalence/examples/LanguagesString0.v
-# theories/equivalence/examples/LanguagesString1.v
+theories/equivalence/examples/LanguagesString1.v

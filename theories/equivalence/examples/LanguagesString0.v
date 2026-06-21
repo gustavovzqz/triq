@@ -80,9 +80,9 @@ Fixpoint get_equiv_simulated_position p_nat n :=
 
 Definition equiv_pos 
   (p_nat : NatLang.program)
-  (n : nat)
+  (n : option nat)
   (p_str : StringLang.program )
-  (n' : nat) :=
+  (n' : option nat) :=
   (* n' = get_equiv_simulated_position p_nat n *)
   n = n'.
 
@@ -192,6 +192,7 @@ Qed.
 
 
 
+
 Lemma label_equal_nat_str :
   forall p_nat p_str l,
     p_str = get_simulated_program p_nat ->
@@ -201,15 +202,15 @@ Proof.
   induction p_nat as [|h t IH]; intros p_str l Hsim.
   - simpl. rewrite Hsim. simpl. reflexivity.
   - rewrite Hsim. simpl.
-    unfold NatLang.get_labeled_instr, StringLang.get_labeled_instr.
-    simpl. rewrite <- eq_inst_label_nat_str.
-    destruct (NatLang.eq_inst_label h l) eqn:HL.
-    + reflexivity.
-    + simpl. remember (get_simulated_program t).
-      pose proof (IH l0 l). pose proof (H eq_refl).
-      simpl. unfold NatLang.get_labeled_instr in H0.
-      unfold StringLang.get_labeled_instr in H0.
-      f_equal. exact H0.
+    simpl in Hsim. destruct p_str; try discriminate.
+    pose proof (IH (get_simulated_program t) l).
+    pose proof (H eq_refl). clear H. 
+    destruct (NatLang.get_labeled_instr t l) eqn:E.
+    + rewrite <- H0. reflexivity.
+    + rewrite <- H0. pose proof (eq_inst_label_nat_str h l).
+      destruct (NatLang.eq_inst_label h l).
+      ++ rewrite <- H. reflexivity.
+      ++ rewrite <- H. reflexivity.
 Qed.
 
 
@@ -336,32 +337,6 @@ Proof.
   + apply string_over_app_impl.
 Qed.
 
-
-
-
-
-  Lemma program_over_n_never_uses_Sn : forall n p_str initial_state,
-  StringLang.program_over p_str n ->
-  StringLang.state_over initial_state n ->
-  forall step, snap_over (StringLang.compute_program p_str 
-  (StringLang.SNAP 0 initial_state) step) n.
-Proof.
-  induction step.
-  + auto.
-  + simpl. unfold StringLang.next_step. 
-    destruct (StringLang.compute_program p_str (StringLang.SNAP 0 initial_state) step).
-    destruct (nth_error p_str n0) eqn:E.
-    ++ destruct i, s0.
-       +++ simpl. unfold StringLang.state_over. intros x.
-           unfold StringLang.append. unfold StringLang.update.
-           destruct (eqb_var).
-           - simpl. apply string_over_app. split.
-             * apply IHstep.
-             * admit.
-           - apply IHstep. 
-       +++ simpl. unfold StringLang.state_over. Abort.
-
-
 (** * Teorema principal *)
 
 (**
@@ -420,28 +395,32 @@ Theorem nat_implies_string :
   forall (n : nat),
   exists (n' : nat),
   snap_equiv p_nat
-             (NatLang.compute_program p_nat (NatLang.SNAP 0 initial_state_nat) n)
+             (NatLang.compute_program p_nat (NatLang.SNAP (Some (length p_nat - 1)) initial_state_nat) n)
              p_str
-             (StringLang.compute_program p_str (StringLang.SNAP 0 initial_state_str) n').
+             (StringLang.compute_program p_str (StringLang.SNAP (Some (length p_str - 1)) initial_state_str) n').
 Proof.
   intros p_nat state_nat. exists (get_simulated_program p_nat). 
   exists (get_equiv_state state_nat). split.
   apply simulated_program_string_0. split.
   apply equiv_state_string0.
-  intros n. exists n. 
+  intros n. exists n.
   remember (get_simulated_program p_nat) as p_str.
   induction n.
   (* Caso base: n = 0 *)
   - split.
     + apply get_equiv_state_correct. 
     + destruct p_nat.
-      ++ simpl. reflexivity.
-      ++ simpl. reflexivity.
+      ++ simpl. rewrite Heqp_str. simpl. reflexivity.
+      ++ simpl. rewrite Heqp_str. simpl. repeat rewrite PeanoNat.Nat.sub_0_r.
+         unfold equiv_pos. admit.
   (* Passo da indução *)
-  - destruct (NatLang.compute_program p_nat (NatLang.SNAP 0 state_nat) n)
+  - simpl.
+    destruct (NatLang.compute_program p_nat (NatLang.SNAP (Some (length p_nat - 1)) state_nat) n)
     as [k s] eqn:snap_nat. 
-    destruct (StringLang.compute_program p_str (StringLang.SNAP 0 
+    destruct (StringLang.compute_program p_str (StringLang.SNAP (Some (length p_str - 1)) 
     (get_equiv_state state_nat)) n) as [k' s'] eqn:snap_str. 
+    simpl. destruct k eqn:E2.
+    (* Caso 1: SNAP (Some n0) *)
     destruct IHn. unfold equiv_pos in H0. rewrite <- H0 in *. clear H0.
     destruct (nth_error p_nat k) eqn:E. 
     + apply nat_nth_implies_string in E as E1.
