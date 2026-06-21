@@ -64,3 +64,18 @@ end.
 
 Compute nat_to_string 11 3.
 Compute string_to_nat [2; 1] 3.
+
+
+
+(* utils Nat *)
+
+
+Fixpoint max_z_nat (l : NatLang.program) : nat :=
+    match l with
+    | [] => 0
+    | NatLang.Instr opt_lbl (NatLang.INCR (Z n))  :: t 
+    | NatLang.Instr opt_lbl (NatLang.DECR (Z n))  :: t 
+    | NatLang.Instr opt_lbl (NatLang.IF_GOTO (Z n) _ )  :: t  =>
+      Nat.max n (max_z_nat t) 
+    | _ :: t => max_z_nat t
+    end.
