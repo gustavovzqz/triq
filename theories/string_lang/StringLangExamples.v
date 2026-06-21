@@ -1,8 +1,8 @@
 
 From Triq Require Import StringLang.
 
-From Coq Require Import Nat.
-From Coq Require Import List.
+From Stdlib Require Import Nat.
+From Stdlib Require Import List.
 
 Import ListNotations.
 

@@ -2,10 +2,10 @@ From Triq Require NatLang.
 From Triq Require StringLang.
 From Triq Require Import LanguagesCommon.
 
-From Coq Require Import Nat.
-From Coq Require Import List.
-From Coq Require Extraction.
-From Coq Require Import Lia.
+From Stdlib Require Import Nat.
+From Stdlib Require Import List.
+From Stdlib Require Extraction.
+From Stdlib Require Import Lia.
 Import ListNotations.
 
 

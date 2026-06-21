@@ -2,10 +2,10 @@
 
 From Triq Require Import NatLang.
 
-From Coq Require Import Nat.
-From Coq Require Import List.
-From Coq Require Import FunctionalExtensionality.
-From Coq Require Import Lia.
+From Stdlib Require Import Nat.
+From Stdlib Require Import List.
+From Stdlib Require Import FunctionalExtensionality.
+From Stdlib Require Import Lia.
 Import ListNotations.
 Open Scope nat_lang_scope.
 

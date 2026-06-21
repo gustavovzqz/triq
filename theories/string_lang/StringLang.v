@@ -1,7 +1,7 @@
 (** * StringLang: Linguagem Simples Baseada em Strings *)
 
-From Coq Require Import Nat.
-From Coq Require Import List.
+From Stdlib Require Import Nat.
+From Stdlib Require Import List.
 From Triq Require Export LanguagesCommon.
 
 Import ListNotations.

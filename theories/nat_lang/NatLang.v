@@ -11,8 +11,8 @@
     que possui algumas definições úteis como [variable] e [label], comuns a outras 
     linguagens *)
 
-From Coq Require Import Nat.
-From Coq Require Import List.
+From Stdlib Require Import Nat.
+From Stdlib Require Import List.
 Import ListNotations.
 
 From Triq Require Export LanguagesCommon.

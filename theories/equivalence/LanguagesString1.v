@@ -10,10 +10,10 @@ From Triq Require Import StringLang.
 From Triq Require StringLangProperties.
 From Triq Require Import LanguagesCommon.
 From Triq Require Import LanguagesUtils.
-From Coq Require Import Nat.
-From Coq Require Import List.
-From Coq Require Extraction.
-From Coq Require Import Lia.
+From Stdlib Require Import Nat.
+From Stdlib Require Import List.
+From Stdlib Require Extraction.
+From Stdlib Require Import Lia.
 Import ListNotations.
 
 (** "a" e "b" são os caracteres básicos do alfabeto de dois dígitos. *)
