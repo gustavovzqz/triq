@@ -14,8 +14,12 @@ theories/string_lang/StringLangProperties.v
 # Macros
 theories/equivalence/StringMacros.v
 
-# Equivalence
+# Equivalence Utils
 theories/equivalence/LanguagesUtils.v
+theories/equivalence/NatUtils.v
+theories/equivalence/StringUtils.v
+
+# Equivalence
 theories/equivalence/LanguagesEquivalence.v
 
 # Examples

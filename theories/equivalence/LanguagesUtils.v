@@ -4,7 +4,6 @@ From Triq Require Import LanguagesCommon.
 
 From Stdlib Require Import Nat.
 From Stdlib Require Import List.
-From Stdlib Require Extraction.
 From Stdlib Require Import Lia.
 Import ListNotations.
 
@@ -64,3 +63,5 @@ end.
 
 Compute nat_to_string 11 3.
 Compute string_to_nat [2; 1] 3.
+
+
