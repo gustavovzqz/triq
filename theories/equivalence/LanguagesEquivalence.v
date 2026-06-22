@@ -5,11 +5,11 @@ From Triq Require NatLangProperties.
 From Triq Require StringLangProperties.
 
 From Triq Require Import LanguagesCommon.
-From Triq Require Import StringMacros.
+From Triq Require StringMacros.
 
-From Triq Require Import NatUtils.
-From Triq Require Import StringUtils.
-From Triq Require Import LanguagesUtils.
+From Triq Require NatUtils.
+From Triq Require StringUtils.
+From Triq Require LanguagesUtils.
 
 From Stdlib Require Import Nat.
 From Stdlib Require Import List.
@@ -22,20 +22,15 @@ Import ListNotations.
 Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state) 
   (max_char : nat) :=
   forall (x : variable),
-  nat_to_string (s_nat x) max_char = s_str x.
+  LanguagesUtils.nat_to_string (s_nat x) max_char = s_str x.
 
-
-(** Equivalência de Posição *) 
-
-Definition macro_length instr max_char :=
-length (get_str_macro instr max_char 0 0 0).
 
 Definition get_equiv_simulated_position 
   (p_nat : NatLang.program) 
   (n : nat)
   (max_char : nat) :=
 fold_left
-  (fun acc instr => acc + macro_length instr max_char)
+  (fun acc instr => acc + StringMacros.macro_length instr max_char)
   (firstn n p_nat)
 0.
 
@@ -68,8 +63,8 @@ Theorem nat_implies_string :
 
   state_equiv state_nat state_str max_char /\
   equiv_pos p_nat line_nat p_str line_str max_char /\
-  state_str (Z (max_z_nat p_nat + 1)) = [] /\
-  state_str (Z (max_z_nat p_nat + 2)) = [] /\
+  state_str (Z (NatUtils.max_z_nat p_nat + 1)) = [] /\
+  state_str (Z (NatUtils.max_z_nat p_nat + 2)) = [] /\
   StringLang.state_over state_str max_char.
 
 Proof.

@@ -1,12 +1,14 @@
 From Triq Require StringLang.
 From Triq Require NatLang.
 From Triq Require Import LanguagesCommon.
+From Triq Require StringUtils.
 
 From Stdlib Require Import List.
 Import ListNotations.
 
 
-(** IF Macro *)
+(* ------------------------------------------------------------------ *)
+(* IF MACRO *)
 
 (*
   Em Nat
@@ -34,68 +36,37 @@ Compute get_if_macro Y None None 10.
 
 
 
+(* ------------------------------------------------------------------ *)
+
+(* Str Macro and Programs *)
+
 Definition get_str_macro 
   (i_nat : NatLang.instruction) 
   (max_char : nat) 
   (max_label_p_nat max_z_p_nat max_label_p_str : nat) 
   : (StringLang.program) := 
   match i_nat with 
-  | NatLang.Instr opt_lbl (NatLang.INCR x) => []
-  | NatLang.Instr opt_lbl (NatLang.DECR x) => []
-  | NatLang.Instr opt_lbl (NatLang.IF_GOTO x l) => []
+  | NatLang.Instr o (NatLang.INCR x) => [] (* TODO *)
+  | NatLang.Instr o (NatLang.DECR x) => [] (* TODO *)
+  | NatLang.Instr o (NatLang.IF_GOTO x l) => get_if_macro x o l max_char
 end.
 
-(*
-Fixpoint get_str_prg_rec l n' n k max_char :=
-match l with
-| [] => []
-| i_nat :: t => let (macro, max_n) := get_str_macro i_nat n n' k  in 
-                  macro ++ (get_str_prg_rec t (n' + max_n) n k)
-end.
-*)
+(* Macro Length *)
+Definition macro_length instr max_char :=
+  length (get_str_macro instr max_char 0 0 0).
 
-Fixpoint get_str_prg_rec p_nat 
+
+(* Getting the Str Program *)
+Fixpoint get_str_prg_rec p_nat max_char max_label_p_nat max_z_p_nat :=
   match p_nat with
   | []     => []
-  | h :: t => let str_rest := get_str_prg_rec t in 
-              let max_label_rest := max_label_str str_rest in 
-              str_rest ++ [get_str_macro h max_label_p_nat max_z_p_nat max_str_rest]
+  | h :: t => let str_rest := get_str_prg_rec t max_char 
+              max_label_p_nat max_z_p_nat in 
+              let max_label_rest := StringUtils.get_max_label_str str_rest in 
+              (get_str_macro h max_char max_label_p_nat 
+               max_z_p_nat max_label_rest)
+               ++ str_rest
   end.
 
-(* Exemplo *)
-
-(* X <- X + 1  
-   X <- X - 1
-   IF X != 0 GOTO L 
-*)
-
-
-(* 
-Lemma labels_equiv_position_in :
-forall p_nat label a b c,
-  label_in_instr p_nat label = true ->
-  equiv_pos
-    p_nat
-    (NatLang.get_labeled_instr p_nat (Some label))
-    (get_str_prg_rec p_nat
-    (get_labeled_instr (get_str_prg_rec p_nat a b c) (Some label)).
-Proof.
-*)
-
-(* EM ALTO NÍVEL
-   ENUNCIADO. Dado o programa P_NAT nos naturais e o programa P_STR em strings,
-   Se a primeira aparição de uma label ocorre em p_nat na posição i, 
-   então ela ocorre em p_str na posição equivalente i'
-
-   Indução em p_nat
-    Caso base ok
-
-    Passo:
-      p_nat := h :: t 
-      p_str := [max_label_str (get_str_prg_rec t)] ++ get_str_macro h (...)
-      
-      H (label_in_instr t = true -> label_
-      nth_error 
-*)
 
 
