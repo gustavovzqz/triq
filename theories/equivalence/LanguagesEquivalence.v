@@ -94,17 +94,17 @@ Lemma simulated_program_decomposition_if :
   exists t,
     p_str = (firstn (get_equiv_simulated_position p_nat i max_char) p_str)
     ++ (StringMacros.get_if_macro x o l max_char) ++ t.
-Proof.
+Proof. 
 Admitted.
 
 
-Lemma if_macro_equivalence :
+(* Lemma if_macro_equivalence :
   forall p_nat pos_nat state_nat pos_str state_str o x max_char,
 
   let p_str := get_equiv_str_program p_nat max_char in 
   
 
-  nth_error p_nat pos_nat = Some (NatLang.Instr o (NatLang.IF_GOTO x l)) ->
+  nth_error p_nat pos_nat = Some (NatLang.Instr o (NatLang.IF_GOTO x l)) -> *)
 
 
 
