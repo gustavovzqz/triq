@@ -304,7 +304,7 @@ Fixpoint get_str_prg_rec p_nat max_char max_label_p_nat max_z_p_nat :=
   | []     => []
   | h :: t => let str_rest := get_str_prg_rec t max_char 
               max_label_p_nat max_z_p_nat in 
-              let max_label_rest := StringUtils.get_max_label_str str_rest in 
+              let max_label_rest := StringUtils.get_max_label str_rest in 
               (get_str_macro h max_char max_label_p_nat 
                max_z_p_nat max_label_rest)
                ++ str_rest
@@ -365,9 +365,54 @@ Proof.
 Qed.
 
 
+Lemma macros_same_size : forall instr max_char max_lbl_nat max_z_nat 
+      max_z_str,
+  length (StringMacros.get_str_macro instr max_char max_lbl_nat max_z_nat
+          max_z_str) =
+  length (StringMacros.get_str_macro instr max_char 
+          0 0 0).
+Proof.
+Admitted.
+
 (** Simulated Program Decomposition *)
 
 (* 
    NatLang.Instr o (NatLang.IF_GOTO x l) => get_if_macro x o l max_char *)
 
+Lemma get_labeled_instr_app :
+  forall l1 l2 lbl,
+  StringUtils.label_in_instr l1 lbl = false ->
+  StringLang.get_labeled_instr (l1 ++ l2) lbl
+  =
+  length l1 + StringLang.get_labeled_instr l2 lbl.
+Admitted.
 
+Lemma none_not_in_p :
+  forall p, StringUtils.label_in_instr p None = false.
+Proof.
+  induction p.
+  + reflexivity.
+  + simpl. destruct a. destruct o; auto.
+Qed.
+
+
+Lemma nat_label_not_in_macro : forall instr opt_label 
+  max_char label_idx max_label_nat max_z_nat max_z_str,
+
+  eqb_opt_lbl (Some (A label_idx)) opt_label = false ->
+  max_label_nat >= label_idx ->
+
+
+  StringUtils.label_in_instr
+  (StringMacros.get_str_macro (NatLang.Instr opt_label instr) max_char
+  max_label_nat max_z_nat max_z_str) (Some (A label_idx)) = false.
+Admitted.
+
+
+
+Lemma get_labeled_instr_head: forall opt_label instr max_char
+  max_label_nat max_z_nat max_z_str t,
+  (StringLang.get_labeled_instr ( 
+    (StringMacros.get_str_macro (NatLang.Instr opt_label instr) max_char
+    max_label_nat max_z_nat max_z_str) ++ t) opt_label) = 0.
+Admitted.

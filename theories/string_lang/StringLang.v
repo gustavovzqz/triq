@@ -51,9 +51,8 @@ Definition empty : state  := fun _ => [].
 (** Auxiliares **)
 
 Definition eq_inst_label  (instr : instruction ) (opt_lbl : option label) :=
-  match instr, opt_lbl with 
-  | Instr (Some lbl_a) _, Some lbl_b => eqb_lbl lbl_a lbl_b
-  | _, _                => false
+  match instr with 
+  | Instr opt_lbl' _ => eqb_opt_lbl opt_lbl' opt_lbl
   end.
 
 Fixpoint get_labeled_instr (p : program) (lbl : option label) : nat :=

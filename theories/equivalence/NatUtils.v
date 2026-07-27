@@ -43,3 +43,14 @@ Fixpoint get_max_label (l : NatLang.program) : nat :=
         end
     end.
 
+
+(** * Label Pertence a Alguma Instrução em p_nat *)
+
+Fixpoint label_in_instr p_nat lbl :=
+  match p_nat with
+  | [] => false
+  | NatLang.Instr opt_lbl _ :: t => if (eqb_opt_lbl opt_lbl lbl)
+                                    then true
+                                    else label_in_instr t lbl
+  end.
+

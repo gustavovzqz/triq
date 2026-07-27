@@ -36,7 +36,7 @@ fold_left
 
 Definition equiv_pos 
   (p_nat : NatLang.program) (n : nat)
-  (p_str : StringLang.program ) (n' : nat) (max_char : nat) :=
+  (n' : nat) (max_char : nat) :=
   n' = get_equiv_simulated_position p_nat n max_char.
 
 
@@ -88,7 +88,7 @@ Qed.
 Lemma simulated_program_decomposition_if :
   forall p_nat i o x l max_char max_label_p_nat max_z_p_nat p_str,
   nth_error p_nat i = Some (NatLang.Instr o (NatLang.IF_GOTO x l)) ->
-  p_str = StringMacros.get_str_prg_rec p_nat 
+  p_str = StringMacros.get_str_prg_rec p_nat
   max_char max_label_p_nat max_z_p_nat ->
 
   exists t,
@@ -98,13 +98,122 @@ Proof.
 Admitted.
 
 
-(* Lemma if_macro_equivalence :
-  forall p_nat pos_nat state_nat pos_str state_str o x max_char,
 
-  let p_str := get_equiv_str_program p_nat max_char in 
-  
+(** Caso IF **)
 
-  nth_error p_nat pos_nat = Some (NatLang.Instr o (NatLang.IF_GOTO x l)) -> *)
+
+
+
+
+Lemma get_equiv_simulated_position_cons :
+forall h t i max_char,
+  get_equiv_simulated_position (h :: t) (S i) max_char =
+  StringMacros.macro_length h max_char +
+  get_equiv_simulated_position t i max_char.
+Proof.
+Admitted.
+
+Lemma label_in_instr_cases: forall h t label,
+  NatUtils.label_in_instr (h :: t) label = true ->
+  NatUtils.label_in_instr [h] label = true \/
+  (NatUtils.label_in_instr [h] label = false /\
+   NatUtils.label_in_instr t label = true). 
+Proof.
+Admitted.
+
+
+
+
+
+Opaque StringMacros.get_str_macro. 
+
+Lemma labels_equiv_position_in :
+forall p_nat label_idx max_char max_lbl_nat max_z_nat,
+  NatUtils.label_in_instr p_nat (Some (A label_idx)) = true ->
+  max_lbl_nat >= label_idx ->
+  let p_str := StringMacros.get_str_prg_rec p_nat max_char
+               max_lbl_nat max_z_nat in
+
+
+
+  equiv_pos
+    p_nat
+    (NatLang.get_labeled_instr p_nat (Some (A label_idx)))
+    (StringLang.get_labeled_instr p_str (Some (A label_idx)))
+    max_char.
+Proof.
+  induction p_nat as [|nat_line t];
+  intros label_idx max_char max_lbl_nat max_z_nat;
+  intros label_in_p_nat max_lbl_gt_label_idxl p_str; 
+
+  remember (Some (A label_idx)) as label.
+  (* p_nat = [] -> trivialmente falso já que não pode haver uma 
+    label em um programa vazio *)
+  - unfold NatUtils.label_in_instr in label_in_p_nat.
+    discriminate.
+  (* p_nat = nat_line ++ t, p_str = str_line ++ t' *)
+  (* Temos que label_in_instr (nat_line ++ t) = true.
+     Daí, temos dois casos para analisar
+     1. label_in_instr nat_line = true (direto, estará em str_line)
+     2. label_in_instr nat_line = false /\ label_in_instr t = true.
+     Aqui usamos a hipótese de indução *)
+  - simpl.
+    (* Inspecionando a linha *)
+    destruct nat_line as [opt_label instr] eqn:E.
+    assert (NatUtils.label_in_instr [NatLang.Instr opt_label instr]
+    label = true \/ 
+    NatUtils.label_in_instr [NatLang.Instr opt_label instr] 
+    label = false /\ NatUtils.label_in_instr t label = true) 
+    as label_in_cases.
+    { apply label_in_instr_cases; auto. } 
+    destruct label_in_cases as [label_in_h | [label_in_h_false label_in_t]].
+    (* Caso 1: label_in_instr nat_line = true *)
+    + simpl. simpl in label_in_h.
+      assert (eqb_opt_lbl opt_label label = true) as eq_label.
+      { destruct (eqb_opt_lbl opt_label label); auto. }
+      unfold p_str. simpl. rewrite eq_label. 
+      assert (opt_label = label) as opt_eq.
+      { destruct opt_label, label; try (discriminate); auto.
+        simpl in eq_label. destruct l, l0. simpl in *.  
+         f_equal. f_equal. rewrite <- PeanoNat.Nat.eqb_eq; auto. }
+      rewrite opt_eq.
+      rewrite StringMacros.get_labeled_instr_head. 
+      unfold equiv_pos, get_equiv_simulated_position. reflexivity.
+    (* Caso 2: label está na cauda *)
+    + simpl in label_in_h_false.
+      assert (NatLang.eq_inst_label (NatLang.Instr opt_label instr) label
+      = false) as label_neq_opt_label.
+      { unfold NatLang.eq_inst_label. simpl.
+        destruct (eqb_opt_lbl opt_label label); auto. 
+      }
+      rewrite label_neq_opt_label. simpl. unfold equiv_pos. 
+      rewrite get_equiv_simulated_position_cons.
+      unfold p_str. simpl.
+      assert (StringUtils.label_in_instr (StringMacros.get_str_macro 
+      (NatLang.Instr opt_label instr) max_char max_lbl_nat max_z_nat
+      (StringUtils.get_max_label (StringMacros.get_str_prg_rec 
+      t max_char max_lbl_nat max_z_nat))) label = false ) 
+      as label_not_in_h.
+      { rewrite Heqlabel in *.
+        simpl in label_neq_opt_label.
+        apply StringMacros.nat_label_not_in_macro; auto.
+        rewrite eqb_opt_lbl_symm. auto.
+      }
+
+      rewrite StringMacros.get_labeled_instr_app; auto.
+      unfold StringMacros.macro_length.
+      assert ((length (StringMacros.get_str_macro (NatLang.Instr opt_label 
+      instr) max_char max_lbl_nat max_z_nat (StringUtils.get_max_label
+        (StringMacros.get_str_prg_rec t max_char max_lbl_nat max_z_nat)
+        ))) = length (StringMacros.get_str_macro 
+        (NatLang.Instr opt_label instr) max_char 0 0 0)) as same_length.
+      { apply StringMacros.macros_same_size. }
+
+      apply f_equal2_plus; auto.
+      unfold equiv_pos in *.
+      rewrite Heqlabel in *.
+      apply IHt; auto.
+Qed.
 
 
 
@@ -132,7 +241,7 @@ Theorem nat_implies_string :
             (StringLang.compute_program p_str (StringLang.SNAP 0 initial_state_str) n') in
 
   state_equiv state_nat state_str max_char /\
-  equiv_pos p_nat line_nat p_str line_str max_char /\
+  equiv_pos p_nat line_nat line_str max_char /\
   state_str (Z (NatUtils.get_max_z p_nat + 1)) = [] /\
   state_str (Z (NatUtils.get_max_z p_nat + 2)) = [] /\
   StringLang.state_over state_str max_char.
@@ -186,7 +295,7 @@ Proof.
         (StringLang.compute_program p_str 
         (StringLang.SNAP 0 initial_str_state) steps_str)) n') in
         state_equiv state_nat state_str max_char /\
-        equiv_pos p_nat line_nat p_str line_str max_char /\
+        equiv_pos p_nat line_nat line_str max_char /\
         state_str (Z (NatUtils.get_max_z p_nat + 1)) = [] /\
         state_str (Z (NatUtils.get_max_z p_nat + 2)) = [] /\
         StringLang.state_over state_str max_char).
@@ -215,4 +324,4 @@ Proof.
        basta também não fazer nada no programa de strings *)
     + simpl. exists 0. simpl. destruct H_ind_str;
       repeat (split; auto).
-Admitted. 
+Admitted.

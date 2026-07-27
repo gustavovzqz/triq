@@ -63,5 +63,3 @@ end.
 
 Compute nat_to_string 11 3.
 Compute string_to_nat [2; 1] 3.
-
-
