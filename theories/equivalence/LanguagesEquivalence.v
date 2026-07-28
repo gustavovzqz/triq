@@ -71,7 +71,13 @@ Lemma incr_string_over : forall s max_char,
 StringLang.string_over s max_char ->
 StringLang.string_over (LanguagesUtils.incr_string s max_char) max_char.
 Proof.
-Admitted.
+  intros. induction s.
+  + simpl. lia.
+  + simpl in *. destruct H. destruct (a <? max_char) eqn:E.
+    ++ simpl. split; auto. assert (a < max_char).
+       rewrite PeanoNat.Nat.ltb_lt in E; auto. lia.
+    ++ simpl. split; auto. lia.
+Qed.
 
 (** state_equiv_over *)
 
@@ -85,7 +91,7 @@ Proof.
 Qed.
 
 
-Lemma simulated_program_decomposition_if :
+(* Lemma simulated_program_decomposition_if :
   forall p_nat i o x l max_char max_label_p_nat max_z_p_nat p_str,
   nth_error p_nat i = Some (NatLang.Instr o (NatLang.IF_GOTO x l)) ->
   p_str = StringMacros.get_str_prg_rec p_nat
@@ -96,6 +102,7 @@ Lemma simulated_program_decomposition_if :
     ++ (StringMacros.get_if_macro x o l max_char) ++ t.
 Proof. 
 Admitted.
+ *)
 
 
 
@@ -104,6 +111,25 @@ Admitted.
 
 
 
+Lemma fold_left_add_const :
+forall l acc c max_char,
+  fold_left
+    (fun acc instr => acc + StringMacros.macro_length instr max_char)
+    l (acc + c)
+  =
+  acc +
+  fold_left
+    (fun acc instr => acc + StringMacros.macro_length instr max_char)
+    l c.
+Proof.
+  induction l as [|h t IH]; intros acc c max_char.
+  - simpl. reflexivity.
+  - simpl. pose proof (IH acc (c + StringMacros.macro_length h max_char)).
+    replace (acc + (c + StringMacros.macro_length h max_char)) with 
+      (acc + c + (StringMacros.macro_length h max_char))
+    in H. rewrite H. reflexivity.
+    lia.
+Qed.
 
 Lemma get_equiv_simulated_position_cons :
 forall h t i max_char,
@@ -111,7 +137,16 @@ forall h t i max_char,
   StringMacros.macro_length h max_char +
   get_equiv_simulated_position t i max_char.
 Proof.
-Admitted.
+  intros.
+  replace (h :: t) with ([h] ++ t).
+  + unfold get_equiv_simulated_position. simpl.
+    pose proof (fold_left_add_const (firstn i t) 
+    (StringMacros.macro_length h max_char) 0 max_char).
+    replace (StringMacros.macro_length h max_char + 0) 
+    with (StringMacros.macro_length h max_char) in H by lia.
+    exact H.
+  + reflexivity.
+Qed.
 
 Lemma label_in_instr_cases: forall h t label,
   NatUtils.label_in_instr (h :: t) label = true ->
@@ -119,12 +154,15 @@ Lemma label_in_instr_cases: forall h t label,
   (NatUtils.label_in_instr [h] label = false /\
    NatUtils.label_in_instr t label = true). 
 Proof.
-Admitted.
+  intros h t label label_in_program.
+  simpl in label_in_program. destruct h. simpl.
+  destruct (eqb_opt_lbl o label) eqn:E; auto.
+Qed.
 
 
 
 
-
+(* Não quero que o get_str_macro simplifique. *)
 Opaque StringMacros.get_str_macro. 
 
 Lemma labels_equiv_position_in :
@@ -133,9 +171,6 @@ forall p_nat label_idx max_char max_lbl_nat max_z_nat,
   max_lbl_nat >= label_idx ->
   let p_str := StringMacros.get_str_prg_rec p_nat max_char
                max_lbl_nat max_z_nat in
-
-
-
   equiv_pos
     p_nat
     (NatLang.get_labeled_instr p_nat (Some (A label_idx)))
