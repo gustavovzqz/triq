@@ -22,35 +22,27 @@ Fixpoint get_max_z (l : NatLang.program) : nat :=
 
 (** ** Obtendo a Maior Label em p_nat *)
 
-Definition max_opts opt_lbl goto_lbl k :=
-match opt_lbl, goto_lbl with
-| Some (A n), Some (A n') => max (max n n') k 
-| Some (A n), None => max n k
-| None, Some (A n') => max n' k
-| None, None => k
-end.
-
 
 Fixpoint get_max_label (l : NatLang.program) : nat :=
-    match l with
-    | [] => 0
-    | NatLang.Instr opt_lbl (NatLang.IF_GOTO _ goto_lbl) :: t =>
-      (max_opts opt_lbl goto_lbl (get_max_label t))
-    | NatLang.Instr opt_lbl _ :: t =>
-        match opt_lbl with
-        | None => get_max_label t
-        | Some (A n) => max (get_max_label t) n
-        end
-    end.
+  match l with
+  | [] => 0
+  | NatLang.Instr opt_lbl _ :: t =>
+      match opt_lbl with
+      | None => get_max_label t
+      | Some (A n) => Nat.max n (get_max_label t)
+      end
+  end.
 
 
 (** * Label Pertence a Alguma Instrução em p_nat *)
 
-Fixpoint label_in_instr p_nat lbl :=
+Fixpoint label_in_instr p_nat (lbl : label)  :=
   match p_nat with
   | [] => false
-  | NatLang.Instr opt_lbl _ :: t => if (eqb_opt_lbl opt_lbl lbl)
-                                    then true
-                                    else label_in_instr t lbl
+  | NatLang.Instr opt_lbl _ :: t => match opt_lbl with 
+                                       | Some lbl' => if eqb_lbl lbl lbl'
+                                                      then true
+                                                      else label_in_instr t lbl
+                                       | None => label_in_instr t lbl
+                                       end
   end.
-

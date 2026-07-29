@@ -156,7 +156,8 @@ Lemma label_in_instr_cases: forall h t label,
 Proof.
   intros h t label label_in_program.
   simpl in label_in_program. destruct h. simpl.
-  destruct (eqb_opt_lbl o label) eqn:E; auto.
+  destruct o; auto.
+  destruct (eqb_lbl label l); auto.
 Qed.
 
 
@@ -167,14 +168,14 @@ Opaque StringMacros.get_str_macro.
 
 Lemma labels_equiv_position_in :
 forall p_nat label_idx max_char max_lbl_nat max_z_nat,
-  NatUtils.label_in_instr p_nat (Some (A label_idx)) = true ->
+  NatUtils.label_in_instr p_nat (A label_idx) = true ->
   max_lbl_nat >= label_idx ->
   let p_str := StringMacros.get_str_prg_rec p_nat max_char
                max_lbl_nat max_z_nat in
   equiv_pos
     p_nat
-    (NatLang.get_labeled_instr p_nat (Some (A label_idx)))
-    (StringLang.get_labeled_instr p_str (Some (A label_idx)))
+    (NatLang.get_labeled_instr p_nat (A label_idx))
+    (StringLang.get_labeled_instr p_str (A label_idx))
     max_char.
 Proof.
   induction p_nat as [|nat_line t];
@@ -196,58 +197,37 @@ Proof.
     (* Inspecionando a linha *)
     destruct nat_line as [opt_label instr] eqn:E.
     assert (NatUtils.label_in_instr [NatLang.Instr opt_label instr]
-    label = true \/ 
+    (A label_idx) = true \/ 
     NatUtils.label_in_instr [NatLang.Instr opt_label instr] 
-    label = false /\ NatUtils.label_in_instr t label = true) 
+    (A label_idx) = false /\ NatUtils.label_in_instr t (A label_idx) = true) 
     as label_in_cases.
     { apply label_in_instr_cases; auto. } 
     destruct label_in_cases as [label_in_h | [label_in_h_false label_in_t]].
     (* Caso 1: label_in_instr nat_line = true *)
-    + simpl. simpl in label_in_h.
-      assert (eqb_opt_lbl opt_label label = true) as eq_label.
-      { destruct (eqb_opt_lbl opt_label label); auto. }
-      unfold p_str. simpl. rewrite eq_label. 
-      assert (opt_label = label) as opt_eq.
-      { destruct opt_label, label; try (discriminate); auto.
-        simpl in eq_label. destruct l, l0. simpl in *.  
-         f_equal. f_equal. rewrite <- PeanoNat.Nat.eqb_eq; auto. }
-      rewrite opt_eq.
-      rewrite StringMacros.get_labeled_instr_head. 
-      unfold equiv_pos, get_equiv_simulated_position. reflexivity.
+    + simpl. simpl in label_in_h. destruct opt_label; try discriminate.
+      destruct l. simpl. rewrite PeanoNat.Nat.eqb_sym.
+      assert (label_idx =? n = true) as label_idx_eq_n.
+      { destruct (label_idx =? n); auto. }
+      rewrite label_idx_eq_n. unfold equiv_pos, get_equiv_simulated_position.
+      simpl. unfold p_str. simpl. rewrite PeanoNat.Nat.eqb_eq in label_idx_eq_n.
+      rewrite label_idx_eq_n, StringMacros.get_labeled_instr_head.
+      reflexivity.
     (* Caso 2: label está na cauda *)
-    + simpl in label_in_h_false.
-      assert (NatLang.eq_inst_label (NatLang.Instr opt_label instr) label
-      = false) as label_neq_opt_label.
-      { unfold NatLang.eq_inst_label. simpl.
-        destruct (eqb_opt_lbl opt_label label); auto. 
-      }
-      rewrite label_neq_opt_label. simpl. unfold equiv_pos. 
+    + unfold NatUtils.label_in_instr in label_in_h_false.
+      simpl. assert ( eqb_opt_lbl opt_label (Some (A label_idx)) = false)
+      as eqb_opt_false.
+      { destruct opt_label; auto. simpl. 
+        rewrite eqb_lbl_symm. destruct (eqb_lbl (A label_idx) l); auto. }
+      rewrite eqb_opt_false.
+      unfold p_str, equiv_pos. 
       rewrite get_equiv_simulated_position_cons.
-      unfold p_str. simpl.
-      assert (StringUtils.label_in_instr (StringMacros.get_str_macro 
-      (NatLang.Instr opt_label instr) max_char max_lbl_nat max_z_nat
-      (StringUtils.get_max_label (StringMacros.get_str_prg_rec 
-      t max_char max_lbl_nat max_z_nat))) label = false ) 
-      as label_not_in_h.
-      { rewrite Heqlabel in *.
-        simpl in label_neq_opt_label.
-        apply StringMacros.nat_label_not_in_macro; auto.
-        rewrite eqb_opt_lbl_symm. auto.
-      }
-
-      rewrite StringMacros.get_labeled_instr_app; auto.
-      unfold StringMacros.macro_length.
-      assert ((length (StringMacros.get_str_macro (NatLang.Instr opt_label 
-      instr) max_char max_lbl_nat max_z_nat (StringUtils.get_max_label
-        (StringMacros.get_str_prg_rec t max_char max_lbl_nat max_z_nat)
-        ))) = length (StringMacros.get_str_macro 
-        (NatLang.Instr opt_label instr) max_char 0 0 0)) as same_length.
-      { apply StringMacros.macros_same_size. }
-
-      apply f_equal2_plus; auto.
-      unfold equiv_pos in *.
-      rewrite Heqlabel in *.
-      apply IHt; auto.
+      simpl. rewrite StringMacros.get_labeled_instr_app. 
+      ++ unfold StringMacros.macro_length.
+         rewrite StringMacros.macros_same_size.
+         apply f_equal2_plus; auto.
+         apply IHt; auto.
+      ++ apply StringMacros.nat_label_not_in_macro; auto.
+         rewrite eqb_opt_lbl_symm. auto.
 Qed.
 
 

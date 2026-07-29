@@ -155,10 +155,13 @@ End test.
 
 (* INCR MACRO *)
 
+(* [L] x <- x + 1 *)
+
 (* 
 
   [L]   AUX <- a ++ AUX
-  BLOCO 1 
+  BLOCO 1
+
   [B]   IF X ENDS Si GOTO Ai (1 <= i <= n)
         Y <- S1 Y
         GOTO E
@@ -184,9 +187,8 @@ End test.
         Y <- Si Y ( 1 <= i <= n )
         GOTO C
 
-  [C] AUX <- AUX -
+  [E] AUX <- AUX -
 *)
-
 
 
 Definition get_incr_macro 
@@ -382,18 +384,22 @@ Admitted.
 
 Lemma get_labeled_instr_app :
   forall l1 l2 lbl,
-  StringUtils.label_in_instr l1 (Some lbl) = false ->
+  StringUtils.label_in_instr l1 lbl = false ->
   StringLang.get_labeled_instr (l1 ++ l2) lbl
   =
   length l1 + StringLang.get_labeled_instr l2 lbl.
 Proof.
   induction l1; intros.
   - simpl. reflexivity.
-  - simpl. simpl in H. destruct a. simpl.
-    destruct (eqb_opt_lbl o (Some lbl)) eqn:E.
-    + discriminate H.
-    + f_equal. apply IHl1, H.
+  - simpl. simpl in H. destruct a eqn:E1. simpl.
+    destruct o.
+    + simpl. rewrite eqb_lbl_symm.
+      destruct (eqb_lbl lbl l).
+      ++ discriminate H. 
+      ++ f_equal. auto.
+    + simpl. f_equal; auto.
 Qed.
+
 
 
 
@@ -406,11 +412,14 @@ Lemma nat_label_not_in_macro : forall instr opt_label
 
   StringUtils.label_in_instr
   (StringMacros.get_str_macro (NatLang.Instr opt_label instr) max_char
-  max_label_nat max_z_nat max_z_str) (Some (A label_idx)) = false.
+  max_label_nat max_z_nat max_z_str) (A label_idx) = false.
 Proof.
+  intros. destruct instr.
+  + simpl.
   (* Essa prova não é conceitualmente difícil, mas é bem trabalhosa.
    *)
 Admitted.
+
 
 
 
@@ -424,5 +433,5 @@ Proof.
   - simpl. rewrite eqb_lbl_refl. reflexivity.
   - admit. (* depende da implementação de DECR *)
   - destruct max_char;
-    simpl; rewrite eqb_lbl_refl; reflexivity.
+    simpl. rewrite eqb_lbl_refl; reflexivity.
 Admitted.
