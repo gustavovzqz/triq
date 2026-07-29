@@ -408,8 +408,8 @@ Lemma nat_label_not_in_macro : forall instr opt_label
   (StringMacros.get_str_macro (NatLang.Instr opt_label instr) max_char
   max_label_nat max_z_nat max_z_str) (Some (A label_idx)) = false.
 Proof.
-  (* Essa prova não é conceitualmente difícil, mas é bem trabalhosa. 
-     Posso pensar em um 
+  (* Essa prova não é conceitualmente difícil, mas é bem trabalhosa.
+   *)
 Admitted.
 
 
