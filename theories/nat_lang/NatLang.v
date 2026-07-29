@@ -49,7 +49,7 @@ From Triq Require Export LanguagesCommon.
 Inductive statement : Type :=
   | INCR : variable -> statement
   | DECR : variable -> statement
-  | IF_GOTO   : variable -> option label -> statement.
+  | IF_GOTO   : variable -> label -> statement.
 
 
 Inductive instruction : Type :=
@@ -143,11 +143,11 @@ Definition eq_inst_label (instr : instruction ) (opt_lbl : option label) :=
     em um programa *)
 
 
-Fixpoint get_labeled_instr (p : list instruction) (lbl : option label) : nat :=
+Fixpoint get_labeled_instr (p : list instruction) (lbl : label) : nat :=
   match p with
   | [] => 0
   | h :: t =>
-      if eq_inst_label h lbl
+      if eq_inst_label h (Some lbl)
       then 0
       else 1 + get_labeled_instr t lbl
   end.

@@ -27,12 +27,10 @@ Definition eqb_lbl l1 l2 :=
 
 
 Definition eqb_opt_lbl opt_label opt_label' :=
-  match opt_label with 
-  | Some lbl => match opt_label' with
-                | Some lbl' => eqb_lbl lbl lbl'
-                | None => false
-                end
-  | None => false
+  match opt_label, opt_label' with 
+  | Some lbl, Some lbl' => eqb_lbl lbl lbl'
+  | None, None =>  true
+  | _, _ => false
   end.
 
 
@@ -62,6 +60,15 @@ Theorem eqb_lbl_refl : forall v, eqb_lbl v v = true.
 Proof.
   destruct v; try (apply PeanoNat.Nat.eqb_refl); reflexivity.
 Qed.
+
+Lemma eqb_opt_lbl_refl : forall x, eqb_opt_lbl x x = true.
+Proof.
+  intros. destruct x.
+  + simpl. rewrite eqb_lbl_refl. reflexivity.
+  + simpl. reflexivity.
+Qed.
+
+
 
 Theorem eqb_var_refl : forall v, eqb_var v v = true.
 Proof.

@@ -23,16 +23,17 @@ Import ListNotations.
 Fixpoint get_if_macro 
   (x : variable)
   (instr_lbl : option label)
-  (goto_lbl : option label)
+  (goto_lbl : label)
   (max_char : nat) : StringLang.program :=
 
   match max_char with 
   | 0 => [StringLang.Instr instr_lbl (StringLang.IF_ENDS_GOTO x 0 goto_lbl)]
-  | S n => (get_if_macro x instr_lbl goto_lbl n) ++
-           [StringLang.Instr instr_lbl (StringLang.IF_ENDS_GOTO x max_char goto_lbl)]
+  | S n => 
+           StringLang.Instr instr_lbl (StringLang.IF_ENDS_GOTO x max_char goto_lbl) ::
+            (get_if_macro x instr_lbl goto_lbl n) 
   end.
 
-Compute get_if_macro Y None None 10.
+Compute get_if_macro Y None (A 20) 10.
 
 (* Auxiliares *)
 
@@ -44,12 +45,12 @@ Fixpoint get_if_macro_label
   (max_char : nat) 
   (first_label : nat) : StringLang.program :=
 
-  let goto_lbl := Some (A (max_char + first_label)) in 
+  let goto_lbl := A (max_char + first_label) in 
 
   match max_char with 
   | 0 => [StringLang.Instr instr_lbl (StringLang.IF_ENDS_GOTO x 0 goto_lbl)]
-  | S n => (get_if_macro_label x instr_lbl n first_label) ++
-           [StringLang.Instr instr_lbl (StringLang.IF_ENDS_GOTO x max_char goto_lbl)]
+  | S n => StringLang.Instr instr_lbl (StringLang.IF_ENDS_GOTO x max_char goto_lbl) :: 
+           (get_if_macro_label x instr_lbl n first_label)
   end.
 
 Compute get_if_macro_label Y None 10 3.
@@ -65,7 +66,7 @@ Definition get_ai_block
   (aux : variable)
   (first_block_label : nat)
   (char : nat)
-  (goto_label: option label ) :=
+  (goto_label: label ) :=
 
 
 let ai_label := Some (A (first_block_label + char))  in
@@ -81,12 +82,12 @@ Fixpoint get_all_ai_blocks
   (aux : variable)
   (max_char : nat)
   (first_label : nat)
-  (goto_label: option label ) :=
+  (goto_label: label ) :=
 
 match max_char with 
 | 0 => get_ai_block x z aux first_label 0 goto_label 
-| S n => (get_all_ai_blocks x z aux n first_label goto_label) ++
-          get_ai_block x z aux first_label max_char goto_label 
+| S n => get_ai_block x z aux first_label max_char goto_label  ++
+         get_all_ai_blocks x z aux n first_label goto_label
 end.
 
 Section test.
@@ -96,7 +97,7 @@ Let z := Z 1.
 Let aux := Z 3.
 
 
-Compute get_all_ai_blocks x z aux 3 10 None.
+Compute get_all_ai_blocks x z aux 3 10 (A 30).
 End test.
 
 (*
@@ -112,7 +113,7 @@ Definition get_di_block
   (aux : variable)
   (first_block_label : nat)
   (char : nat)
-  (goto_label: option label ) :=
+  (goto_label: label ) :=
 
 
 let di_label := Some (A (first_block_label + char))  in
@@ -128,12 +129,12 @@ Fixpoint get_all_di_blocks
   (aux : variable)
   (max_char : nat)
   (first_label : nat)
-  (goto_label: option label ) :=
+  (goto_label: label ) :=
 
 match max_char with 
 | 0 => get_di_block x z aux first_label 0 goto_label 
-| S n => (get_all_di_blocks x z aux n first_label goto_label) ++
-          get_di_block x z aux first_label max_char goto_label 
+| S n => get_di_block x z aux first_label max_char goto_label  ++
+         get_all_di_blocks x z aux n first_label goto_label
 end.
 
 Section test.
@@ -143,7 +144,7 @@ Let z := Z 1.
 Let aux := Z 3.
 
 
-Compute get_all_di_blocks x z aux 5 0 None.
+Compute get_all_di_blocks x z aux 5 0 (A 40).
 End test.
 
 
@@ -207,12 +208,12 @@ let D1_idx := C_idx + 1 in
 let E_idx := D1_idx + max_char + 1 in
 
 
-let B  := Some (A B_idx)  in
-let A1 := Some (A A1_idx) in
-let An := Some (A An_idx) in
-let C  := Some (A C_idx)  in
-let D1 := Some (A D1_idx) in
-let E  := Some (A E_idx)  in
+let B  := A B_idx  in
+let A1 := A A1_idx in
+let An := A An_idx in
+let C  := A C_idx  in
+let D1 := A D1_idx in
+let E  := A E_idx  in
 
 let goto l := 
   [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 l)] in
@@ -222,7 +223,7 @@ let goto l :=
 [StringLang.Instr lbl (StringLang.APPEND 0 aux)] ++ 
 
 (* BLOCO 1 *) 
-get_if_macro_label x B max_char A1_idx ++ 
+get_if_macro_label x (Some B) max_char A1_idx ++ 
 [StringLang.Instr None (StringLang.APPEND 0 z)] ++ 
 goto E ++
 
@@ -232,12 +233,12 @@ get_all_ai_blocks x z aux (max_char - 1) A1_idx C ++
 
 (* BLOCO 3 *)
 
-[StringLang.Instr An (StringLang.DEL x)] ++
+[StringLang.Instr (Some An) (StringLang.DEL x)] ++
 [StringLang.Instr None (StringLang.APPEND 0 z)] ++
 [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 C)] ++
 
 (* BLOCO 4 *)
-get_if_macro_label x C max_char D1_idx ++
+get_if_macro_label x (Some C) max_char D1_idx ++
 goto E ++
 
 (* BLOCO 5 *)
@@ -248,7 +249,7 @@ get_all_ai_blocks x z aux max_char D1_idx C ++
    [C] aux <- - 
 *)
 
-[StringLang.Instr C (StringLang.DEL aux)].
+[StringLang.Instr (Some C) (StringLang.DEL aux)].
 
 
 
@@ -381,19 +382,19 @@ Admitted.
 
 Lemma get_labeled_instr_app :
   forall l1 l2 lbl,
-  StringUtils.label_in_instr l1 lbl = false ->
+  StringUtils.label_in_instr l1 (Some lbl) = false ->
   StringLang.get_labeled_instr (l1 ++ l2) lbl
   =
   length l1 + StringLang.get_labeled_instr l2 lbl.
-Admitted.
-
-Lemma none_not_in_p :
-  forall p, StringUtils.label_in_instr p None = false.
 Proof.
-  induction p.
-  + reflexivity.
-  + simpl. destruct a. destruct o; auto.
+  induction l1; intros.
+  - simpl. reflexivity.
+  - simpl. simpl in H. destruct a. simpl.
+    destruct (eqb_opt_lbl o (Some lbl)) eqn:E.
+    + discriminate H.
+    + f_equal. apply IHl1, H.
 Qed.
+
 
 
 Lemma nat_label_not_in_macro : forall instr opt_label 
@@ -406,13 +407,22 @@ Lemma nat_label_not_in_macro : forall instr opt_label
   StringUtils.label_in_instr
   (StringMacros.get_str_macro (NatLang.Instr opt_label instr) max_char
   max_label_nat max_z_nat max_z_str) (Some (A label_idx)) = false.
+Proof.
+  (* Essa prova não é conceitualmente difícil, mas é bem trabalhosa. 
+     Posso pensar em um 
 Admitted.
 
 
 
-Lemma get_labeled_instr_head: forall opt_label instr max_char
+Lemma get_labeled_instr_head: forall label instr max_char
   max_label_nat max_z_nat max_z_str t,
   (StringLang.get_labeled_instr ( 
-    (StringMacros.get_str_macro (NatLang.Instr opt_label instr) max_char
-    max_label_nat max_z_nat max_z_str) ++ t) opt_label) = 0.
+    (StringMacros.get_str_macro (NatLang.Instr (Some label) instr) max_char
+    max_label_nat max_z_nat max_z_str) ++ t) label) = 0.
+Proof.
+  intros. simpl. destruct instr.
+  - simpl. rewrite eqb_lbl_refl. reflexivity.
+  - admit. (* depende da implementação de DECR *)
+  - destruct max_char;
+    simpl; rewrite eqb_lbl_refl; reflexivity.
 Admitted.
