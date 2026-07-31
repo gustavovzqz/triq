@@ -144,9 +144,11 @@ Proof.
   + apply incr_string_over, IHn.
 Qed.
 
+Search (nth_error_app2).
+
 (* Nota: essa prova ficou MUITO melhor do que a do String 1 *)
 
-Lemma simulated_program_decomposition :
+Lemma simulated_program_decomposition:
   forall p_nat p_str i instr max_char max_label_nat max_z_nat,
   nth_error p_nat i = Some instr ->
   p_str = StringMacros.get_str_prg_rec p_nat
@@ -155,7 +157,8 @@ Lemma simulated_program_decomposition :
   exists t max_z_str,
     p_str = (firstn (get_equiv_simulated_position p_nat i max_char) p_str)
     ++ (StringMacros.get_str_macro instr max_char max_label_nat max_z_nat max_z_str)
-    ++ t.
+    ++ t /\ length (firstn (get_equiv_simulated_position p_nat i max_char) p_str)
+             = get_equiv_simulated_position p_nat i max_char.
 Proof. 
   induction p_nat as [|h t]; 
   intros p_str i instr max_char max_label_nat max_z_nat;
@@ -176,26 +179,30 @@ Proof.
       simpl in h_instr.
       assert (exists t0 max_z_str, 
       t' = firstn (get_equiv_simulated_position t i max_char) t' ++
-      (StringMacros.get_str_macro instr max_char max_label_nat max_z_nat max_z_str)
-      ++ t0) as t'_split.
+      (StringMacros.get_str_macro instr max_char max_label_nat max_z_nat 
+      max_z_str) ++ t0 /\
+      length (firstn (get_equiv_simulated_position t i max_char) t') =
+      get_equiv_simulated_position t i max_char) as t'_split.
       { eapply IHt; eauto. }
-      destruct t'_split as [t''  [max_z_str t'_eq]].
+      destruct t'_split as [t''  [max_z_str [t'_eq t'_length]]].
       rewrite p_str_eq.
+      assert ((StringMacros.macro_length h max_char) = (length h')) 
+      as length_h'_eq.
+      { unfold StringMacros.macro_length. rewrite Heqh'.
+        symmetry. apply StringMacros.macros_same_size. }
       assert ((firstn (StringMacros.macro_length h max_char +
       get_equiv_simulated_position t i max_char) (h' ++ t'))
       = (h' ++ firstn (get_equiv_simulated_position t i max_char) t'))
       as firstn_split.
-      { replace (StringMacros.macro_length h max_char) with (length h').
-        apply firstn_app_2.
-        unfold StringMacros.macro_length. rewrite Heqh'.
-        apply StringMacros.macros_same_size. }
-      exists t'', max_z_str.
-      rewrite firstn_split. 
-      rewrite t'_eq at 1. rewrite app_assoc. reflexivity.
+      { rewrite length_h'_eq. apply firstn_app_2. }
+      exists t'', max_z_str. rewrite firstn_split. split.
+      ++ rewrite t'_eq at 1. rewrite app_assoc. reflexivity.
+      ++ rewrite length_app, t'_length, length_h'_eq.
+         reflexivity.
 Qed.
 
 
-(** Caso IF **)
+
 
 
 (* Não quero que o get_str_macro simplifique. *)
@@ -264,6 +271,178 @@ Proof.
       ++ apply StringMacros.nat_label_not_in_macro; auto.
          rewrite eqb_opt_lbl_symm. auto.
 Qed.
+
+
+(** IF **) 
+
+Lemma firstn_S_nth_error :
+forall (A : Type) (l : list A) n x,
+  nth_error l n = Some x ->
+  firstn (n + 1) l = firstn n l ++ [x].
+Proof.
+  induction l as [|h t IH]; intros n x H.
+  - rewrite nth_error_nil in H. discriminate.
+  - destruct n.
+    + simpl in *. inversion H; reflexivity.
+    + simpl in *. apply IH in H.
+      rewrite H. reflexivity.
+Qed.
+
+Lemma get_equiv_simulated_position_Sn :
+  forall p_nat n instr max_char,
+  nth_error p_nat n = Some instr ->
+  get_equiv_simulated_position p_nat (n + 1) max_char
+  = get_equiv_simulated_position p_nat n max_char + 
+    StringMacros.macro_length instr max_char.
+Proof.
+  intros p_nat n instr max_char Hnth.
+  unfold get_equiv_simulated_position.
+  rewrite firstn_S_nth_error with (x := instr); auto.
+  rewrite fold_left_app. simpl. lia.
+Qed.
+
+Lemma exists_split : forall P,
+  (exists m m', P (m + m')) ->
+  exists n', P n'.
+Proof.
+  intros. destruct H as [m' [m'' H]].
+  exists (m' + m''); auto.
+Qed.
+
+Lemma compute_if_block_skip :
+  forall max_char p_nat pos_nat
+         p_str pos_str state_str 
+         if_instr instr_label x goto_label
+         max_label_nat max_z_nat max_z_str t, 
+
+
+  if_instr = NatLang.Instr instr_label (NatLang.IF_GOTO x goto_label) ->
+
+
+  p_str = firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str ++ 
+  StringMacros.get_str_macro if_instr max_char max_label_nat max_z_nat
+  max_z_str ++ t  ->
+
+  length (firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
+  = pos_str  ->
+
+
+  state_str x = [] ->
+
+  exists n,
+  let (line_str, state_str') :=
+    StringLang.split_snap
+      (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+         n) in
+
+  state_str' = state_str /\
+  line_str = pos_str + StringMacros.macro_length if_instr max_char.
+Proof.
+  Transparent StringMacros.get_str_macro. 
+  induction max_char;
+  intros p_nat pos_nat p_str pos_str state_str if_instr
+  instr_label x goto_label max_label_nat max_z_nat max_z_str t;
+  intros H_if_instr p_str_decomposition H_length H_state_str.
+  - rewrite p_str_decomposition. 
+    exists 1. simpl. rewrite nth_error_app2; try lia.
+    rewrite H_length, PeanoNat.Nat.sub_diag, H_if_instr.
+    simpl.
+    rewrite H_state_str. simpl. unfold StringMacros.macro_length.
+    repeat (split; auto).
+    (* Passo *)
+  - cut (exists n n' : nat, 
+    let (line_str, state_str') := StringLang.split_snap
+    (StringLang.compute_program p_str (StringLang.compute_program p_str 
+    (StringLang.SNAP pos_str state_str) n) n') 
+    in state_str' = state_str /\ line_str = pos_str + 
+    StringMacros.macro_length if_instr (S max_char)).
+    {intros cH. destruct cH as [m [m']]. exists (m' + m). 
+     rewrite StringLangProperties.compute_program_add. auto. }
+    exists 1. simpl. rewrite p_str_decomposition, nth_error_app2; try lia.
+    rewrite <- p_str_decomposition.
+    rewrite H_if_instr, H_length, PeanoNat.Nat.sub_diag. simpl.
+    rewrite H_state_str. simpl.
+    
+Admitted.
+    
+
+Theorem if_macro_simulates :
+  forall p_nat pos_nat state_nat
+               pos_str state_str
+         max_char x instr_label goto_label,
+
+  let p_str := get_equiv_str_program p_nat max_char in
+
+
+  nth_error p_nat pos_nat = Some (NatLang.Instr instr_label
+  (NatLang.IF_GOTO x goto_label)) ->
+
+  state_equiv state_nat state_str max_char ->
+
+  equiv_pos p_nat pos_nat pos_str max_char ->
+
+  exists n' : nat,
+    let (line_nat, state_nat') :=
+      NatLang.split_snap
+        (NatLang.next_step p_nat (NatLang.SNAP pos_nat state_nat)) in
+    let (line_str, state_str') :=
+      StringLang.split_snap
+        (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+           n') in
+    state_equiv state_nat' state_str' max_char /\
+    equiv_pos p_nat line_nat line_str max_char /\
+    state_str' = state_str.
+Proof.
+  intros p_nat pos_nat state_nat pos_str state_str
+  max_char x instr_label goto_label p_str.
+  intros nth_pos_nat_instr H_state_equiv H_equiv_pos. 
+  unfold get_equiv_str_program in p_str.
+
+  (* naming *)
+  remember (NatLang.Instr instr_label (NatLang.IF_GOTO x goto_label)) 
+  as if_instr eqn:if_instr_eq.
+  remember (NatUtils.get_max_label p_nat) as max_label_nat.
+  remember (NatUtils.get_max_z p_nat) as max_z_nat.
+
+  (* str program decomposition *)
+  assert (exists (t : list StringLang.instruction) (max_z_str : nat),
+  p_str = firstn (get_equiv_simulated_position p_nat pos_nat max_char) 
+  p_str ++ StringMacros.get_str_macro if_instr max_char max_label_nat 
+  max_z_nat max_z_str ++ t /\
+  length (firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
+  = get_equiv_simulated_position p_nat pos_nat max_char)
+  as [t [max_z_str [str_program_decomposition length_decomposition]]].
+  { apply simulated_program_decomposition; auto. }
+
+  simpl. rewrite nth_pos_nat_instr, if_instr_eq.
+  destruct (state_nat x) eqn:state_nat_value.
+  - unfold state_equiv in H_state_equiv. simpl in H_state_equiv.
+    pose proof (H_state_equiv x) as state_str_value.
+    rewrite state_nat_value in state_str_value. simpl in state_str_value.
+
+    assert (exists n', let (line_str, state_str') :=
+            StringLang.split_snap (StringLang.compute_program p_str 
+            (StringLang.SNAP pos_str state_str) n') in
+           state_str' = state_str /\
+           line_str = pos_str + StringMacros.macro_length if_instr max_char)
+    as [k if_computation].
+    { eapply compute_if_block_skip; eauto. rewrite H_equiv_pos. auto. }
+    exists k.
+    destruct (StringLang.compute_program p_str 
+    (StringLang.SNAP pos_str state_str) k). simpl in if_computation.
+    destruct if_computation as [state_str_eq line_str_eq].
+    simpl. rewrite state_str_eq, line_str_eq.
+    repeat split.
+    + auto.
+    + unfold equiv_pos in *. rewrite H_equiv_pos.
+      erewrite get_equiv_simulated_position_Sn; eauto.
+  - admit.
+Admitted.
+
+
+
+
+
 
 
 
@@ -352,7 +531,6 @@ Proof.
     { intros [x cut_hip]. exists (x + steps_str).
       rewrite StringLangProperties.compute_program_add. auto. }
 
-    simpl.
     (* snap em que cheguei após steps_str é pos_str state_str *)
     destruct (StringLang.compute_program p_str (StringLang.SNAP 0 
     initial_str_state) steps_str) as [pos_str state_str].
@@ -368,7 +546,7 @@ Proof.
       (* b. x <- x- - 1 *)
       ++ admit.
       (* c. IF v != 0 GOTO A *)
-      ++ admit.
+      ++ unfold NatLang.next_step. admit.
     (* caso 2: não existe uma linha na posição.
        neste caso, a execução do programa dos naturais não faz nada,
        basta também não fazer nada no programa de strings *)
