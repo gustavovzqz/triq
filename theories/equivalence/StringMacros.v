@@ -296,6 +296,10 @@ Definition get_str_macro
 end.
 
 (* Macro Length *)
+(* Não tem problema chamar macro_length para uma macro com
+   parâmetros para 0 0 0, já que todas as macros tem mesmo
+   tamanho, fixando max_char. *)
+
 Definition macro_length instr max_char :=
   length (get_str_macro instr max_char 0 0 0).
 

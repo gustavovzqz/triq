@@ -15,6 +15,9 @@ From Stdlib Require Import Nat.
 From Stdlib Require Import List.
 From Stdlib Require Import Lia.
 
+
+Require Import Setoid.
+
 Import ListNotations.
 
 (** Equivalência entre estados *)
@@ -33,6 +36,57 @@ fold_left
   (fun acc instr => acc + StringMacros.macro_length instr max_char)
   (firstn n p_nat)
 0.
+
+Lemma fold_left_add_const :
+forall l acc c max_char,
+  fold_left
+    (fun acc instr => acc + StringMacros.macro_length instr max_char)
+    l (acc + c)
+  =
+  acc +
+  fold_left
+    (fun acc instr => acc + StringMacros.macro_length instr max_char)
+  l c.
+Proof.
+  induction l as [|h t IH]; intros acc c max_char.
+  - simpl. reflexivity.
+  - simpl. pose proof (IH acc (c + StringMacros.macro_length h max_char)).
+    replace (acc + (c + StringMacros.macro_length h max_char)) with 
+      (acc + c + (StringMacros.macro_length h max_char))
+    in H. rewrite H. reflexivity.
+    lia.
+Qed.
+
+Lemma get_equiv_simulated_position_cons :
+forall h t i max_char,
+  get_equiv_simulated_position (h :: t) (S i) max_char =
+  StringMacros.macro_length h max_char +
+  get_equiv_simulated_position t i max_char.
+Proof.
+  intros.
+  replace (h :: t) with ([h] ++ t).
+  + unfold get_equiv_simulated_position. simpl.
+    pose proof (fold_left_add_const (firstn i t) 
+    (StringMacros.macro_length h max_char) 0 max_char).
+    replace (StringMacros.macro_length h max_char + 0) 
+    with (StringMacros.macro_length h max_char) in H by lia.
+    exact H.
+  + reflexivity.
+Qed.
+
+Lemma label_in_instr_cases: forall h t label,
+  NatUtils.label_in_instr (h :: t) label = true ->
+  NatUtils.label_in_instr [h] label = true \/
+  (NatUtils.label_in_instr [h] label = false /\
+   NatUtils.label_in_instr t label = true). 
+Proof.
+  intros h t label label_in_program.
+  simpl in label_in_program. destruct h. simpl.
+  destruct o; auto.
+  destruct (eqb_lbl label l); auto.
+Qed.
+
+
 
 Definition equiv_pos 
   (p_nat : NatLang.program) (n : nat)
@@ -90,77 +144,58 @@ Proof.
   + apply incr_string_over, IHn.
 Qed.
 
+(* Nota: essa prova ficou MUITO melhor do que a do String 1 *)
 
-(* Lemma simulated_program_decomposition_if :
-  forall p_nat i o x l max_char max_label_p_nat max_z_p_nat p_str,
-  nth_error p_nat i = Some (NatLang.Instr o (NatLang.IF_GOTO x l)) ->
+Lemma simulated_program_decomposition :
+  forall p_nat p_str i instr max_char max_label_nat max_z_nat,
+  nth_error p_nat i = Some instr ->
   p_str = StringMacros.get_str_prg_rec p_nat
-  max_char max_label_p_nat max_z_p_nat ->
+  max_char max_label_nat max_z_nat ->
 
-  exists t,
+  exists t max_z_str,
     p_str = (firstn (get_equiv_simulated_position p_nat i max_char) p_str)
-    ++ (StringMacros.get_if_macro x o l max_char) ++ t.
+    ++ (StringMacros.get_str_macro instr max_char max_label_nat max_z_nat max_z_str)
+    ++ t.
 Proof. 
-Admitted.
- *)
-
+  induction p_nat as [|h t]; 
+  intros p_str i instr max_char max_label_nat max_z_nat;
+  intros h_instr p_str_eq.
+  - rewrite nth_error_nil in h_instr. discriminate.
+  - destruct i.
+    + simpl in h_instr. injection h_instr as h_eq. rewrite h_eq in *.
+      simpl; eauto.
+    + rewrite get_equiv_simulated_position_cons.
+      simpl in p_str_eq.
+      remember (StringUtils.get_max_label
+      (StringMacros.get_str_prg_rec t max_char max_label_nat max_z_nat))
+      as max_label_str. 
+      remember (StringMacros.get_str_macro h max_char 
+      max_label_nat max_z_nat max_label_str) as h'.
+      remember (StringMacros.get_str_prg_rec t max_char max_label_nat 
+      max_z_nat) as t' eqn:E.
+      simpl in h_instr.
+      assert (exists t0 max_z_str, 
+      t' = firstn (get_equiv_simulated_position t i max_char) t' ++
+      (StringMacros.get_str_macro instr max_char max_label_nat max_z_nat max_z_str)
+      ++ t0) as t'_split.
+      { eapply IHt; eauto. }
+      destruct t'_split as [t''  [max_z_str t'_eq]].
+      rewrite p_str_eq.
+      assert ((firstn (StringMacros.macro_length h max_char +
+      get_equiv_simulated_position t i max_char) (h' ++ t'))
+      = (h' ++ firstn (get_equiv_simulated_position t i max_char) t'))
+      as firstn_split.
+      { replace (StringMacros.macro_length h max_char) with (length h').
+        apply firstn_app_2.
+        unfold StringMacros.macro_length. rewrite Heqh'.
+        apply StringMacros.macros_same_size. }
+      exists t'', max_z_str.
+      rewrite firstn_split. 
+      rewrite t'_eq at 1. rewrite app_assoc. reflexivity.
+Qed.
 
 
 (** Caso IF **)
-
-
-
-
-Lemma fold_left_add_const :
-forall l acc c max_char,
-  fold_left
-    (fun acc instr => acc + StringMacros.macro_length instr max_char)
-    l (acc + c)
-  =
-  acc +
-  fold_left
-    (fun acc instr => acc + StringMacros.macro_length instr max_char)
-    l c.
-Proof.
-  induction l as [|h t IH]; intros acc c max_char.
-  - simpl. reflexivity.
-  - simpl. pose proof (IH acc (c + StringMacros.macro_length h max_char)).
-    replace (acc + (c + StringMacros.macro_length h max_char)) with 
-      (acc + c + (StringMacros.macro_length h max_char))
-    in H. rewrite H. reflexivity.
-    lia.
-Qed.
-
-Lemma get_equiv_simulated_position_cons :
-forall h t i max_char,
-  get_equiv_simulated_position (h :: t) (S i) max_char =
-  StringMacros.macro_length h max_char +
-  get_equiv_simulated_position t i max_char.
-Proof.
-  intros.
-  replace (h :: t) with ([h] ++ t).
-  + unfold get_equiv_simulated_position. simpl.
-    pose proof (fold_left_add_const (firstn i t) 
-    (StringMacros.macro_length h max_char) 0 max_char).
-    replace (StringMacros.macro_length h max_char + 0) 
-    with (StringMacros.macro_length h max_char) in H by lia.
-    exact H.
-  + reflexivity.
-Qed.
-
-Lemma label_in_instr_cases: forall h t label,
-  NatUtils.label_in_instr (h :: t) label = true ->
-  NatUtils.label_in_instr [h] label = true \/
-  (NatUtils.label_in_instr [h] label = false /\
-   NatUtils.label_in_instr t label = true). 
-Proof.
-  intros h t label label_in_program.
-  simpl in label_in_program. destruct h. simpl.
-  destruct o; auto.
-  destruct (eqb_lbl label l); auto.
-Qed.
-
-
 
 
 (* Não quero que o get_str_macro simplifique. *)
