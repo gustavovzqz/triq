@@ -309,22 +309,25 @@ Proof.
   exists (m' + m''); auto.
 Qed.
 
+Lemma teste : forall A (h : list A) a b ,
+  h ++ (a :: b) = (h ++ [a] ++ b).
+Proof.
+Admitted.
+
 Lemma compute_if_block_skip :
-  forall max_char p_nat pos_nat
-         p_str pos_str state_str 
-         if_instr instr_label x goto_label
-         max_label_nat max_z_nat max_z_str t, 
+  forall max_char p_str pos_str state_str 
+         instr_label x goto_label
+         max_label_nat max_z_nat max_z_str h t, 
 
 
-  if_instr = NatLang.Instr instr_label (NatLang.IF_GOTO x goto_label) ->
 
-
-  p_str = firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str ++ 
-  StringMacros.get_str_macro if_instr max_char max_label_nat max_z_nat
+  p_str = h ++
+  StringMacros.get_str_macro 
+  (NatLang.Instr instr_label (NatLang.IF_GOTO x goto_label)) 
+  max_char max_label_nat max_z_nat
   max_z_str ++ t  ->
 
-  length (firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
-  = pos_str  ->
+  length h = pos_str  ->
 
 
   state_str x = [] ->
@@ -336,16 +339,19 @@ Lemma compute_if_block_skip :
          n) in
 
   state_str' = state_str /\
-  line_str = pos_str + StringMacros.macro_length if_instr max_char.
+  line_str = pos_str + StringMacros.macro_length 
+  (NatLang.Instr instr_label (NatLang.IF_GOTO x goto_label)) 
+  max_char.
+  
 Proof.
-  Transparent StringMacros.get_str_macro. 
+  Transparent StringMacros.get_str_macro.
   induction max_char;
-  intros p_nat pos_nat p_str pos_str state_str if_instr
-  instr_label x goto_label max_label_nat max_z_nat max_z_str t;
-  intros H_if_instr p_str_decomposition H_length H_state_str.
+  intros p_str pos_str state_str instr_label
+  x goto_label max_label_nat max_z_nat max_z_str h t;
+  intros p_str_decomposition H_length H_state_str.
   - rewrite p_str_decomposition. 
     exists 1. simpl. rewrite nth_error_app2; try lia.
-    rewrite H_length, PeanoNat.Nat.sub_diag, H_if_instr.
+    rewrite H_length, PeanoNat.Nat.sub_diag.
     simpl.
     rewrite H_state_str. simpl. unfold StringMacros.macro_length.
     repeat (split; auto).
@@ -355,15 +361,32 @@ Proof.
     (StringLang.compute_program p_str (StringLang.compute_program p_str 
     (StringLang.SNAP pos_str state_str) n) n') 
     in state_str' = state_str /\ line_str = pos_str + 
-    StringMacros.macro_length if_instr (S max_char)).
+    StringMacros.macro_length 
+    (NatLang.Instr instr_label (NatLang.IF_GOTO x goto_label)) (S max_char)).
     {intros cH. destruct cH as [m [m']]. exists (m' + m). 
      rewrite StringLangProperties.compute_program_add. auto. }
     exists 1. simpl. rewrite p_str_decomposition, nth_error_app2; try lia.
     rewrite <- p_str_decomposition.
-    rewrite H_if_instr, H_length, PeanoNat.Nat.sub_diag. simpl.
+    rewrite H_length, PeanoNat.Nat.sub_diag. simpl.
     rewrite H_state_str. simpl.
-    
-Admitted.
+    simpl in p_str_decomposition.
+    unfold StringMacros.macro_length in *. simpl. 
+    remember  (length (StringMacros.get_if_macro x instr_label 
+    goto_label max_char)) as if_length.
+    replace (pos_str + S if_length) with (pos_str + 1 + if_length) by lia.
+    rewrite Heqif_length. 
+    rewrite teste in p_str_decomposition.
+    rewrite app_assoc in p_str_decomposition.
+    remember  (h ++ [StringLang.Instr instr_label
+    (StringLang.IF_ENDS_GOTO x (S max_char) goto_label)]) as h'.
+    apply IHmax_char with (max_label_nat := max_label_nat)
+    (max_z_nat := max_z_nat) (max_z_str := max_z_str)
+    (h := h') (t := t); auto.
+    rewrite Heqh', length_app, H_length. 
+     reflexivity.
+Qed.
+
+
     
 
 Theorem if_macro_simulates :
