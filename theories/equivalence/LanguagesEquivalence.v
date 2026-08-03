@@ -144,9 +144,6 @@ Proof.
   + apply incr_string_over, IHn.
 Qed.
 
-Search (nth_error_app2).
-
-(* Nota: essa prova ficou MUITO melhor do que a do String 1 *)
 
 Lemma simulated_program_decomposition:
   forall p_nat p_str i instr max_char max_label_nat max_z_nat,
@@ -309,7 +306,7 @@ Proof.
   exists (m' + m''); auto.
 Qed.
 
-Lemma teste : forall A (h : list A) a b ,
+Lemma cons_app_assoc: forall A (h : list A) a b ,
   h ++ (a :: b) = (h ++ [a] ++ b).
 Proof.
 Admitted.
@@ -318,8 +315,6 @@ Lemma compute_if_block_skip :
   forall max_char p_str pos_str state_str 
          instr_label x goto_label
          max_label_nat max_z_nat max_z_str h t, 
-
-
 
   p_str = h ++
   StringMacros.get_str_macro 
@@ -375,7 +370,7 @@ Proof.
     goto_label max_char)) as if_length.
     replace (pos_str + S if_length) with (pos_str + 1 + if_length) by lia.
     rewrite Heqif_length. 
-    rewrite teste in p_str_decomposition.
+    rewrite cons_app_assoc in p_str_decomposition.
     rewrite app_assoc in p_str_decomposition.
     remember  (h ++ [StringLang.Instr instr_label
     (StringLang.IF_ENDS_GOTO x (S max_char) goto_label)]) as h'.
@@ -387,7 +382,6 @@ Proof.
 Qed.
 
 
-    
 
 Theorem if_macro_simulates :
   forall p_nat pos_nat state_nat
@@ -449,7 +443,12 @@ Proof.
            state_str' = state_str /\
            line_str = pos_str + StringMacros.macro_length if_instr max_char)
     as [k if_computation].
-    { eapply compute_if_block_skip; eauto. rewrite H_equiv_pos. auto. }
+    { rewrite if_instr_eq in *. apply compute_if_block_skip
+      with (max_label_nat := max_label_nat) (max_z_nat := max_z_nat)
+      (max_z_str := max_z_str) 
+      (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
+      (t := t); auto.
+      rewrite H_equiv_pos. auto. }
     exists k.
     destruct (StringLang.compute_program p_str 
     (StringLang.SNAP pos_str state_str) k). simpl in if_computation.
@@ -569,7 +568,7 @@ Proof.
       (* b. x <- x- - 1 *)
       ++ admit.
       (* c. IF v != 0 GOTO A *)
-      ++ unfold NatLang.next_step. admit.
+      ++ admit.
     (* caso 2: não existe uma linha na posição.
        neste caso, a execução do programa dos naturais não faz nada,
        basta também não fazer nada no programa de strings *)
