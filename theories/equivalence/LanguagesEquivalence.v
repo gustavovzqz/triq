@@ -309,7 +309,8 @@ Qed.
 Lemma cons_app_assoc: forall A (h : list A) a b ,
   h ++ (a :: b) = (h ++ [a] ++ b).
 Proof.
-Admitted.
+  intros. simpl. reflexivity.
+Qed.
 
 Lemma compute_if_block_skip :
   forall max_char p_str pos_str state_str 
