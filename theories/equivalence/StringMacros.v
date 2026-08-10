@@ -60,7 +60,7 @@ Compute get_if_macro_label Y None 10 3.
          GOTO C  *)
 
 
-Definition get_ai_block 
+Definition get_ai_block_incr 
   (x : variable)
   (z : variable)
   (aux : variable)
@@ -76,7 +76,7 @@ let ai_label := Some (A (first_block_label + char))  in
 [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 goto_label)].
 
 
-Fixpoint get_all_ai_blocks 
+Fixpoint get_all_ai_blocks_incr 
   (x : variable)
   (z : variable)
   (aux : variable)
@@ -85,9 +85,9 @@ Fixpoint get_all_ai_blocks
   (goto_label: label ) :=
 
 match max_char with 
-| 0 => get_ai_block x z aux first_label 0 goto_label 
-| S n => get_ai_block x z aux first_label max_char goto_label  ++
-         get_all_ai_blocks x z aux n first_label goto_label
+| 0 => get_ai_block_incr x z aux first_label 0 goto_label 
+| S n => get_ai_block_incr x z aux first_label max_char goto_label  ++
+         get_all_ai_blocks_incr x z aux n first_label goto_label
 end.
 
 Section test.
@@ -97,7 +97,7 @@ Let z := Z 1.
 Let aux := Z 3.
 
 
-Compute get_all_ai_blocks x z aux 3 10 (A 30).
+Compute get_all_ai_blocks_incr x z aux 3 10 (A 30).
 End test.
 
 (*
@@ -148,6 +148,38 @@ Compute get_all_di_blocks x z aux 5 0 (A 40).
 End test.
 
 
+
+
+Definition get_ai_block_decr 
+  (x : variable)
+  (z : variable)
+  (aux : variable)
+  (first_block_label : nat)
+  (char : nat)
+  (goto_label: label ) :=
+
+
+let ai_label := Some (A (first_block_label + char))  in
+
+[StringLang.Instr ai_label (StringLang.DEL x)] ++
+[StringLang.Instr None (StringLang.APPEND (char - 1) z)] ++
+[StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 goto_label)].
+
+
+Fixpoint get_all_ai_blocks_decr
+  (x : variable)
+  (z : variable)
+  (aux : variable)
+  (max_char : nat)
+  (first_label : nat)
+  (goto_label: label ) :=
+
+match max_char with 
+| 0 => []
+| 1 => get_ai_block_decr x z aux first_label 1 goto_label 
+| S n => get_ai_block_decr x z aux first_label max_char goto_label  ++
+         get_all_ai_blocks_decr x z aux n first_label goto_label
+end.
 
 
 
@@ -231,7 +263,7 @@ goto E ++
 
 (* BLOCO 2 *) 
 
-get_all_ai_blocks x z aux (max_char - 1) A1_idx C ++
+get_all_ai_blocks_incr x z aux (max_char - 1) A1_idx C ++
 
 (* BLOCO 3 *)
 
@@ -245,13 +277,13 @@ goto E ++
 
 (* BLOCO 5 *)
 
-get_all_ai_blocks x z aux max_char D1_idx C ++
+get_all_di_blocks x z aux max_char D1_idx C ++
 
 (* ÚLTIMA LINHA 
-   [C] aux <- - 
+   [E] aux <- - 
 *)
 
-[StringLang.Instr (Some C) (StringLang.DEL aux)].
+[StringLang.Instr (Some E) (StringLang.DEL aux)].
 
 
 
@@ -263,13 +295,103 @@ get_all_ai_blocks x z aux max_char D1_idx C ++
 
 (* DECR MACRO *)
 
-Fixpoint get_decr_macro 
+(* 
+
+  [L]   AUX <- a ++ AUX
+  BLOCO 1
+
+  [B]   IF X ENDS Si GOTO Ai (1 <= i <= n)
+        GOTO E
+
+  BLOCO 2 
+  [Ai]  X <- X -
+        Y <- S(i-1) Y ( 1 < i < n)
+        GOTO C 
+
+  BLOCO 3 
+  [A1]  X <- X -
+        IF X != 0 GOTO C2
+        GOTO E 
+
+  [C2] Y <- Sn Y
+       GOTO B
+
+  BLOCO 4 
+  [C]   IF X ENDS Si GOTO Di (1 <= i <= n )
+        GOTO E
+
+
+  BLOCO 5
+  [Di]  X <- X -
+        Y <- Si Y ( 1 <= i <= n )
+        GOTO C
+
+  [E] AUX <- AUX -
+*)
+
+Definition get_decr_macro 
   (x : variable)
   (lbl : option label)
   (max_label_nat max_z_nat : nat)
   (max_label_str : nat)
-  (max_char : nat) : StringLang.program.
-Admitted.
+  (max_char : nat) : StringLang.program :=
+
+let z := Z (max_z_nat + 1) in 
+let aux := Z (max_z_nat + 2 ) in
+
+let B_idx  := max_label_nat + max_label_str + 1 in 
+let A1_idx := B_idx  + 1 in
+let An_idx := A1_idx + max_char in 
+let C_idx  := An_idx + 1 in 
+let C2_idx := C_idx + 1 in
+let D1_idx := C2_idx + 1 in
+let E_idx := D1_idx + max_char + 1 in
+
+
+let B  := A B_idx  in
+let A1 := A A1_idx in
+let An := A An_idx in
+let C  := A C_idx  in
+let C2 := A C2_idx in
+let D1 := A D1_idx in
+let E  := A E_idx  in
+
+let goto l := 
+  [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 l)] in
+
+
+(* aux <- a ++ [] *)
+[StringLang.Instr lbl (StringLang.APPEND 0 aux)] ++ 
+
+(* BLOCO 1 *) 
+get_if_macro_label x (Some B) max_char A1_idx ++ 
+goto E ++
+
+(* BLOCO 2 *) 
+
+get_all_ai_blocks_decr x z aux max_char A1_idx C ++
+
+(* BLOCO 3 *)
+
+[StringLang.Instr (Some A1) (StringLang.DEL x)] ++
+get_if_macro x None C2 max_char ++
+goto E ++
+
+(* BLOCO 4 *)
+get_if_macro_label x (Some C) max_char D1_idx ++
+goto E ++
+
+(* BLOCO 5 *)
+
+get_all_di_blocks x z aux max_char D1_idx C ++
+
+(* ÚLTIMA LINHA 
+   [C] aux <- - 
+*)
+
+[StringLang.Instr (Some E) (StringLang.DEL aux)].
+
+
 
 
 
