@@ -338,7 +338,6 @@ Lemma compute_if_block_skip :
   line_str = pos_str + StringMacros.macro_length 
   (NatLang.Instr instr_label (NatLang.IF_GOTO x goto_label)) 
   max_char.
-  
 Proof.
   Transparent StringMacros.get_str_macro.
   induction max_char;
@@ -381,6 +380,80 @@ Proof.
     rewrite Heqh', length_app, H_length. 
      reflexivity.
 Qed.
+
+
+Lemma compute_if_block_ :
+  forall max_char p_str pos_str state_str 
+         instr_label x goto_label
+         max_label_nat max_z_nat max_z_str h t char,
+
+  p_str = h ++
+  StringMacros.get_str_macro 
+  (NatLang.Instr instr_label (NatLang.IF_GOTO x goto_label)) 
+  max_char max_label_nat max_z_nat
+  max_z_str ++ t  ->
+
+  length h = pos_str  ->
+
+  char <= max_char ->
+
+  StringLang.ends_with (state_str x) char = true ->
+
+  exists n,
+  let (line_str, state_str') :=
+    StringLang.split_snap
+      (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+         n) in
+
+  state_str' = state_str /\
+  line_str = StringLang.get_labeled_instr p_str goto_label.
+Proof.
+  Transparent StringMacros.get_str_macro.
+  induction max_char;
+  intros p_str pos_str state_str instr_label
+  x goto_label max_label_nat max_z_nat max_z_str h t char;
+  intros p_str_decomposition H_length char_H H_state_str.
+  - rewrite p_str_decomposition. 
+    exists 1. simpl. rewrite nth_error_app2; try lia.
+    rewrite H_length, PeanoNat.Nat.sub_diag.
+    simpl. assert (char = 0) as char_0 by lia. rewrite char_0 in *.
+    rewrite H_state_str. simpl. unfold StringMacros.macro_length.
+    repeat (split; auto).
+    (* Passo *)
+  - cut (exists n n' : nat, 
+    let (line_str, state_str') := StringLang.split_snap
+    (StringLang.compute_program p_str (StringLang.compute_program p_str 
+    (StringLang.SNAP pos_str state_str) n) n') 
+    in state_str' = state_str /\ 
+    line_str = StringLang.get_labeled_instr p_str goto_label).
+    {intros cH. destruct cH as [m [m']]. exists (m' + m). 
+     rewrite StringLangProperties.compute_program_add. auto. }
+    exists 1. simpl. rewrite p_str_decomposition, nth_error_app2; try lia.
+    rewrite <- p_str_decomposition.
+    rewrite H_length, PeanoNat.Nat.sub_diag. simpl.
+    assert (char = S max_char \/ char <> S max_char) as char_cases by lia.
+    destruct char_cases as [char_eq_S | char_diff_S].
+    + rewrite char_eq_S in *. rewrite H_state_str. simpl.
+      simpl in p_str_decomposition.
+      unfold StringMacros.macro_length in *. simpl.  exists 0.
+      simpl. repeat split; auto.
+    + assert (StringLang.ends_with (state_str x) (S max_char) = false) 
+      as ends_with_S_false.
+      { admit. }
+      assert (char <= max_char) as char_leq_max_char by lia.
+      rewrite ends_with_S_false. simpl in p_str_decomposition.
+      rewrite cons_app_assoc in p_str_decomposition.
+      rewrite app_assoc in p_str_decomposition.
+      remember  (h ++ [StringLang.Instr instr_label
+      (StringLang.IF_ENDS_GOTO x (S max_char) goto_label)]) as h'.
+      apply IHmax_char with (max_label_nat := max_label_nat)
+      (max_z_nat := max_z_nat) (max_z_str := max_z_str) 
+      (instr_label := instr_label) (x := x) (char := char)
+      (h := h') (t := t); auto.
+      rewrite Heqh', length_app, H_length. reflexivity.
+Admitted.
+
+
 
 
 
