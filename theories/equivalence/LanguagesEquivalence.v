@@ -382,7 +382,7 @@ Proof.
 Qed.
 
 
-Lemma compute_if_block_ :
+Lemma compute_if_block_Sn :
   forall max_char p_str pos_str state_str 
          instr_label x goto_label
          max_label_nat max_z_nat max_z_str h t char,
@@ -439,7 +439,9 @@ Proof.
       simpl. repeat split; auto.
     + assert (StringLang.ends_with (state_str x) (S max_char) = false) 
       as ends_with_S_false.
-      { admit. }
+      { destruct (state_str x); auto. simpl in H_state_str. simpl. 
+        rewrite PeanoNat.Nat.eqb_neq.
+        rewrite PeanoNat.Nat.eqb_eq in H_state_str. lia. }
       assert (char <= max_char) as char_leq_max_char by lia.
       rewrite ends_with_S_false. simpl in p_str_decomposition.
       rewrite cons_app_assoc in p_str_decomposition.
@@ -451,10 +453,14 @@ Proof.
       (instr_label := instr_label) (x := x) (char := char)
       (h := h') (t := t); auto.
       rewrite Heqh', length_app, H_length. reflexivity.
+Qed.
+
+
+Lemma equiv_pos_label : forall p_nat p_str goto_label max_char,
+  p_str = get_equiv_str_program p_nat max_char ->
+  equiv_pos p_nat (NatLang.get_labeled_instr p_nat goto_label)
+  (StringLang.get_labeled_instr p_str goto_label) max_char.
 Admitted.
-
-
-
 
 
 Theorem if_macro_simulates :
@@ -507,7 +513,7 @@ Proof.
 
   simpl. rewrite nth_pos_nat_instr, if_instr_eq.
   destruct (state_nat x) eqn:state_nat_value.
-  - unfold state_equiv in H_state_equiv. simpl in H_state_equiv.
+  - unfold state_equiv in H_state_equiv.
     pose proof (H_state_equiv x) as state_str_value.
     rewrite state_nat_value in state_str_value. simpl in state_str_value.
 
@@ -531,8 +537,42 @@ Proof.
     repeat split.
     + auto.
     + unfold equiv_pos in *. rewrite H_equiv_pos.
-      erewrite get_equiv_simulated_position_Sn; eauto.
-  - admit.
+    erewrite get_equiv_simulated_position_Sn; eauto.
+ - unfold state_equiv in H_state_equiv.
+    pose proof (H_state_equiv x) as state_str_value.
+    assert (StringLang.string_over (state_str x) max_char).
+    { rewrite <- state_str_value. rewrite state_nat_value.
+    simpl. apply incr_string_over.  }
+    rewrite state_nat_value in state_str_value. simpl in state_str_value.
+    assert (exists char str, state_str x = char :: str 
+    /\ char <= max_char) as string_decomposition.
+    {admit. }
+    destruct string_decomposition as [char [str 
+    [state_str_decomposition char_leq_max]]].
+
+
+    assert (exists n', let (line_str, state_str') :=
+            StringLang.split_snap (StringLang.compute_program p_str 
+            (StringLang.SNAP pos_str state_str) n') in
+           state_str' = state_str /\
+           line_str = StringLang.get_labeled_instr p_str goto_label)
+    as [k if_computation].
+    { rewrite if_instr_eq in *. apply compute_if_block_Sn
+      with (max_label_nat := max_label_nat) (max_z_nat := max_z_nat)
+      (max_z_str := max_z_str) 
+      (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
+      (t := t) (instr_label := instr_label) (max_char := max_char)
+      (char := char) (x := x); auto.
+      + rewrite H_equiv_pos. auto.
+      + rewrite state_str_decomposition. apply PeanoNat.Nat.eqb_refl. }
+    exists k.
+    destruct (StringLang.compute_program p_str 
+    (StringLang.SNAP pos_str state_str) k). simpl in if_computation.
+    destruct if_computation as [state_str_eq line_str_eq].
+    simpl. rewrite state_str_eq, line_str_eq.
+    repeat split.
+    + auto.
+    + apply equiv_pos_label; unfold p_str, get_equiv_str_program. auto.
 Admitted.
 
 
