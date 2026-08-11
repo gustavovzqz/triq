@@ -63,3 +63,35 @@ end.
 
 Compute nat_to_string 11 3.
 Compute string_to_nat [2; 1] 3.
+
+
+(* Utils *)
+
+Lemma cons_app_assoc: forall A (h : list A) a b ,
+  h ++ (a :: b) = (h ++ [a] ++ b).
+Proof.
+  intros. simpl. reflexivity.
+Qed.
+
+
+Lemma firstn_S_nth_error :
+forall (A : Type) (l : list A) n x,
+  nth_error l n = Some x ->
+  firstn (n + 1) l = firstn n l ++ [x].
+Proof.
+  induction l as [|h t IH]; intros n x H.
+  - rewrite nth_error_nil in H. discriminate.
+  - destruct n.
+    + simpl in *. inversion H; reflexivity.
+    + simpl in *. apply IH in H.
+      rewrite H. reflexivity.
+Qed.
+
+
+Lemma incr_string_not_empty : forall x max_char,
+  exists h t,
+  LanguagesUtils.incr_string x max_char = h :: t.
+Proof.
+  intros. destruct x; simpl; eauto.
+  destruct (n <? max_char); eauto.
+Qed.
