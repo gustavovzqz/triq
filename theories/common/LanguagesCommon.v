@@ -26,22 +26,56 @@ Definition eqb_lbl l1 l2 :=
   end.
 
 
+Definition eqb_opt_lbl opt_label opt_label' :=
+  match opt_label, opt_label' with 
+  | Some lbl, Some lbl' => eqb_lbl lbl lbl'
+  | None, None =>  true
+  | _, _ => false
+  end.
 
-Theorem eqb_lbl_refl : forall v, eqb_lbl v v = true.
-Proof.
-  destruct v; try (apply PeanoNat.Nat.eqb_refl); reflexivity.
-Qed.
-
-Theorem eqb_var_refl : forall v, eqb_var v v = true.
-Proof.
-  destruct v; try (apply PeanoNat.Nat.eqb_refl); reflexivity.
-Qed.
 
 Lemma bool_symm : forall n m, (n =? m) = (m =? n).
 Proof.
   induction n; destruct m; auto.
   simpl. auto.
 Qed.
+
+Theorem eqb_lbl_symm : forall x y, eqb_lbl x y = eqb_lbl y x.
+Proof.
+  destruct x; destruct y; auto.
+  simpl. apply bool_symm.
+Qed.
+
+
+
+
+Lemma eqb_opt_lbl_symm : forall opt opt',
+  eqb_opt_lbl opt opt' = eqb_opt_lbl opt' opt.
+Proof.
+  induction opt; destruct opt'; auto.
+  simpl. apply eqb_lbl_symm.
+Qed.
+
+Theorem eqb_lbl_refl : forall v, eqb_lbl v v = true.
+Proof.
+  destruct v; try (apply PeanoNat.Nat.eqb_refl); reflexivity.
+Qed.
+
+Lemma eqb_opt_lbl_refl : forall x, eqb_opt_lbl x x = true.
+Proof.
+  intros. destruct x.
+  + simpl. rewrite eqb_lbl_refl. reflexivity.
+  + simpl. reflexivity.
+Qed.
+
+
+
+Theorem eqb_var_refl : forall v, eqb_var v v = true.
+Proof.
+  destruct v; try (apply PeanoNat.Nat.eqb_refl); reflexivity.
+Qed.
+
+
 
 
 Theorem eqb_var_symm : forall x y, eqb_var x y = eqb_var y x.
@@ -89,3 +123,4 @@ Proof.
   - apply var_eqb_eq in Heq. left. assumption.
   - apply var_eqb_neq in Heq. right. assumption.
 Qed.
+
