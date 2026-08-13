@@ -431,6 +431,11 @@ Definition macro_length instr max_char :=
 
 (* Getting the Str Program *)
 
+(* OBS: As labels crescem rapidamente, já que o get_max_label que eu uso
+        no str_rest inclui novamente o max_label_nat. Teoricamente, bastaria o get_max_label
+        no str_rest e incluir um caso base que retorna o max_label_p_nat. Provavelmente
+        complicaria as provas. *)
+
 Fixpoint get_str_prg_rec p_nat max_char max_label_p_nat max_z_p_nat :=
   match p_nat with
   | []     => []

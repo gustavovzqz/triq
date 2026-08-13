@@ -27,6 +27,7 @@ Definition state_equiv (s_nat : NatLang.state) (s_str : StringLang.state)
   forall (x : variable),
   LanguagesUtils.nat_to_string (s_nat x) max_char = s_str x.
 
+(* Equivalência entre posições *)
 
 Definition get_equiv_simulated_position 
   (p_nat : NatLang.program) 
@@ -102,6 +103,15 @@ Qed.
 
 Definition get_equiv_str_state nat_state max_char : (StringLang.state ) :=
 (fun x => LanguagesUtils.nat_to_string (nat_state x) max_char ).
+
+(* state_equiv get_equiv_state *)
+
+Lemma get_equiv_state_correct : forall nat_state max_char,
+  state_equiv nat_state (get_equiv_str_state nat_state max_char) max_char.
+Proof.
+  intros. unfold state_equiv. intros x. unfold get_equiv_str_state.
+  reflexivity.
+Qed.
 
 
 (** incr_string_over *)
@@ -198,6 +208,9 @@ Qed.
 Opaque StringMacros.get_str_macro. 
 
 
+(* Índices menores que ou iguais a max_lbl_nat estão
+   em posições equivalentes *)
+   
 Lemma goto_label_equiv_position :
 forall p_nat label_idx max_char max_lbl_nat max_z_nat,
   max_lbl_nat >= label_idx ->
@@ -261,6 +274,10 @@ Theorem if_macro_simulates :
 
   p_str = get_equiv_str_program p_nat max_char ->
 
+  state_str (Z (NatUtils.get_max_z p_nat + 1)) = [] ->
+  state_str (Z (NatUtils.get_max_z p_nat + 2)) = [] ->
+  StringLang.state_over state_str max_char ->
+
 
   nth_error p_nat pos_nat = Some (NatLang.Instr instr_label
   (NatLang.IF_GOTO x goto_label)) ->
@@ -279,12 +296,14 @@ Theorem if_macro_simulates :
            n') in
     state_equiv state_nat' state_str' max_char /\
     equiv_pos p_nat line_nat line_str max_char /\
-    state_str' = state_str /\
-    state_nat' = state_nat.
+    state_str' (Z (NatUtils.get_max_z p_nat + 1)) = [] /\
+    state_str' (Z (NatUtils.get_max_z p_nat + 2)) = [] /\
+    StringLang.state_over state_str' max_char.
 Proof.
   intros p_nat p_str pos_nat state_nat pos_str state_str
   max_char x instr_label goto_label.
-  intros p_str_eq nth_pos_nat_instr H_state_equiv H_equiv_pos. 
+  intros p_str_eq state_str_z1 state_str_z2 state_over_str
+  nth_pos_nat_instr H_state_equiv H_equiv_pos. 
   unfold get_equiv_str_program in p_str_eq.
 
   (* naming *)
@@ -325,9 +344,8 @@ Proof.
     (StringLang.SNAP pos_str state_str) k). simpl in if_computation.
     destruct if_computation as [state_str_eq line_str_eq].
     simpl. rewrite state_str_eq, line_str_eq.
-    repeat split.
-    + auto.
-    + unfold equiv_pos in *. rewrite H_equiv_pos.
+    repeat (split; auto).
+    unfold equiv_pos in *. rewrite H_equiv_pos.
     erewrite get_equiv_simulated_position_Sn; eauto.
  - unfold state_equiv in H_state_equiv.
     pose proof (H_state_equiv x) as state_str_value.
@@ -365,14 +383,11 @@ Proof.
     (StringLang.SNAP pos_str state_str) k). simpl in if_computation.
     destruct if_computation as [state_str_eq line_str_eq].
     simpl. rewrite state_str_eq, line_str_eq.
-    repeat split.
-    + auto.
-    + destruct goto_label as [goto_idx].
-      rewrite p_str_eq.
-      apply goto_label_equiv_position.
-      rewrite Heqmax_label_nat.
-      eapply NatUtils.goto_label_ge_max_label; eauto.
-      rewrite nth_pos_nat_instr. f_equal. eauto.
+    repeat (split; auto).
+    destruct goto_label as [goto_idx].
+    rewrite p_str_eq. apply goto_label_equiv_position.
+    rewrite Heqmax_label_nat. eapply NatUtils.goto_label_ge_max_label; eauto.
+    rewrite nth_pos_nat_instr. f_equal. eauto.
 Qed.
 
 
@@ -429,7 +444,7 @@ Proof.
   induction steps_nat as [| steps_nat IH].
   (* caso base *)
   - exists 0. split.
-    + (* estados iniciais são equivalentes *) admit.
+    + rewrite Heqinitial_str_state. apply get_equiv_state_correct.
     + destruct initial_state_prop as [initial_y_zero initial_z_zero]. 
       rewrite Heqinitial_str_state.
       repeat split.
@@ -480,29 +495,7 @@ Proof.
       (* b. x <- x- - 1 *)
       ++ admit.
       (* c. IF v != 0 GOTO A *)
-      ++ (* TODO: O padrão para as próximas provas é passar como argumento
-            a prova e que state_str (Z (..)) = [] etc, e o resultado do
-            lema ()_computes ser exatamente o que eu quero provar *)
-
-         assert (exists n',
-         let (line_nat, state_nat') := NatLang.split_snap
-         (NatLang.next_step p_nat (NatLang.SNAP pos_nat state_nat)) in
-         let (line_str, state_str') := StringLang.split_snap
-         (StringLang.compute_program p_str 
-         (StringLang.SNAP pos_str state_str) n') in
-         state_equiv state_nat' state_str' max_char /\
-         equiv_pos p_nat line_nat line_str max_char /\
-         state_str' = state_str /\ state_nat' = state_nat) 
-         as [if_steps H_if_compute].
-         apply if_macro_simulates with x instr_label goto_label; auto.
-         exists if_steps. 
-         destruct (NatLang.next_step p_nat (NatLang.SNAP pos_nat state_nat)).
-         destruct (StringLang.compute_program p_str (StringLang.SNAP pos_str 
-         state_str) if_steps). simpl in *.
-         destruct H_if_compute as [state_equiv_s_s0 [equiv_pos_n_n0 
-         [s0_eq_state_str s_eq_state_nat]]]. 
-         rewrite s0_eq_state_str, s_eq_state_nat. 
-         repeat (split; auto).
+      ++ eapply if_macro_simulates; eauto.
     (* caso 2: não existe uma linha na posição.
        neste caso, a execução do programa dos naturais não faz nada,
        basta também não fazer nada no programa de strings *)
