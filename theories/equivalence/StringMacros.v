@@ -226,6 +226,21 @@ end.
 *)
 
 
+
+
+
+(* [INSTR_LABEL] transferir de X para Y e ir para E.
+   aux precisa para o GOTO, então é uma variável tal que ends with 0 = true
+   label_idx é alguma label ainda não usada antes. O transfer_block usa 
+   de label_idx até label_idx + max_char. *)
+Definition transfer_block instr_label x z label_idx E aux max_char :=
+  get_if_macro_label x (Some instr_label) max_char label_idx ++
+  (* GOTO E *)
+  [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 E)] ++
+  get_all_di_blocks x z aux max_char label_idx instr_label.
+
+
+
 Definition get_incr_macro 
   (x : variable)
   (lbl : option label)
@@ -240,16 +255,22 @@ let aux := Z (max_z_nat + 2 ) in
 let B_idx  := max_label_nat + max_label_str + 1 in 
 let A1_idx := B_idx  + 1 in
 let An_idx := A1_idx + max_char in 
-let C_idx  := An_idx + 1 in 
-let D1_idx := C_idx + 1 in
-let E_idx := D1_idx + max_char + 1 in
+let T1_idx  := An_idx + 1 in 
+let D1_idx := T1_idx + 1 in
+let T2_idx := D1_idx + max_char + 1 in
+let D2_idx := T2_idx + 1 in
+let E_idx := T2_idx + max_char + 1 in
+
+
 
 
 let B  := A B_idx  in
 let A1 := A A1_idx in
 let An := A An_idx in
-let C  := A C_idx  in
+let T1 := A T1_idx  in
 let D1 := A D1_idx in
+let T2 := A T2_idx in
+let D2 := A D2_idx in
 let E  := A E_idx  in
 
 let goto l := 
@@ -266,29 +287,19 @@ goto E ++
 
 (* BLOCO 2 *) 
 
-get_all_ai_blocks_incr x z aux (max_char - 1) A1_idx C ++
+get_all_ai_blocks_incr x z aux (max_char - 1) A1_idx T1 ++
 
 (* BLOCO 3 *)
 
 [StringLang.Instr (Some An) (StringLang.DEL x)] ++
 [StringLang.Instr None (StringLang.APPEND 0 z)] ++
-[StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 C)] ++
+[StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 T1)] ++
 
-(* BLOCO 4 *)
-get_if_macro_label x (Some C) max_char D1_idx ++
-goto E ++
+transfer_block T1 x z D1_idx E aux max_char ++
+transfer_block T2 z x D2_idx E aux max_char ++
 
-(* BLOCO 5 *)
-
-get_all_di_blocks x z aux max_char D1_idx C ++
-
-(* ÚLTIMA LINHA 
-   [E] aux <- - 
-*)
 
 [StringLang.Instr (Some E) (StringLang.DEL aux)].
-
-
 
 
 
@@ -518,7 +529,7 @@ Admitted.
 
 Lemma get_labeled_instr_app :
   forall l1 l2 lbl,
-  StringUtils.label_in_instr l1 lbl = false ->
+  StringUtils.has_labeled_instr l1 lbl = false ->
   StringLang.get_labeled_instr (l1 ++ l2) lbl
   =
   length l1 + StringLang.get_labeled_instr l2 lbl.
@@ -544,7 +555,7 @@ Lemma nat_label_not_in_macro : forall instr opt_label
   max_label_nat >= label_idx ->
 
 
-  StringUtils.label_in_instr
+  StringUtils.has_labeled_instr
   (StringMacros.get_str_macro (NatLang.Instr opt_label instr) max_char
   max_label_nat max_z_nat max_z_str) (A label_idx) = false.
 Proof.
@@ -650,7 +661,7 @@ Lemma compute_if_block_Sn :
          max_label_nat max_z_nat max_z_str h t char,
 
   p_str = h ++
-  StringMacros.get_str_macro 
+  get_str_macro 
   (NatLang.Instr instr_label (NatLang.IF_GOTO x goto_label)) 
   max_char max_label_nat max_z_nat
   max_z_str ++ t  ->
@@ -670,7 +681,7 @@ Lemma compute_if_block_Sn :
   state_str' = state_str /\
   line_str = StringLang.get_labeled_instr p_str goto_label.
 Proof.
-  Transparent StringMacros.get_str_macro.
+  Transparent get_str_macro.
   induction max_char;
   intros p_str pos_str state_str instr_label
   x goto_label max_label_nat max_z_nat max_z_str h t char;
@@ -679,7 +690,7 @@ Proof.
     exists 1. simpl. rewrite nth_error_app2; try lia.
     rewrite H_length, PeanoNat.Nat.sub_diag.
     simpl. assert (char = 0) as char_0 by lia. rewrite char_0 in *.
-    rewrite H_state_str. simpl. unfold StringMacros.macro_length.
+    rewrite H_state_str. simpl. unfold macro_length.
     repeat (split; auto).
     (* Passo *)
   - cut (exists n n' : nat, 
@@ -697,7 +708,7 @@ Proof.
     destruct char_cases as [char_eq_S | char_diff_S].
     + rewrite char_eq_S in *. rewrite H_state_str. simpl.
       simpl in p_str_decomposition.
-      unfold StringMacros.macro_length in *. simpl.  exists 0.
+      unfold macro_length in *. simpl.  exists 0.
       simpl. repeat split; auto.
     + assert (StringLang.ends_with (state_str x) (S max_char) = false) 
       as ends_with_S_false.
@@ -718,3 +729,98 @@ Proof.
 Qed.
 
 
+(* Computando Transferência de x para z *)
+
+
+(*
+
+  BLOCO 4 
+  [C]   IF X ENDS Si GOTO Di (1 <= i <= n )
+        GOTO E
+
+
+  BLOCO 5
+  [Di]  X <- X -
+        Y <- Si Y ( 1 <= i <= n )
+        GOTO C
+
+*)
+
+Lemma compute_transfer_block :
+  forall max_char p_str pos_str state_str 
+         instr_label x z goto_label D2_idx
+         h t aux,
+
+  p_str = h ++ transfer_block instr_label x z D2_idx 
+  goto_label aux max_char ++ t  ->
+
+  D2_idx >= StringUtils.get_max_label h ->
+  StringUtils.has_labeled_instr h instr_label = false ->
+
+  length h = pos_str  ->
+
+  StringLang.state_over state_str max_char ->
+
+
+  StringLang.ends_with (state_str aux) 0 = true ->
+
+  exists n,
+  let (line_str, state_str') :=
+    StringLang.split_snap
+      (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+         n) in
+
+  state_str' = state_str /\
+  line_str = StringLang.get_labeled_instr p_str goto_label /\
+  state_str' x = [] /\
+  state_str' z =  (state_str z) ++ (state_str x) /\
+  (* todo o resto do estado está inalterado *)
+  forall var, 
+  (var <> x /\ var <> z) ->
+  state_str' var = state_str var.
+Proof.
+  induction max_char;
+  intros p_str pos_str state_str instr_label x z goto_label
+  D2_idx h t aux;
+  intros p_str_decomposition D2_ge_h instr_label_not_in_h H_length
+  H_state_over ends_with_aux_0.
+  (* caso max_char = 0*)
+  - rewrite p_str_decomposition. simpl.
+    (* state_str x é vazio ou termina com 0 *)
+    destruct (state_str x) eqn:x_value.
+    + (* se é vazio, então eu saio em 2 passos *)
+      exists 2. simpl. rewrite nth_error_app2; try lia.
+      rewrite H_length, PeanoNat.Nat.sub_diag. simpl.
+      rewrite x_value. simpl. rewrite nth_error_app2; try lia.
+      rewrite H_length. replace (pos_str + 1 - pos_str) with 1 by lia.
+      simpl. rewrite ends_with_aux_0. simpl. 
+      simpl in p_str_decomposition. rewrite <- p_str_decomposition.
+      repeat (split; auto). rewrite app_nil_r. reflexivity.
+      (* se não é vazio, então termina com zero. saio em 4 passos *)
+    + exists 4. simpl. rewrite nth_error_app2; try lia.
+      rewrite H_length, PeanoNat.Nat.sub_diag. simpl.
+      assert (n = 0) as n_eq_0.
+      { pose proof (H_state_over x) as x_value_over. rewrite x_value in *.
+        simpl in x_value_over. simpl. destruct x_value_over as 
+        [n_leq_0 string_over_s_0]. lia. }
+      assert (StringLang.ends_with (state_str x) 0 = true) as x_ends_0.
+      { rewrite x_value. simpl. rewrite n_eq_0. reflexivity. } 
+      rewrite x_ends_0. simpl. rewrite nth_error_app2.
+      (* get_labeled_instr h ++ (..). divide que nao ocorre em h, fica
+      so o get_labeled_instr na meiuca *)
+Admitted.
+
+
+  (*
+
+  BLOCO 4 
+  [C]   IF X ENDS Si GOTO Di (1 <= i <= n )
+        GOTO E
+
+
+  BLOCO 5
+  [Di]  X <- X -
+        Y <- Si Y ( 1 <= i <= n )
+        GOTO C
+
+*)

@@ -19,13 +19,13 @@ Fixpoint get_max_label (l : StringLang.program) : nat :=
 
 
 
-Fixpoint label_in_instr p_str (lbl : label)  :=
+Fixpoint has_labeled_instr p_str (lbl : label)  :=
   match p_str with
   | [] => false
   | StringLang.Instr opt_lbl _ :: t => match opt_lbl with 
                                        | Some lbl' => if eqb_lbl lbl lbl'
                                                       then true
-                                                      else label_in_instr t lbl
-                                       | None => label_in_instr t lbl
+                                                      else has_labeled_instr t lbl
+                                       | None => has_labeled_instr t lbl
                                        end
   end.
