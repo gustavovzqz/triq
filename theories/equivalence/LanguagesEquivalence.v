@@ -255,11 +255,11 @@ Qed.
 (** IF Macros Simulateds *)
 
 Theorem if_macro_simulates :
-  forall p_nat pos_nat state_nat
+  forall p_nat p_str pos_nat state_nat
                pos_str state_str
          max_char x instr_label goto_label,
 
-  let p_str := get_equiv_str_program p_nat max_char in
+  p_str = get_equiv_str_program p_nat max_char ->
 
 
   nth_error p_nat pos_nat = Some (NatLang.Instr instr_label
@@ -279,12 +279,13 @@ Theorem if_macro_simulates :
            n') in
     state_equiv state_nat' state_str' max_char /\
     equiv_pos p_nat line_nat line_str max_char /\
-    state_str' = state_str.
+    state_str' = state_str /\
+    state_nat' = state_nat.
 Proof.
-  intros p_nat pos_nat state_nat pos_str state_str
-  max_char x instr_label goto_label p_str.
-  intros nth_pos_nat_instr H_state_equiv H_equiv_pos. 
-  unfold get_equiv_str_program in p_str.
+  intros p_nat p_str pos_nat state_nat pos_str state_str
+  max_char x instr_label goto_label.
+  intros p_str_eq nth_pos_nat_instr H_state_equiv H_equiv_pos. 
+  unfold get_equiv_str_program in p_str_eq.
 
   (* naming *)
   remember (NatLang.Instr instr_label (NatLang.IF_GOTO x goto_label)) 
@@ -367,7 +368,8 @@ Proof.
     repeat split.
     + auto.
     + destruct goto_label as [goto_idx].
-      apply goto_label_equiv_position; unfold p_str, get_equiv_str_program. 
+      rewrite p_str_eq.
+      apply goto_label_equiv_position.
       rewrite Heqmax_label_nat.
       eapply NatUtils.goto_label_ge_max_label; eauto.
       rewrite nth_pos_nat_instr. f_equal. eauto.
@@ -464,22 +466,46 @@ Proof.
     (* snap em que cheguei após steps_str é pos_str state_str *)
     destruct (StringLang.compute_program p_str (StringLang.SNAP 0 
     initial_str_state) steps_str) as [pos_str state_str].
+    simpl in H_ind_str. destruct H_ind_str as
+    [H_ind_state_equiv [H_ind_equiv_pos [H_ind_state_z1 [H_ind_z1 H_ind_z2]]]].
 
     (* qual a linha que está na posição pos_nat em p_nat
        para ser executada? *)
     destruct (nth_error p_nat pos_nat) eqn:p_nat_instr.
     (* caso 1: existe uma linha *)
     + (* qual a instrução dessa linha? *)
-      destruct i, s.
+      destruct i as [instr_label [x | x | x goto_label]].
       (* a. x <- x + 1 *)
       ++ admit.
       (* b. x <- x- - 1 *)
       ++ admit.
       (* c. IF v != 0 GOTO A *)
-      ++ admit.
+      ++ (* TODO: O padrão para as próximas provas é passar como argumento
+            a prova e que state_str (Z (..)) = [] etc, e o resultado do
+            lema ()_computes ser exatamente o que eu quero provar *)
+
+         assert (exists n',
+         let (line_nat, state_nat') := NatLang.split_snap
+         (NatLang.next_step p_nat (NatLang.SNAP pos_nat state_nat)) in
+         let (line_str, state_str') := StringLang.split_snap
+         (StringLang.compute_program p_str 
+         (StringLang.SNAP pos_str state_str) n') in
+         state_equiv state_nat' state_str' max_char /\
+         equiv_pos p_nat line_nat line_str max_char /\
+         state_str' = state_str /\ state_nat' = state_nat) 
+         as [if_steps H_if_compute].
+         apply if_macro_simulates with x instr_label goto_label; auto.
+         exists if_steps. 
+         destruct (NatLang.next_step p_nat (NatLang.SNAP pos_nat state_nat)).
+         destruct (StringLang.compute_program p_str (StringLang.SNAP pos_str 
+         state_str) if_steps). simpl in *.
+         destruct H_if_compute as [state_equiv_s_s0 [equiv_pos_n_n0 
+         [s0_eq_state_str s_eq_state_nat]]]. 
+         rewrite s0_eq_state_str, s_eq_state_nat. 
+         repeat (split; auto).
     (* caso 2: não existe uma linha na posição.
        neste caso, a execução do programa dos naturais não faz nada,
        basta também não fazer nada no programa de strings *)
-    + simpl. exists 0. simpl. destruct H_ind_str;
+    + simpl. rewrite p_nat_instr. exists 0. simpl.
       repeat (split; auto).
 Admitted.
