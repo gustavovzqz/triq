@@ -941,6 +941,11 @@ Proof.
              assert (eqb_var x var = false).
              { rewrite var_eqb_neq. symmetry. apply H. } rewrite H3.
              reflexivity.
+  (* Passo *)
+  - exists 4.
+    rewrite p_str_decomposition. rewrite <- H_length in *.
+    simpl. rewrite nth_error_app2 by lia; rewrite PeanoNat.Nat.sub_diag. 
+    simpl in *. rewrite <- p_str_decomposition.
 Admitted.
              
 
