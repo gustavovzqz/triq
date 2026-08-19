@@ -758,7 +758,7 @@ Admitted.
 
 Lemma compute_transfer_block :
   forall max_char p_str pos_str state_str 
-         label_idx x z goto_label if_goto_idx
+         label_idx x x_value z goto_label if_goto_idx
          h t skip_block aux,
 
   p_str = h ++
@@ -766,6 +766,8 @@ Lemma compute_transfer_block :
   [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 goto_label)]) ++
   skip_block ++
   get_all_di_blocks x z aux max_char if_goto_idx (A label_idx) ++ t ->
+
+  x_value = state_str x -> 
 
 
   StringUtils.has_labeled_instr skip_block 
@@ -789,7 +791,6 @@ Lemma compute_transfer_block :
       (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
          n) in
 
-  state_str' = state_str /\
   line_str = StringLang.get_labeled_instr p_str goto_label /\
   state_str' x = [] /\
   state_str' z =  (state_str z) ++ (state_str x) /\
@@ -799,97 +800,109 @@ Lemma compute_transfer_block :
   state_str' var = state_str var.
 Proof.
   induction max_char;
-  intros p_str pos_str state_str label_idx x z goto_label
+  intros p_str pos_str state_str label_idx x x_value z goto_label
   if_goto_idx h t skip_block aux;
-  intros p_str_decomposition has_label_skip_block 
+  intros p_str_decomposition H_x_value has_label_skip_block 
   goto_idx_ge_h instr_label_not_in_h H_length
   label_idx_lt_goto H_state_over ends_with_aux_0.
   (* caso max_char = 0*)
+  (*
+    BLOCO 4 
+   [C]  IF X ENDS 0 GOTO D
+        GOTO E
+
+   BLOCO 5
+   [D] X <- X -
+       Y <- (n+1)  Y ( 1 <= i <= n )
+       GOTO C
+  *)
   - rewrite p_str_decomposition. simpl.
     (* state_str x é vazio ou termina com 0
        na verdade aqui vai ser indução
     *)
-    induction (state_str x) eqn:x_value.
+    generalize dependent state_str.
+    induction (x_value); intros state_str H_x_value.
     + (* se é vazio, então eu saio em 2 passos *)
+    
       exists 2. simpl. rewrite nth_error_app2; try lia.
       rewrite H_length, PeanoNat.Nat.sub_diag. simpl.
-      rewrite x_value. simpl. rewrite nth_error_app2; try lia.
+      (* andei um passo, estou na linha GOTO E *)
+      rewrite <- H_x_value. simpl. rewrite nth_error_app2; try lia.
       rewrite H_length. replace (pos_str + 1 - pos_str) with 1 by lia.
       simpl. rewrite ends_with_aux_0. simpl. 
       simpl in p_str_decomposition. rewrite <- p_str_decomposition.
       repeat (split; auto). rewrite app_nil_r. reflexivity.
-    + simpl in p_str_decomposition. rewrite <- p_str_decomposition.
+    + intros H_state_over H_ends_with_aux.
+      simpl in p_str_decomposition. rewrite <- p_str_decomposition.
       cut (exists n n' : nat, 
       let (line_str, state_str') := StringLang.split_snap
       (StringLang.compute_program p_str (StringLang.compute_program p_str 
       (StringLang.SNAP pos_str state_str) n) n') in
-      state_str' = state_str /\
       line_str = StringLang.get_labeled_instr p_str goto_label /\
       state_str' x = [] /\
-      state_str' z = state_str z ++ a :: s /\
+      state_str' z = state_str z ++ state_str x /\
       (forall var : variable,
       var <> x /\ var <> z -> state_str' var = state_str var)).
       {intros cH. destruct cH as [m [m']]. exists (m' + m). 
       rewrite StringLangProperties.compute_program_add. auto. }
       (* Começando Computação *)
 
-      exists 5. rewrite p_str_decomposition. 
+      exists 4. rewrite p_str_decomposition. 
       simpl. rewrite nth_error_app2; try lia.
       rewrite H_length, PeanoNat.Nat.sub_diag. simpl in *.
       rewrite <- p_str_decomposition.
       assert (a = 0) as a_eq_0.
-      { pose proof (H_state_over x) as x_value_over. rewrite x_value in *.
+      { pose proof (H_state_over x) as x_value_over. rewrite <- H_x_value in *.
         simpl in x_value_over. simpl. destruct x_value_over as 
         [a_leq_0 string_over_s_0]. lia. }
       assert (StringLang.ends_with (state_str x) 0 = true) as x_ends_0.
-      { rewrite x_value. simpl. rewrite a_eq_0. reflexivity. } 
-      rewrite x_ends_0. simpl. rewrite p_str_decomposition. 
+      { rewrite <- H_x_value. simpl. rewrite a_eq_0. reflexivity. } 
+      rewrite x_ends_0. simpl. 
+      rewrite p_str_decomposition. 
       rewrite nth_error_app2.
       rewrite get_labeled_instr_app, cancel_sub.
       simpl. assert (Nat.eqb label_idx if_goto_idx = false) as eqb_label_false.
       { admit. } rewrite eqb_label_false. rewrite PeanoNat.Nat.add_comm.
       simpl in *. rewrite PeanoNat.Nat.add_comm in p_str_decomposition.
       simpl in *.
-      rewrite nth_error_app2.  
+      rewrite nth_error_app2.
       rewrite get_labeled_instr_app, cancel_sub. simpl.
       rewrite PeanoNat.Nat.eqb_refl. simpl.
+      (* Computei a linha da label D, estado agora é del de state_str x
+         Objetivo agora é computar linha que adiciona em Z. *)
       simpl.  rewrite nth_error_app2.
       replace (length h + S (S (length skip_block + 0)) + 1 - length h)
-      with (3 + length skip_block) by lia. 
-      rewrite <- nth_error_skipn.  
-      assert ((skipn 3 ((StringLang.Instr (Some (A label_idx))
-      (StringLang.IF_ENDS_GOTO x 0 (A if_goto_idx)))
-      :: ((StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 goto_label))
-      :: (skip_block ++ ((StringLang.Instr (Some (A if_goto_idx))
-      (StringLang.DEL x)) :: ((StringLang.Instr None
-      (StringLang.APPEND 0 z)) :: ((StringLang.Instr None
-      (StringLang.IF_ENDS_GOTO aux 0 (A label_idx))) :: t)))))))
-      = (skip_block ++ ((StringLang.Instr (Some (A if_goto_idx))
-      (StringLang.DEL x)) :: ((StringLang.Instr None
-      (StringLang.APPEND 0 z)) :: ((StringLang.Instr None
-      (StringLang.IF_ENDS_GOTO aux 0 (A label_idx))) :: t))))).
-      {admit. }
-      rewrite H.
-      rewrite nth_error_app2, PeanoNat.Nat.sub_diag. simpl.
+      with (2 + length skip_block + 1) by lia. simpl.
+      rewrite  nth_error_app2, cancel_sub. simpl.
+      (*computei linha do append, agora é computar linha que volta para o
+        primeiro if. *)
       rewrite nth_error_app2. 
-      replace (length h + S (S (length skip_block + 0)) + 1 + 1 - length h)
-      with (3 + (length skip_block + 1)) by lia.
-      rewrite <- nth_error_skipn. rewrite H.
-      rewrite nth_error_app2, cancel_sub. simpl.
-      simpl in p_str_decomposition.
-      rewrite nth_error_app2.
-      replace (length h + S (S (length skip_block + 0)) + 1 + 1 + 1
-      - length h)
-      with (3 + (length skip_block + 2)) by lia.
-      rewrite <- p_str_decomposition. 
-      rewrite <- nth_error_skipn. rewrite H.
-      rewrite nth_error_app2, cancel_sub. simpl.
-      replace (StringLang.ends_with (StringLang.append 0
-      (StringLang.del (StringLang.del state_str x) x) z aux) 0 ) with true.
-      rewrite  p_str_decomposition. 
+      replace (length h + S (S (length skip_block + 0)) + 1 + 1 - length h) 
+      with (2 + length skip_block + 2) by lia.
+      simpl. rewrite nth_error_app2, cancel_sub. simpl.
+      assert (StringLang.ends_with (StringLang.append 0 
+      (StringLang.del state_str x) z aux) 0 = true).
+      { admit. }
+      rewrite H.
       rewrite get_labeled_instr_app. simpl.
-      rewrite PeanoNat.Nat.eqb_refl. rewrite PeanoNat.Nat.add_comm.
-      simpl. rewrite <- p_str_decomposition, H_length.
+      rewrite PeanoNat.Nat.eqb_refl. rewrite H_length.
+
+      rewrite <- p_str_decomposition. replace (pos_str + 0) with pos_str by lia.
+      remember (StringLang.append 0 (StringLang.del state_str x) z) as ind_state.
+      destruct IHs with ind_state; auto.
+      rewrite Heqind_state. unfold StringLang.append, StringLang.del, StringLang.update.
+      simpl. assert (eqb_var z x = false) by admit. 
+      rewrite H0. simpl. assert (eqb_var x x = true) by admit. rewrite H1.
+      rewrite <- H_x_value. simpl. reflexivity.
+
+      pose proof (IHs ind_state).
+      admit.
+      replace (if_goto_idx + 0 ) with if_goto_idx in H0 by lia.
+      rewrite <- p_str_decomposition in H0.
+      exists x0.
+      destruct (StringLang.compute_program p_str (StringLang.SNAP pos_str ind_state) x0).
+      simpl in *. repeat (split; auto).
+      
 Admitted.
 
 
