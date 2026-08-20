@@ -728,6 +728,68 @@ Proof.
       rewrite Heqh', length_app, H_length. reflexivity.
 Qed.
 
+Lemma compute_if_block_label_skip :
+  forall max_char p_str pos_str state_str 
+         x opt_label if_goto_idx h t, 
+
+  p_str = h ++
+  get_if_macro_label x opt_label max_char if_goto_idx
+  ++ t  ->
+
+  length h = pos_str  ->
+
+
+  state_str x = [] ->
+
+  exists n,
+  let (line_str, state_str') :=
+    StringLang.split_snap
+      (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+         n) in
+
+  state_str' = state_str /\
+  line_str = pos_str + length (get_if_macro_label x opt_label max_char if_goto_idx).
+Proof.
+  Transparent StringMacros.get_str_macro.
+  induction max_char;
+  intros p_str pos_str state_str x opt_label if_goto_idx h t;
+  intros p_str_decomposition H_length H_state_str.
+  - rewrite p_str_decomposition. 
+    exists 1. simpl. rewrite nth_error_app2 by lia.
+    rewrite H_length, PeanoNat.Nat.sub_diag.
+    simpl.
+    rewrite H_state_str. simpl. unfold StringMacros.macro_length.
+    repeat (split; auto).
+    (* Passo *)
+  - cut (exists n n' : nat, 
+    let (line_str, state_str') := StringLang.split_snap
+    (StringLang.compute_program p_str (StringLang.compute_program p_str 
+    (StringLang.SNAP pos_str state_str) n) n') 
+    in state_str' = state_str /\ 
+       line_str = pos_str + 
+    length (get_if_macro_label x opt_label (S max_char) if_goto_idx)).
+    {intros cH. destruct cH as [m [m']]. exists (m' + m). 
+     rewrite StringLangProperties.compute_program_add. auto. }
+    exists 1. simpl. rewrite p_str_decomposition, nth_error_app2 by lia.
+    rewrite <- p_str_decomposition.
+    rewrite H_length, PeanoNat.Nat.sub_diag. simpl.
+    rewrite H_state_str. simpl.
+    simpl in p_str_decomposition.
+    remember  (length (get_if_macro_label x opt_label max_char if_goto_idx))
+     as if_length.
+    replace (pos_str + S if_length) with (pos_str + 1 + if_length) by lia.
+    rewrite Heqif_length. 
+    rewrite LanguagesUtils.cons_app_assoc in p_str_decomposition.
+    rewrite app_assoc in p_str_decomposition.
+    remember  ((h ++ [StringLang.Instr opt_label
+    (StringLang.IF_ENDS_GOTO x (S max_char) (A (S (max_char + if_goto_idx))))])) as h'.
+    apply IHmax_char with 
+    (h := h') (t := t); auto.
+    rewrite Heqh', length_app, H_length.
+    reflexivity.
+Qed.
+
+
 
 (* Computando Transferência de x para z *)
 
@@ -772,26 +834,18 @@ E depois os DI
 
 
 
-Lemma compute_transfer_block :
+(* Lema da transferência de um caractere para todo max_char *)
+Lemma compute_char_transfer :
   forall max_char p_str pos_str state_str 
-         label_idx x x_value z goto_label if_goto_idx
-         h t skip_block aux,
+         label_idx x z goto_label if_goto_idx
+         h t skip_block aux char s,
 
   p_str = h ++
   (get_if_macro_label x (Some (A label_idx)) max_char if_goto_idx ++
   [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 goto_label)]) ++
   skip_block ++
   get_all_di_blocks x z aux max_char if_goto_idx (A label_idx) ++ t ->
-
-  (* valor de x guardado em variável para indução independente de state_str *)
-  x_value = state_str x -> 
-
-
-  (* Tenho que qualquer "label_idx" + algo não ocorre em skip_block. 
-     Disso basta saber que max_label h < label_idx, assim, 
-     qualquer label em skip_block é diferente
-     de label_idx, mas talvez só com max_char já funcione. *)
-
+  
   StringUtils.has_labeled_instr skip_block 
   (A (max_char + if_goto_idx)) = false -> 
 
@@ -803,9 +857,11 @@ Lemma compute_transfer_block :
 
   length h = pos_str  ->
 
-  StringLang.state_over state_str max_char ->
+  state_str x = char :: s ->
 
+  char <= max_char ->
   StringLang.ends_with (state_str aux) 0 = true ->
+
 
   eqb_var x z = false ->
   eqb_var x aux = false ->
@@ -818,149 +874,110 @@ Lemma compute_transfer_block :
       (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
          n) in
 
-  line_str = StringLang.get_labeled_instr p_str goto_label /\
-  state_str' x = [] /\
-  state_str' z =  (state_str z) ++ (state_str x) /\
-  (* todo o resto do estado está inalterado *)
+  line_str = pos_str /\
+  state_str' x = s /\
+  state_str' z =  (state_str z) ++ [char] /\
   forall var, 
   (var <> x /\ var <> z) ->
   state_str' var = state_str var.
 Proof.
   induction max_char;
-  intros p_str pos_str state_str label_idx x x_value z goto_label
-  if_goto_idx h t skip_block aux;
-  intros p_str_decomposition H_x_value has_label_skip_block 
+  intros p_str pos_str state_str label_idx x z goto_label
+  if_goto_idx h t skip_block aux char s;
+  intros p_str_decomposition has_label_skip_block 
   instr_label_not_in_h if_goto_not_in_h label_idx_diff_goto_idx H_length 
-  H_state_over ends_with_aux_0 x_diff_z x_diff_aux z_diff_aux.
-  - rewrite p_str_decomposition. simpl.
-    (* state_str x é vazio ou termina com 0
-       na verdade aqui vai ser indução
-    *)
-    generalize dependent state_str.
-    induction (x_value); intros state_str H_x_value.
-    + (* se é vazio, então eu saio em 2 passos *)
-      exists 2. simpl. rewrite nth_error_app2 by lia.
-      rewrite H_length, PeanoNat.Nat.sub_diag. simpl.
-      (* andei um passo, estou na linha GOTO E *)
-      rewrite <- H_x_value. simpl. rewrite nth_error_app2 by lia.
-      rewrite H_length. replace (pos_str + 1 - pos_str) with 1 by lia.
-      simpl. rewrite ends_with_aux_0. simpl. 
-      simpl in p_str_decomposition. rewrite <- p_str_decomposition.
-      repeat (split; auto). rewrite app_nil_r. reflexivity.
-    + (* x_value = a :: s *)
-      intros H_state_over H_ends_with_aux.
-      simpl in *. replace (if_goto_idx + 0) with if_goto_idx in * by lia.
-      rewrite <- p_str_decomposition.
-      (* Trocando Objetivo para Computação em "dois momentos" *)
-      cut (exists n n' : nat, 
-      let (line_str, state_str') := StringLang.split_snap
-      (StringLang.compute_program p_str (StringLang.compute_program p_str 
-      (StringLang.SNAP pos_str state_str) n) n') in
-      line_str = StringLang.get_labeled_instr p_str goto_label /\
-      state_str' x = [] /\
-      state_str' z = state_str z ++ state_str x /\
-      (forall var : variable,
-      var <> x /\ var <> z -> state_str' var = state_str var)).
-      {intros cH. destruct cH as [m [m']]. exists (m' + m). 
-      rewrite StringLangProperties.compute_program_add. auto. }
-      rewrite <- H_length in *.
-      (* state_str x = 0 :: s * e ends_with (state_str x) 0 = true *)
-      assert (a = 0) as a_eq_0.
-      { pose proof (H_state_over x) as x_value_over. 
-        rewrite <- H_x_value in *.
-        simpl in x_value_over. simpl. destruct x_value_over as 
-        [a_leq_0 string_over_s_0]. lia. }
-      assert (StringLang.ends_with (state_str x) 0 = true) as x_ends_0.
-      { rewrite <- H_x_value. simpl. rewrite a_eq_0. reflexivity. } 
-
-      (* Começando Computação *)
-
-      exists 4.
-      rewrite p_str_decomposition. simpl.
-      rewrite nth_error_app2 by lia; rewrite PeanoNat.Nat.sub_diag. 
-      simpl in *.
-      rewrite <- p_str_decomposition.
-      rewrite x_ends_0. simpl. 
-      rewrite p_str_decomposition. 
-      rewrite get_labeled_instr_app; auto.
-      simpl.  rewrite label_idx_diff_goto_idx. 
-      rewrite nth_error_app2 by lia.
-      rewrite <- p_str_decomposition.
-      rewrite cancel_sub. simpl.
-      rewrite get_labeled_instr_app; auto.
-      rewrite nth_error_app2 by lia. rewrite cancel_sub.
-      simpl. rewrite PeanoNat.Nat.eqb_refl. simpl.
-      (* Computei a linha da label D, estado agora é del de state_str x
-         Objetivo agora é computar linha que adiciona em Z. *)
-      simpl. rewrite p_str_decomposition. rewrite nth_error_app2 by lia.
-      replace (length h + S (S (length skip_block + 0)) + 1 - length h)
-      with (2 + length skip_block + 1) by lia. simpl.
-      rewrite nth_error_app2 by lia. rewrite cancel_sub. simpl.
-      (* Computei linha do append, agora é computar linha que volta para o
-        primeiro if. *)
-      rewrite nth_error_app2 by lia.
-      replace (length h + S (S (length skip_block + 0)) + 1 + 1 - length h) 
-      with (2 + length skip_block + 2) by lia.
-      simpl. rewrite nth_error_app2 by lia. rewrite cancel_sub. simpl.
-      (* Verificação para voltar para linha inicial *)
-      assert (StringLang.ends_with (StringLang.append 0 
-      (StringLang.del state_str x) z aux) 0 = true) as ends_with_new_0.
-      { unfold StringLang.append, StringLang.del, StringLang.update.
-        rewrite x_diff_z, z_diff_aux, x_diff_aux.  auto. }
-      rewrite ends_with_new_0.
-      rewrite get_labeled_instr_app; auto. simpl.
-      rewrite PeanoNat.Nat.eqb_refl. rewrite H_length in *.
-
-      rewrite <- p_str_decomposition in *. 
-      replace (pos_str + 0) with pos_str by lia.
-      remember (StringLang.append 0 (StringLang.del state_str x) z) 
-      as ind_state.
-      destruct IHs with ind_state as [ind_steps H_ind]; clear IHs; auto.
-      ++ rewrite Heqind_state. 
-         unfold StringLang.append, StringLang.del, StringLang.update.
-         rewrite eqb_var_symm, x_diff_z, eqb_var_refl.
-         rewrite <- H_x_value. reflexivity.
-      ++ rewrite Heqind_state. StringLang.solve_string.
-      ++ exists ind_steps. destruct (StringLang.compute_program p_str 
-         (StringLang.SNAP pos_str ind_state) ind_steps) 
-         as [new_line new_state]. simpl in *. 
-         destruct H_ind as [H_new_line [H_new_state [H_new_z H_inv_var]]].
-         repeat (split; auto).
-         +++ rewrite H_new_z, Heqind_state. rewrite <- H_x_value.
-             unfold StringLang.append, StringLang.del, StringLang.update.
-             rewrite eqb_var_refl, x_diff_z.
-             rewrite eqb_var_refl, eqb_var_symm, x_diff_z.
-             rewrite <- H_x_value. simpl. rewrite <- app_assoc, a_eq_0.
-             reflexivity.
-         +++ intros. pose proof (H_inv_var var H).
-             rewrite H0. rewrite Heqind_state.
-             unfold StringLang.append, StringLang.del, StringLang.update.
-             rewrite x_diff_z. destruct H. 
-             assert (eqb_var z var = false).
-             { rewrite var_eqb_neq. symmetry. apply H1. } rewrite H2.
-             assert (eqb_var x var = false).
-             { rewrite var_eqb_neq. symmetry. apply H. } rewrite H3.
-             reflexivity.
-  (* Passo *)
-  - exists 4.
-    rewrite p_str_decomposition. rewrite <- H_length in *.
-    simpl. rewrite nth_error_app2 by lia; rewrite PeanoNat.Nat.sub_diag. 
+  H_x_value char_leq_max_char ends_with_aux_0 x_diff_z x_diff_aux z_diff_aux.
+  - rewrite p_str_decomposition.
+    simpl in *. replace (if_goto_idx + 0) with if_goto_idx in * by lia.
+    rewrite <- p_str_decomposition.
+    assert (char = 0) as char_eq_0 by lia.
+    assert (StringLang.ends_with (state_str x) 0 = true) as x_ends_0.
+    { rewrite  H_x_value. simpl. rewrite char_eq_0. reflexivity. } 
+    rewrite <- H_length in *.
+    exists 4.
+    rewrite p_str_decomposition. simpl.
+    rewrite nth_error_app2 by lia; rewrite PeanoNat.Nat.sub_diag. 
     simpl in *. rewrite <- p_str_decomposition.
+    rewrite x_ends_0. simpl. 
+    rewrite p_str_decomposition. 
+    rewrite get_labeled_instr_app; auto.
+    simpl.  rewrite label_idx_diff_goto_idx. 
+    rewrite nth_error_app2 by lia.
+    rewrite <- p_str_decomposition.
+    rewrite cancel_sub. simpl.
+    rewrite get_labeled_instr_app; auto.
+    rewrite nth_error_app2 by lia. rewrite cancel_sub.
+    simpl. rewrite PeanoNat.Nat.eqb_refl. simpl.
+    simpl. rewrite p_str_decomposition. rewrite nth_error_app2 by lia.
+    replace (length h + S (S (length skip_block + 0)) + 1 - length h)
+    with (2 + length skip_block + 1) by lia. simpl.
+    rewrite nth_error_app2 by lia. rewrite cancel_sub. simpl.
+    rewrite nth_error_app2 by lia.
+    replace (length h + S (S (length skip_block + 0)) + 1 + 1 - length h) 
+    with (2 + length skip_block + 2) by lia.
+    simpl. rewrite nth_error_app2 by lia. rewrite cancel_sub. simpl.
+    (* Verificação para voltar para linha inicial *)
+    assert (StringLang.ends_with (StringLang.append 0 
+    (StringLang.del state_str x) z aux) 0 = true) as ends_with_new_0.
+    { unfold StringLang.append, StringLang.del, StringLang.update.
+      rewrite x_diff_z, z_diff_aux, x_diff_aux.  auto. }
+    rewrite ends_with_new_0.
+    rewrite get_labeled_instr_app; auto. simpl.
+    rewrite PeanoNat.Nat.eqb_refl. rewrite H_length in *.
+    repeat (split; auto).
+    + unfold StringLang.append, StringLang.del, StringLang.update.
+      rewrite eqb_var_symm, x_diff_z, eqb_var_refl, H_x_value. reflexivity.
+    + unfold StringLang.append, StringLang.del, StringLang.update.
+      rewrite eqb_var_refl, x_diff_z, char_eq_0. reflexivity.
+    + intros var [var_diff_x var_diff_z].
+      apply var_eqb_neq in var_diff_z. apply var_eqb_neq in var_diff_x.
+      unfold StringLang.append, StringLang.del, StringLang.update.
+      rewrite eqb_var_symm, var_diff_z. rewrite eqb_var_symm.
+      rewrite var_diff_x. reflexivity.
+
+  (* Passo *)
+  - (* Dois casos. Se o caractere é S max_char, vai ser quase igual a base. 
+       Se for <= max_char, então ando um passo e uso a hipótese de indução *)
+    assert (char = S max_char \/ char <= max_char) as char_cases by lia.
+    destruct char_cases as [char_eq_S | char_le_max_char].
+    + (* caso char = S max_char -> voltamos em quatro passos *)
+      exists 4. rewrite p_str_decomposition.
+      simpl. rewrite <- H_length in *.
+      rewrite nth_error_app2 by lia. rewrite PeanoNat.Nat.sub_diag.
+      simpl. rewrite H_x_value. rewrite char_eq_S. simpl. 
+      rewrite PeanoNat.Nat.eqb_refl. simpl.
+      rewrite get_labeled_instr_app by admit. (* Preciso melhorar a hip aqui *)
+      rewrite nth_error_app2 by lia. simpl.
+      assert (Nat.eqb label_idx (S (max_char + if_goto_idx)) = false).
+      { admit. }
+      rewrite H. simpl.
+      rewrite get_labeled_instr_app.
+      rewrite get_labeled_instr_app.
+      simpl. assert (Nat.eqb (if_goto_idx + S max_char) 
+      (S (max_char + if_goto_idx)) = true) by admit. rewrite H0.
+      rewrite cancel_sub. simpl.
+      rewrite nth_error_app2 by lia.
+      rewrite nth_error_app2 by lia.
+      (* Para as próximas duas instruções vou ter a mesma coisa
+         só que com algums S S dispersos, vou precisar de algum
+         assert que resolvar logo o nth_error com get_labeled ... *)
+
+      
 Admitted.
              
 
 
 
-  (*
 
-  BLOCO 4 
-  [C]   IF X ENDS Si GOTO Di (1 <= i <= n )
-        GOTO E
+(* Lembrete para as próximas provas / ideia para a prova de cima:
+   
+  Na minha primeira tentativa, frustrada, tentei por indução no max_char, 
+  com indução no valor de x para o caso base. O que eu percebi é que as hipóteses para cada 
+  caso não se misturam bem. Na base, estou provando que há uma transferência de x para z, no caso de max_char 0, 
+  e para isso eu preciso de uma hipótese de que a string toda está limitada ao max_char 0. 
 
-
-  BLOCO 5
-  [Di]  X <- X -
-        Y <- Si Y ( 1 <= i <= n )
-        GOTO C
-
+  A ideia é dividir as provas. Primeiro, um lema simples que fala sobre a transferência do primeiro caractere de X
+  para Z. Usando esse lema, que é provado usando indução em max_char, e requer somente a hipótese de que o primeiro caractere
+  de x é menor que ou igual a max_char, eu provo o lema principal, que é feito usando indução no valor de x (h :: t).
 *)
+  
