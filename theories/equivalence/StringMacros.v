@@ -59,7 +59,7 @@ Fixpoint get_if_macro_label
   | 0 => [StringLang.Instr instr_lbl (StringLang.IF_ENDS_GOTO x 0 goto_lbl)]
   | S n => StringLang.Instr instr_lbl (StringLang.IF_ENDS_GOTO x max_char goto_lbl) :: 
            (get_if_macro_label x instr_lbl n first_label)
-  end.
+ end.
 
 Compute get_if_macro_label Y None 10 3.
 
@@ -1063,19 +1063,151 @@ Proof.
 Qed.
 
 
+Lemma compute_transfer_block :
+  forall max_char p_str pos_str state_str 
+         label_idx x z goto_label if_goto_idx
+         h t aux x_value ,
+
+  p_str = h ++
+  (get_if_macro_label x (Some (A label_idx)) max_char if_goto_idx ++
+  [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 goto_label)]) ++
+  get_all_di_blocks x z aux max_char if_goto_idx (A label_idx) ++ t ->
+
+  StringUtils.labels_less_than h if_goto_idx ->
+  StringUtils.labels_less_than h label_idx ->
+
+  label_idx < if_goto_idx ->
+  length h = pos_str  ->
+
+  StringLang.state_over state_str max_char ->
+  state_str x = x_value ->
+  StringLang.ends_with (state_str aux) 0 = true ->
+
+  eqb_var x z = false ->
+  eqb_var x aux = false ->
+  eqb_var z aux = false ->
 
 
+  exists n,
+  let (line_str, state_str') :=
+    StringLang.split_snap
+      (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+         n) in
 
+  line_str = StringLang.get_labeled_instr p_str goto_label /\
+  state_str' x = [] /\
+  state_str' z =  (state_str z) ++ (state_str x) /\
+  (* todo o resto do estado está inalterado *)
+  forall var, 
+  (var <> x /\ var <> z) ->
+  state_str' var = state_str var.
+Proof.
+  intros max_char p_str pos_str state_str label_idx x z 
+  goto_label if_goto_idx h t aux x_value.
+  intros p_str_decomposition h_less_than_if_goto_idx
+  h_less_than_label_idx label_idx_lt_if_goto H_length H_state_over 
+  H_x_value ends_with_aux
+  x_diff_z x_diff_aux z_diff_aux.
+  generalize dependent state_str.
+  induction x_value as [| char s];
+  intros state_str H_state_over H_x_value ends_with_aux.
+  - cut (exists n n' : nat, 
+      let (line_str, state_str') := StringLang.split_snap
+      (StringLang.compute_program p_str (StringLang.compute_program p_str 
+      (StringLang.SNAP pos_str state_str) n) n') in 
+      line_str = StringLang.get_labeled_instr p_str goto_label /\
+      state_str' x = [] /\
+      state_str' z = state_str z ++ state_str x /\
+      (forall var : variable,
+       var <> x /\ var <> z -> state_str' var = state_str var)).
+    {intros cH. destruct cH as [m [m']]. exists (m' + m). 
+       rewrite StringLangProperties.compute_program_add. auto. }
+    rewrite <- app_assoc in p_str_decomposition.
+    remember ([StringLang.Instr None 
+    (StringLang.IF_ENDS_GOTO aux 0 goto_label)] ++ 
+    get_all_di_blocks x z aux max_char if_goto_idx (A label_idx) ++ t)
+    as t'.
 
-(* Lembrete para as próximas provas / ideia para a prova de cima:
-   
-  Na minha primeira tentativa, frustrada, tentei por indução no max_char, 
-  com indução no valor de x para o caso base. O que eu percebi é que as hipóteses para cada 
-  caso não se misturam bem. Na base, estou provando que há uma transferência de x para z, no caso de max_char 0, 
-  e para isso eu preciso de uma hipótese de que a string toda está limitada ao max_char 0. 
+    pose proof (compute_if_block_label_skip max_char p_str pos_str
+    state_str x (Some (A label_idx)) if_goto_idx h t') as if_skip.
+    destruct if_skip as [if_skip_steps H_if_skip]; auto.
+    exists if_skip_steps. destruct (StringLang.compute_program p_str 
+    (StringLang.SNAP pos_str state_str) if_skip_steps) as [if_line if_state].
+    simpl in *. destruct H_if_skip as [H_if_state H_if_line].
+    rewrite H_if_state, H_if_line. rewrite p_str_decomposition.
+    exists 1. simpl. rewrite nth_error_app2 by lia.
+    rewrite nth_error_app2 by lia. 
+    replace (pos_str + length (get_if_macro_label x 
+    (Some (A label_idx)) max_char if_goto_idx) - length h - length
+    (get_if_macro_label x (Some (A label_idx)) max_char if_goto_idx)) with 0
+    by lia. rewrite Heqt'. simpl. rewrite ends_with_aux.
+    simpl. repeat (split; auto).
+    rewrite H_x_value. rewrite app_nil_r. reflexivity.
+  - pose proof (H_state_over x) as state_str_x_over.
+    rewrite H_x_value in state_str_x_over.
+    simpl in state_str_x_over. destruct state_str_x_over as 
+    [char_leq_max_char string_over_s].
+    cut (exists n n' : nat, 
+      let (line_str, state_str') := StringLang.split_snap
+      (StringLang.compute_program p_str (StringLang.compute_program p_str 
+      (StringLang.SNAP pos_str state_str) n) n') in 
+      line_str = StringLang.get_labeled_instr p_str goto_label /\
+      state_str' x = [] /\
+      state_str' z = state_str z ++ state_str x /\
+      (forall var : variable,
+       var <> x /\ var <> z -> state_str' var = state_str var)).
+    {intros cH. destruct cH as [m [m']]. exists (m' + m). 
+       rewrite StringLangProperties.compute_program_add. auto. }
+    assert (exists n : nat, let (line_str, state_str') :=
+    StringLang.split_snap (StringLang.compute_program p_str 
+    (StringLang.SNAP pos_str state_str) n) in
+    line_str = StringLang.get_labeled_instr p_str (A label_idx) /\
+    state_str' x = s /\
+    state_str' z = state_str z ++ [char] /\
+    (forall var : variable,
+     var <> x /\ var <> z -> state_str' var = state_str var)) as 
+    [char_transfer_steps H_char_transfer].
+     { apply compute_char_transfer with max_char goto_label
+       if_goto_idx h t [] aux; simpl; auto. }
+    exists char_transfer_steps. destruct (StringLang.compute_program
+    p_str (StringLang.SNAP pos_str state_str) char_transfer_steps)
+    as [char_transfer_line char_transfer_state].
+    simpl in H_char_transfer.
+    destruct H_char_transfer as [char_line [char_state_x [char_state_z
+    char_inv]]].
+    assert (char_transfer_line = pos_str) as char_transfer_pos.
+    { rewrite char_line, p_str_decomposition.
+      rewrite StringUtils.get_labeled_instr_app.
+      + destruct max_char; simpl; 
+        rewrite PeanoNat.Nat.eqb_refl, H_length; lia.
+      + apply StringUtils.labels_less_implies_diff with (label_idx);
+        auto. }
+    rewrite char_transfer_pos.
+    specialize (IHs char_transfer_state).
+    assert (StringLang.state_over char_transfer_state max_char) as
+    transfer_state_over.
+    { unfold StringLang.state_over. intros x0. 
+      destruct (var_eqb_dec x0 x) as [x0_eq_x | x0_diff_x].
+      + rewrite x0_eq_x, char_state_x; auto.
+      + destruct (var_eqb_dec x0 z) as [x0_eq_z | x0_diff_z].
+        ++ rewrite x0_eq_z, char_state_z. StringLang.solve_string.
+        ++ replace (char_transfer_state x0) with (state_str x0).
+           auto. symmetry. apply char_inv. auto. }
+    assert (StringLang.ends_with (char_transfer_state aux) 0 = true) as
+    ends_with_transfer_aux.
+    { assert (aux <> x /\ aux <> z) as aux_diff_x_z. split.
+      + symmetry. rewrite <- var_eqb_neq; auto.
+      + symmetry. rewrite <- var_eqb_neq; auto.
+      + apply char_inv in aux_diff_x_z. rewrite aux_diff_x_z.
+        auto. }
+    destruct IHs as [IHsteps IHs ]; auto.
+    exists IHsteps. destruct (StringLang.compute_program p_str
+    (StringLang.SNAP pos_str char_transfer_state) IHsteps) as 
+    [IHline IHstate]; simpl in *.
+    destruct IHs as [IHline_eq [IHstate_x_eq [IHstate_z_eq IH_inv]]]. 
+    repeat (split; auto).
+    + rewrite IHstate_z_eq, char_state_z, char_state_x, H_x_value.
+      rewrite <- app_assoc. reflexivity.
+    + intros var var_diff_x_z. rewrite IH_inv; auto.
+Qed.
 
-  A ideia é dividir as provas. Primeiro, um lema simples que fala sobre a transferência do primeiro caractere de X
-  para Z. Usando esse lema, que é provado usando indução em max_char, e requer somente a hipótese de que o primeiro caractere
-  de x é menor que ou igual a max_char, eu provo o lema principal, que é feito usando indução no valor de x (h :: t).
-*)
-  
