@@ -237,7 +237,7 @@ Proof.
       rewrite E1. simpl. rewrite StringMacros.get_labeled_instr_head.
       reflexivity.
     + unfold p_str, equiv_pos. rewrite get_equiv_simulated_position_cons.
-      simpl. rewrite StringMacros.get_labeled_instr_app.
+      simpl. rewrite StringUtils.get_labeled_instr_app.
       ++ unfold StringMacros.macro_length.
          rewrite StringMacros.macros_same_size.
          apply f_equal2_plus; auto.
