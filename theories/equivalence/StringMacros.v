@@ -84,6 +84,12 @@ let ai_label := Some (A (first_block_label + char))  in
 [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 goto_label)].
 
 
+(* Funciona passando max_char - 1, fornece o incremento até o max_char,
+   mas não obtem corretamente no caso max_char zero, então preciso encapsular 
+   
+   TODO: Adicionar um argumento n adicional que vai decrescendo
+         no começo verifico se max_char é zero, se for zero, retorno vazio.
+         o max_char nao decrementa, o n sim*)
 Fixpoint get_all_ai_blocks_incr 
   (x : variable)
   (z : variable)
@@ -105,7 +111,7 @@ Let z := Z 1.
 Let aux := Z 3.
 
 
-Compute get_all_ai_blocks_incr x z aux 3 10 (A 30).
+Compute get_all_ai_blocks_incr x z aux 2 10 (A 30).
 End test.
 
 (*
@@ -113,6 +119,19 @@ End test.
         Y <- Si Y ( 1 <= i <= n )
         GOTO C
 *)
+
+Definition get_incr_blocks   
+  (x : variable)
+  (z : variable)
+  (aux : variable)
+  (max_char : nat)
+  (first_label : nat)
+  (goto_label: label ) :=
+  match max_char with 
+  | 0 => []
+  | S n => get_all_ai_blocks_incr x z aux n first_label goto_label
+  end.
+
 
 
 Definition get_di_block 
@@ -205,17 +224,17 @@ end.
   [B]   IF X ENDS Si GOTO Ai (1 <= i <= n)
         Y <- S1 Y
         GOTO E
-  
+
+  BLOCO 3 
+  [An]  X <- X -
+        Y <- S1 Y 
+        GOTO B 
 
   BLOCO 2 
   [Ai]  X <- X -
         Y <- S(i+1) Y ( 1 <= i < n)
         GOTO C 
 
-  BLOCO 3 
-  [An]  X <- X -
-        Y <- S1 Y 
-        GOTO B 
 
   BLOCO 4 
   [C]   IF X ENDS Si GOTO Di (1 <= i <= n )
@@ -282,23 +301,19 @@ let goto l :=
   [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 l)] in
 
 
-(* aux <- a ++ [] *)
 [StringLang.Instr lbl (StringLang.APPEND 0 aux)] ++ 
 
-(* BLOCO 1 *) 
 get_if_macro_label x (Some B) max_char A1_idx ++ 
 [StringLang.Instr None (StringLang.APPEND 0 z)] ++ 
 goto E ++
 
-(* BLOCO 2 *) 
-
-get_all_ai_blocks_incr x z aux (max_char - 1) A1_idx T1 ++
-
-(* BLOCO 3 *)
-
 [StringLang.Instr (Some An) (StringLang.DEL x)] ++
 [StringLang.Instr None (StringLang.APPEND 0 z)] ++
-[StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 T1)] ++
+[StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 B)] ++
+
+
+get_incr_blocks x z aux max_char A1_idx T1 ++
+
 
 transfer_block T1 x z D1_idx E aux max_char ++
 transfer_block T2 z x D2_idx E aux max_char ++
@@ -1211,3 +1226,102 @@ Proof.
     + intros var var_diff_x_z. rewrite IH_inv; auto.
 Qed.
 
+
+Lemma compute_char_incr :
+  forall max_char p_str pos_str state_str 
+          x z B goto_label A1_idx h t aux char s,
+
+  p_str = h ++
+  (get_if_macro_label x (Some B) max_char A1_idx ++ 
+  [StringLang.Instr None (StringLang.APPEND 0 z)] ++ 
+  [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 goto_label)])  ++
+
+  ([StringLang.Instr (Some (A (A1_idx + max_char))) (StringLang.DEL x)] ++
+   [StringLang.Instr None (StringLang.APPEND 0 z)] ++
+   [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 B)]) ++
+
+  get_incr_blocks x z aux max_char A1_idx goto_label ++ t ->
+
+  StringUtils.labels_less_than h A1_idx ->
+
+  length h = pos_str  ->
+
+  state_str x = char :: s ->
+
+  char <= max_char ->
+
+  StringLang.ends_with (state_str aux) 0 = true ->
+
+
+  eqb_var x z = false ->
+  eqb_var x aux = false ->
+  eqb_var z aux = false ->
+
+
+  exists n,
+  let (line_str, state_str') :=
+    StringLang.split_snap
+      (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+         n) in
+
+  (if (PeanoNat.Nat.ltb char max_char) then 
+    (line_str = StringLang.get_labeled_instr p_str goto_label /\
+    state_str' x = s /\
+    state_str' z =  (state_str z) ++ [char + 1])
+  else 
+    (line_str = StringLang.get_labeled_instr p_str B /\
+     state_str' x = s /\
+     state_str' z = (state_str z) ++ [0])) 
+  /\
+  forall var, 
+  (var <> x /\ var <> z) ->
+  state_str' var = state_str var.
+Proof.
+  induction max_char; intros p_str pos_str state_str x z B goto_label
+  A1_idx h t aux char s;
+  intros p_str_decomposition less_than_H H_length H_x_value char_leq_max
+  ends_with_aux x_diff_z x_diff_aux z_diff_aux.
+  + (* Caso max_char = 0 *) 
+    assert (char = 0) as char_eq_0 by lia.
+    simpl. rewrite  p_str_decomposition.
+    exists 4. simpl.
+    rewrite nth_error_app2 by lia. rewrite <- H_length.
+    rewrite PeanoNat.Nat.sub_diag. simpl. 
+    rewrite char_eq_0 in *. rewrite H_x_value.
+    simpl. rewrite StringUtils.get_labeled_instr_app.
+    rewrite nth_error_app2 by lia. rewrite cancel_sub.
+    simpl.
+    assert (eqb_lbl B (A A1_idx) = false ) as diff_b_A1.
+    {admit. }
+    rewrite diff_b_A1. simpl. rewrite PeanoNat.Nat.add_comm.
+    simpl. rewrite PeanoNat.Nat.eqb_refl. simpl. 
+    rewrite nth_error_app2 by lia.
+    replace (length h + 3 + 1 - length h) with 4 by lia.
+    simpl. rewrite nth_error_app2 by lia.
+    replace (length h + 3 + 1 + 1 - length h) with 5 by lia.
+    simpl.
+    assert ((StringLang.ends_with (StringLang.append 0 
+    (StringLang.del state_str x) z aux) 0) = true) as ends_with_true.
+    { admit. }
+    rewrite ends_with_true.
+    rewrite StringUtils.get_labeled_instr_app.
+    simpl. rewrite eqb_lbl_refl. repeat split; auto.
+    admit. admit. admit. admit. admit.
+  + (* Dois casos: *)
+    assert (char = S max_char \/ char <> S max_char) as char_cases by lia.
+    destruct char_cases as [char_eq_S | char_diff_S].
+    (* Esse é para ser o caso mais fácil, não preciso da indução *)
+    ++ assert (PeanoNat.Nat.ltb char (S max_char) = false ).
+       { rewrite PeanoNat.Nat.ltb_nlt. lia.  }
+       rewrite H. admit.
+    (* Aqui eu preciso da indução *)
+    ++ assert (PeanoNat.Nat.ltb char (S max_char) = true).
+      { rewrite PeanoNat.Nat.ltb_lt. lia. }
+      rewrite H. rewrite p_str_decomposition.
+      simpl. destruct max_char.
+      +++ simpl. admit.
+      +++ simpl in *.
+    
+
+
+    
