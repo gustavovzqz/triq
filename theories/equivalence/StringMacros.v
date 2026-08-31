@@ -1168,7 +1168,7 @@ Proof.
     simpl. rewrite StringUtils.get_labeled_instr_app.
     rewrite nth_error_app2 by lia. rewrite cancel_sub. simpl.
     assert (Nat.eqb label_idx if_goto_idx = false) as label_diff_goto.
-    {admit. } rewrite label_diff_goto.
+    {rewrite PeanoNat.Nat.eqb_neq. lia. } rewrite label_diff_goto.
     simpl. rewrite StringUtils.get_labeled_instr_app.
     rewrite nth_error_app2 by lia. rewrite cancel_sub.
     simpl. replace (if_goto_idx + 0) with (if_goto_idx) by lia.
@@ -1184,9 +1184,21 @@ Proof.
     simpl. assert (StringLang.ends_with
     (StringLang.append 1 (StringLang.del state_str x) z aux) 0 = true)
     as ends_with_steps_true.
-    { admit. } rewrite ends_with_steps_true.
+    { unfold StringLang.append, StringLang.del, StringLang.update.
+      rewrite z_diff_aux, x_diff_aux, ends_with_aux. reflexivity. }
+    rewrite ends_with_steps_true.
     simpl. repeat (split; auto).
-    admit. admit. admit. admit. admit.
+    ++ unfold StringLang.append, StringLang.del, StringLang.update.
+       rewrite eqb_var_symm, x_diff_z, eqb_var_refl, H_x_value.
+       reflexivity.
+    ++ unfold StringLang.append, StringLang.del, StringLang.update.
+       rewrite eqb_var_refl, x_diff_z. reflexivity.
+    ++ intros var [var_diff_x var_diff_z]. rewrite <- var_eqb_neq in *.
+       unfold StringLang.append, StringLang.del, StringLang.update.
+       rewrite eqb_var_symm, var_diff_z. rewrite eqb_var_symm, var_diff_x.
+       reflexivity.
+    ++ apply StringUtils.labels_greater_implies_diff with if_goto_idx; auto.
+    ++ apply StringUtils.labels_less_implies_diff with if_goto_idx; auto.
   + assert (char = S max_char \/ char <> S max_char) as char_cases by lia.
     destruct char_cases as [char_eq_S | char_diff_S].
     ++ exists 4. rewrite p_str_decomposition. rewrite <- H_length.
@@ -1197,33 +1209,50 @@ Proof.
        rewrite nth_error_app2 by lia. rewrite cancel_sub.
        simpl.
        assert (Nat.eqb label_idx (S (max_char + if_goto_idx)) = false)
-       as eqb_false_char. {admit. } rewrite eqb_false_char. simpl.
+       as eqb_false_char. 
+       {rewrite PeanoNat.Nat.eqb_neq; lia. } rewrite eqb_false_char. simpl.
        rewrite StringUtils.get_labeled_instr_app.
        rewrite nth_error_app2 by lia. rewrite cancel_sub.
        rewrite StringUtils.get_labeled_instr_app.
        rewrite nth_error_app2 by lia. rewrite cancel_sub.
        simpl. assert (Nat.eqb (if_goto_idx + S max_char)
-       (S (max_char + if_goto_idx)) = true). {admit. }
+       (S (max_char + if_goto_idx)) = true). 
+       { rewrite PeanoNat.Nat.eqb_eq; lia. }
        rewrite H. simpl. rewrite nth_error_app2 by lia.
        replace (length h + S (length (get_if_macro_label x 
-       B max_char if_goto_idx) + (length skip_block + 0)) + 1 - length h)
-       with (S (length (get_if_macro_label x B max_char if_goto_idx) + 
+       (Some (A label_idx)) max_char if_goto_idx) + (length skip_block + 0)) + 1 - length h)
+       with (S (length (get_if_macro_label x (Some (A label_idx)) max_char if_goto_idx) + 
        (length skip_block) + 1)) by lia. simpl.
        rewrite nth_error_app2 by lia.
        replace (_ + _ + 1 - _) with (length skip_block + 1) by lia.
        rewrite nth_error_app2 by lia. rewrite cancel_sub.
        simpl. rewrite nth_error_app2 by lia.
-       replace (length h + S (length (get_if_macro_label x B max_char 
+       replace (length h + S (length (get_if_macro_label x (Some (A label_idx)) max_char 
        if_goto_idx) + (length skip_block + 0)) + 1 + 1 - length h) 
-       with (S (length (get_if_macro_label x B max_char if_goto_idx) + 
+       with (S (length (get_if_macro_label x (Some (A label_idx)) max_char if_goto_idx) + 
        length skip_block + 2)) by lia. simpl. rewrite nth_error_app2 by lia.
        rewrite nth_error_app2 by lia. 
        replace (_ + _ + 2 - _ - _) with 2 by lia.
        simpl. assert (StringLang.ends_with (StringLang.append 
        (S (max_char + 1)) (StringLang.del state_str x) z aux) 0 = true).
-       { admit. }
+       { unfold StringLang.append, StringLang.del, StringLang.update.
+         rewrite z_diff_aux, x_diff_aux. auto. }
        rewrite H0. simpl. repeat (split; auto).
-       admit. admit. admit. admit. admit. admit.
+       * unfold StringLang.append, StringLang.del, StringLang.update.
+         rewrite eqb_var_symm, x_diff_z, eqb_var_refl, H_x_value.
+         reflexivity.
+       * unfold StringLang.append, StringLang.del, StringLang.update.
+         rewrite eqb_var_refl, x_diff_z. reflexivity.
+       * intros var [var_diff_x var_diff_z].
+         unfold StringLang.append, StringLang.del, StringLang.update.
+         rewrite <- var_eqb_neq in *. rewrite eqb_var_symm in var_diff_x,
+         var_diff_z. rewrite var_diff_z, var_diff_x. reflexivity.
+       * apply StringUtils.labels_greater_implies_diff with 
+         (S max_char + if_goto_idx); auto.
+       * apply labeled_instr_if_macro_false. lia.
+       * replace (S (max_char + if_goto_idx)) with (S max_char + if_goto_idx)
+         by lia. apply StringUtils.labels_less_implies_diff with 
+         if_goto_idx; auto. lia.
     ++ cut (exists n n' : nat, 
        let (line_str, state_str') := StringLang.split_snap
        (StringLang.compute_program p_str (StringLang.compute_program p_str 
@@ -1238,17 +1267,30 @@ Proof.
        exists 1. rewrite p_str_decomposition. simpl.
        rewrite nth_error_app2 by lia. rewrite PeanoNat.Nat.sub_diag.
        simpl. assert (StringLang.ends_with (state_str x) 
-       (S max_char) = false). { admit. } rewrite H. 
+       (S max_char) = false). 
+       { rewrite H_x_value. simpl. rewrite PeanoNat.Nat.eqb_neq. lia.  } 
+       rewrite H. 
        repeat (rewrite cons_app_assoc). rewrite app_assoc.
-       remember (h ++ [StringLang.Instr B (StringLang.IF_ENDS_GOTO x 
+       remember (h ++ [StringLang.Instr (Some (A label_idx)) (StringLang.IF_ENDS_GOTO x 
        (S max_char) (A (S (max_char + if_goto_idx))))]) as h'.
        set (skip_block ++ [StringLang.Instr (Some 
        (A (if_goto_idx + S max_char))) (StringLang.DEL x)] ++
        [StringLang.Instr None (StringLang.APPEND (S (max_char + 1)) z)] ++
        [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 goto_label)])
-       as skip_block'. apply IHmax_char with B if_goto_idx h' t
+       as skip_block'. apply IHmax_char with label_idx if_goto_idx h' t
        skip_block' aux; auto.
-Admitted.
+       * unfold skip_block'. simpl. repeat (rewrite cons_app_assoc).
+         repeat (rewrite <- app_assoc). simpl. reflexivity.
+       * unfold skip_block'. apply StringUtils.labels_greater_than_app.
+         ** apply StringUtils.labels_greater_than_S. 
+            replace (S (max_char + if_goto_idx)) with 
+            (S max_char + if_goto_idx) by lia. auto.
+         ** simpl. lia.
+      * rewrite Heqh'. apply StringUtils.labels_less_than_app; auto.
+        simpl; lia.
+      * rewrite Heqh'. rewrite length_app. reflexivity.
+      * lia.
+Qed.
 
 
 
@@ -1273,6 +1315,8 @@ Lemma compute_char_incr :
   length h = pos_str  ->
 
   state_str x = char :: s ->
+
+  label_idx < if_goto_idx ->
 
   char <= max_char ->
 
@@ -1305,8 +1349,8 @@ Lemma compute_char_incr :
 Proof.
   destruct max_char; intros p_str pos_str state_str x z label_idx goto_label
   if_goto_idx h t aux char s;
-  intros p_str_decomposition less_than_H H_length H_x_value char_leq_max
-  ends_with_aux x_diff_z x_diff_aux z_diff_aux.
+  intros p_str_decomposition less_than_H H_length H_x_value label_le 
+  char_leq_max ends_with_aux x_diff_z x_diff_aux z_diff_aux.
   - admit.
   - simpl. assert (char = S max_char \/ char <> S max_char) as 
     char_cases by lia.
@@ -1358,11 +1402,11 @@ Proof.
 
       repeat (rewrite cons_app_assoc in p_str_decomposition).
       rewrite <- app_assoc in p_str_decomposition.
-      apply compute_char_incr_aux with max_char (Some (A label_idx))
+      apply compute_char_incr_aux with max_char  label_idx
       if_goto_idx h' t skip_block aux; auto.
       ++ unfold skip_block. simpl. lia.
       ++ unfold h'. apply StringUtils.labels_less_than_app; auto.
-         simpl. admit. (* adicionar hipotese *)
+         simpl. lia.
       ++ unfold h'. rewrite length_app. reflexivity.
       ++ lia.
 Admitted.
