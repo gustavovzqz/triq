@@ -1449,7 +1449,6 @@ Proof.
       assert (StringLang.ends_with (state_str x) (S max_char) = false).
       { rewrite H_x_value. simpl. auto. } simpl. rewrite H0. 
       rewrite <- p_str_decomposition.
-      Set Printing Parentheses.
       repeat (rewrite cons_app_assoc in p_str_decomposition).
       rewrite app_assoc in p_str_decomposition.
       set ((h ++ [StringLang.Instr (Some (A label_idx)) 
@@ -1483,4 +1482,74 @@ Qed.
 
 
 
- 
+
+(* Começar da linha 1 onde já tenho aux sendo [a]. 
+   *)
+
+ Lemma compute_incr_macro :
+  forall max_char p_str pos_str state_str 
+         instr_label x 
+         max_label_nat max_z_nat max_z_str h t x_value, 
+
+  p_str = h ++
+  StringMacros.get_str_macro 
+  (NatLang.Instr instr_label (NatLang.INCR x)) 
+  max_char max_label_nat max_z_nat
+  max_z_str ++ t  ->
+
+  length h = pos_str  ->
+
+
+  state_str x = x_value ->
+  state_str (Z (max_z_nat + 1)) = [0] ->
+
+  exists n,
+  let (line_str, state_str') :=
+    StringLang.split_snap
+      (StringLang.compute_program p_str (StringLang.SNAP (pos_str + 1) state_str)
+         n) in
+
+  line_str = pos_str + StringMacros.macro_length 
+  (NatLang.Instr instr_label (NatLang.INCR x)) max_char /\  
+  state_str' x = incr_string (state_str x) max_char /\
+  state_str' (Z (max_z_nat + 1)) = [] /\
+  forall var, 
+  var <> x /\ var <> (Z (max_z_nat + 1)) ->
+  state_str' var = state_str var.
+Proof.
+  intros max_char p_str pos_str state_str instr_label x 
+  max_label_nat max_z_nat max_z_str h t x_value.
+  intros p_str_decomposition H_length H_x_value H_aux_value.
+
+
+  (* Indução em x_value *)
+
+  generalize dependent state_str. induction x_value ; 
+  intros state_str H_x_value H_aux_value.
+  - cut (exists n n' : nat, 
+    let (line_str, state_str') := StringLang.split_snap
+    (StringLang.compute_program p_str (StringLang.compute_program p_str 
+    (StringLang.SNAP (pos_str + 1) state_str) n) n') in 
+
+    line_str = pos_str + macro_length (NatLang.Instr instr_label (NatLang.INCR x))
+    max_char /\
+    state_str' x = incr_string (state_str x) max_char /\
+    state_str' (Z (max_z_nat + 1)) = [] /\
+    (forall var : variable,
+    var <> x /\ var <> Z (max_z_nat + 1) -> state_str' var = state_str var)).
+    {intros cH. destruct cH as [m [m']]. exists (m' + m). 
+       rewrite StringLangProperties.compute_program_add. auto. }
+    unfold get_str_macro in p_str_decomposition.
+    unfold get_incr_macro in p_str_decomposition.
+
+    set (h ++ [StringLang.Instr instr_label 
+    (StringLang.APPEND 0 (Z (max_z_nat + 2)))]) as h_if_skips.
+    epose proof (compute_if_block_label_skip max_char p_str (pos_str + 1)
+    state_str x (Some (A (max_label_nat + max_z_str + 1))) 
+    (max_label_nat + max_z_str + 1 + 1) h_if_skips _)  as if_skip.
+    destruct if_skip as [if_skip_steps H_if_skip]; auto.
+    ++ rewrite p_str_decomposition. unfold h_if_skips.
+       eauto.
+    Set Printing Parentheses.
+    
+  -
