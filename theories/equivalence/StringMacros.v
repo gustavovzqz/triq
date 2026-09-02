@@ -1534,7 +1534,16 @@ Proof.
   aac_reflexivity. simpl. apply I.
 Qed.
 
-
+Ltac cancel_nat_outer :=
+  (* 1. Coloca todos os parênteses associados à esquerda *)
+  repeat rewrite <- PeanoNat.Nat.add_assoc;
+  (* 2. Procura pelo padrão ((a + x) - a) em qualquer profundidade e substitui por x *)
+  repeat match goal with
+  | [ |- context[ (?a + ?x) - ?a ] ] => 
+      replace ((a + x) - a) with x by lia
+  | [ H : context[ (?a + ?x) - ?a ] |- _ ] => 
+      replace ((a + x) - a) with x in H by lia
+  end.
 
  Lemma compute_incr_macro :
   forall max_char p_str pos_str state_str 
@@ -1649,17 +1658,13 @@ Proof.
 
   simpl. rewrite <- app_assoc. rewrite nth_error_app2 by lia.
   rewrite PeanoNat.Nat.sub_diag. simpl.
+  Set Printing Parentheses.
+  repeat (rewrite (PeanoNat.Nat.add_assoc)).
+  
 
   rewrite nth_error_app2 by lia.
-  replace (length h + 1 +
-length
-(get_if_macro_label x (Some (A (max_label_nat + max_z_str + 1)))
-max_char (max_label_nat + max_z_str + 1 + 1)) + 1 - length h)
-with (1 +
-length
-(get_if_macro_label x (Some (A (max_label_nat + max_z_str + 1)))
-max_char (max_label_nat + max_z_str + 1 + 1)) + 1) by lia.
-simpl. rewrite nth_error_app2 by lia. rewrite cancel_sub.
+  cancel_nat_outer.
+simpl. rewrite nth_error_app2 by lia. cancel_nat_outer.
 simpl. assert (StringLang.ends_with
 (StringLang.append 0 state_str (Z (max_z_nat + 1)) (Z (max_z_nat + 2)))
 0 = true ) as ends_with_true. { admit. } rewrite ends_with_true.
