@@ -6,6 +6,7 @@ From Triq Require StringLangProperties.
 
 From Triq Require Import LanguagesCommon.
 From Triq Require StringMacros.
+From Triq Require IfMacroProperties.
 
 From Triq Require NatUtils.
 From Triq Require StringUtils.
@@ -333,7 +334,7 @@ Proof.
            state_str' = state_str /\
            line_str = pos_str + StringMacros.macro_length if_instr max_char)
     as [k if_computation].
-    { rewrite if_instr_eq in *. apply StringMacros.compute_if_block_skip
+    { rewrite if_instr_eq in *. apply IfMacroProperties.compute_if_block_skip
       with (max_label_nat := max_label_nat) (max_z_nat := max_z_nat)
       (max_z_str := max_z_str) 
       (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
@@ -370,7 +371,7 @@ Proof.
            state_str' = state_str /\
            line_str = StringLang.get_labeled_instr p_str goto_label)
     as [k if_computation].
-    { rewrite if_instr_eq in *. apply StringMacros.compute_if_block_Sn
+    { rewrite if_instr_eq in *. apply IfMacroProperties.compute_if_block_Sn
       with (max_label_nat := max_label_nat) (max_z_nat := max_z_nat)
       (max_z_str := max_z_str) 
       (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
