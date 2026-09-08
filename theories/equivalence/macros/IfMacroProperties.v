@@ -211,16 +211,3 @@ Proof.
     rewrite Heqh', length_app, H_length.
     reflexivity.
 Qed.
-
-Lemma labeled_instr_if_macro_false : forall x label_idx max_char if_goto_idx n,
-  n <> label_idx ->
-
-  StringUtils.has_labeled_instr
-    (get_if_macro_label x (Some (A label_idx)) max_char if_goto_idx)
-    (A n) =
-  false.
-Proof.
-  intros. rewrite <- PeanoNat.Nat.eqb_neq in H. induction max_char;
-  simpl; rewrite H; auto.
-Qed.
-

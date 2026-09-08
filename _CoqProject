@@ -11,19 +11,19 @@ theories/nat_lang/NatLangProperties.v
 theories/string_lang/StringLang.v
 theories/string_lang/StringLangProperties.v
 
-# Macros
-theories/equivalence/macros/StringMacros.v
-theories/equivalence/macros/IfMacroProperties.v
-theories/equivalence/macros/TransferMacroProperties.v
-theories/equivalence/macros/IncrMacroProperties.v
-
-
-
 
 # Equivalence Utils
 theories/equivalence/LanguagesUtils.v
 theories/equivalence/NatUtils.v
 theories/equivalence/StringUtils.v
+
+# Macros
+theories/equivalence/macros/StringMacros.v
+theories/equivalence/macros/MacroTactics.v
+theories/equivalence/macros/IfMacroProperties.v
+theories/equivalence/macros/TransferMacroProperties.v
+# theories/equivalence/macros/IncrMacroProperties.v
+
 
 # Equivalence   
 theories/equivalence/LanguagesEquivalence.v

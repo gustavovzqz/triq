@@ -1,95 +1,20 @@
 From Triq Require StringLang.
+From Triq Require Import StringMacros.
+
 From Triq Require Import LanguagesCommon.
 From Triq Require IfMacroProperties.
+From Triq Require Import MacroTactics.
+
 
 From Stdlib Require Import List.
 From Stdlib Require Import Lia.
+From Stdlib Require Import Arith Lia.
+
 Import ListNotations.
 
 
-From Triq Require Import StringMacros.
-
-Create HintDb macros_db.
-
-Require Import Arith Lia.
-
-Ltac cancel_nat_goal :=
-  (* Reassocia os parênteses da meta para a esquerda *)
-  repeat rewrite <- Nat.add_assoc;
-  repeat match goal with
-  (* Caso 1: Com conteúdo no meio *)
-  | [ |- context[ (?a + ?x) - ?a ] ] => replace ((a + x) - a) with x by lia
-  (* Caso 2: Sem conteúdo no meio (vazio) *)
-  | [ |- context[ ?a - ?a ] ] => replace (a - a) with 0 by lia
-  end.
-
-Ltac solve_var_equation :=
-  (* 1. Expande as definições desejadas *)
-  try unfold StringLang.append, StringLang.del, StringLang.update;
-  
-  (* 2. Simplifica as expressões booleanas *)
-  repeat match goal with
-  (* Caso Reflexivo: eqb_var x x vira true *)
-  | [ |- context[ eqb_var ?x ?x ] ] =>
-      rewrite (eqb_var_refl x)
-
-  (* Ordem Direta: substitui exatamente a hipótese *)
-  | [ H : ?b = false |- context[ ?b ] ] => rewrite H
-  | [ H : ?b = true  |- context[ ?b ] ] => rewrite H
-
-  (* Ordem Invertida: aplica simetria e reescreve *)
-  | [ H : eqb_var ?x ?y = _ |- context[ eqb_var ?y ?x ] ] =>
-      rewrite (eqb_var_symm y x); rewrite H
-  end;
-
-  (* 3. Tenta fechar o objetivo se ele já for reflexivo *)
-  try reflexivity.
 
 
-Ltac solve_label_diff :=
-  solve [ eapply StringUtils.labels_greater_implies_diff; eauto; try lia ]
-  ||
-  solve [ eapply StringUtils.labels_less_implies_diff; eauto; try lia ]
-  ||
-  solve [ eapply labeled_instr_if_macro_false; eauto; try lia ].
-
-Ltac clean_nat_eqb :=
-  repeat match goal with
-  (* 1. Caso Reflexivo rápido: substitui sem chamar o lia *)
-  | [ |- context[ ?x =? ?x ] ] =>
-      rewrite PeanoNat.Nat.eqb_refl
-
-  (* 2. Tenta provar que é TRUE *)
-  | [ |- context[ ?x =? ?y ] ] =>
-      replace (x =? y) with true by (symmetry; apply PeanoNat.Nat.eqb_eq; lia)
-
-  (* 3. Tenta provar que é FALSE *)
-  | [ |- context[ ?x =? ?y ] ] =>
-      replace (x =? y) with false by (symmetry; apply PeanoNat.Nat.eqb_neq; lia)
-  end.
-
-
-Ltac rewrite_labeled_instr_app :=
-  match goal with
-  | [ |- context[ StringLang.get_labeled_instr ?x ?y ] ] =>
-      rewrite (StringUtils.get_labeled_instr_app) by solve_label_diff
-  end.
-
-
-Ltac rewrite_labeled_instr_app' :=
-  match goal with
-  | [ |- context[ StringLang.get_labeled_instr ?x ?y ] ] =>
-      rewrite (StringUtils.get_labeled_instr_app); try solve_label_diff
-  end.
-
-Ltac progress_step :=
-  try (clean_nat_eqb);
-  repeat rewrite <- app_assoc;
-  try (rewrite_labeled_instr_app);
-  try rewrite nth_error_app2 by lia;
-  cancel_nat_goal; simpl.
-
-  
 Lemma compute_char_transfer :
   forall max_char p_str pos_str state_str 
          label_idx x z goto_label if_goto_idx
@@ -154,10 +79,6 @@ Proof.
     progress_step.
     rewrite x_ends_0. simpl. 
     repeat (progress_step).
-
-
-
-
     (* Verificação para voltar para linha inicial *)
     assert (StringLang.ends_with (StringLang.append 0 
     (StringLang.del state_str x) z aux) 0 = true) as ends_with_new_0.
@@ -170,17 +91,9 @@ Proof.
       apply var_eqb_neq in var_diff_z. apply var_eqb_neq in var_diff_x.
       solve_var_equation.
 
-    
-
   (* Passo *)
   - (* Dois casos. Se o caractere é S max_char, vai ser quase igual a base. 
        Se for <= max_char, então ando um passo e uso a hipótese de indução *)
-    assert (StringUtils.has_labeled_instr
-    (get_if_macro_label x (Some (A label_idx)) max_char if_goto_idx ++
-    [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 goto_label)])
-    (A (S (max_char + if_goto_idx)))  = false) as has_labeled_if_macro_false.
-    { simpl. rewrite StringUtils.has_labeled_instr_app; try reflexivity.
-      apply labeled_instr_if_macro_false. lia. }
     assert (char = S max_char \/ char <= max_char) as char_cases by lia.
     destruct char_cases as [char_eq_S | char_le_max_char].
     + (* caso char = S max_char -> voltamos em quatro passos *)
@@ -192,7 +105,6 @@ Proof.
       { rewrite H_x_value, char_eq_S. simpl. clean_nat_eqb. reflexivity. }
       rewrite ends_with_max.
       repeat (progress_step).
-
       assert (StringLang.ends_with (StringLang.append (S max_char) 
       (StringLang.del state_str x) z aux) 0 = true).
       {solve_var_equation.  } rewrite H.
@@ -216,9 +128,8 @@ Proof.
       {intros cH. destruct cH as [m [m']]. exists (m' + m). 
        rewrite StringLangProperties.compute_program_add. auto. } 
       Opaque get_di_block.
-      exists 1. rewrite p_str_decomposition.
-      simpl. rewrite nth_error_app2 by lia. rewrite H_length.
-      rewrite PeanoNat.Nat.sub_diag. simpl.
+      exists 1. rewrite p_str_decomposition. rewrite <- H_length.
+      repeat (progress_step).
       rewrite LanguagesUtils.cons_app_assoc.
       repeat (rewrite app_assoc).
       remember (h ++ [StringLang.Instr (Some (A label_idx))
@@ -248,12 +159,11 @@ Proof.
          apply StringUtils.labels_greater_than_app; auto.
          * apply StringUtils.labels_greater_than_S; auto.
          * simpl. lia.
-      ++ rewrite Heqh'. apply StringUtils.labels_greater_than_app; auto.
-         simpl.  lia.
+      ++ rewrite Heqh'. apply StringUtils.labels_less_than_app; auto.
+         simpl. lia.
       ++ rewrite Heqh'. rewrite length_app. simpl.
-         rewrite Heqpos_str', H_length. reflexivity.
+         reflexivity.
 Qed.
-
 
 Lemma compute_transfer_block :
   forall max_char p_str pos_str state_str 
@@ -319,20 +229,17 @@ Proof.
     (StringLang.IF_ENDS_GOTO aux 0 goto_label)] ++ 
     get_all_di_blocks x z aux max_char if_goto_idx (A label_idx) ++ t)
     as t'.
-
-    pose proof (IfMacroProperties.compute_if_block_label_skip max_char p_str pos_str
-    state_str x (Some (A label_idx)) if_goto_idx h t') as if_skip.
+    pose proof (IfMacroProperties.compute_if_block_label_skip 
+    max_char p_str pos_str state_str x (Some (A label_idx)) 
+    if_goto_idx h t') as if_skip.
     destruct if_skip as [if_skip_steps H_if_skip]; auto.
     exists if_skip_steps. destruct (StringLang.compute_program p_str 
     (StringLang.SNAP pos_str state_str) if_skip_steps) as [if_line if_state].
     simpl in *. destruct H_if_skip as [H_if_state H_if_line].
     rewrite H_if_state, H_if_line. rewrite p_str_decomposition.
-    exists 1. simpl. rewrite nth_error_app2 by lia.
-    rewrite nth_error_app2 by lia. 
-    replace (pos_str + length (get_if_macro_label x 
-    (Some (A label_idx)) max_char if_goto_idx) - length h - length
-    (get_if_macro_label x (Some (A label_idx)) max_char if_goto_idx)) with 0
-    by lia. rewrite Heqt'. simpl. rewrite ends_with_aux.
+    exists 1. simpl. rewrite <- H_length.
+    repeat (progress_step).
+    rewrite Heqt'. simpl. rewrite ends_with_aux.
     simpl. repeat (split; auto).
     rewrite H_x_value. rewrite app_nil_r. reflexivity.
   - pose proof (H_state_over x) as state_str_x_over.
