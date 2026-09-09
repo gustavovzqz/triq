@@ -22,7 +22,7 @@ theories/equivalence/macros/StringMacros.v
 theories/equivalence/macros/MacroTactics.v
 theories/equivalence/macros/IfMacroProperties.v
 theories/equivalence/macros/TransferMacroProperties.v
-# theories/equivalence/macros/IncrMacroProperties.v
+#theories/equivalence/macros/IncrMacroProperties.v
 
 
 # Equivalence   

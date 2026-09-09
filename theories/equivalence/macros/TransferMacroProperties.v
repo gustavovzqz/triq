@@ -10,6 +10,11 @@ From Stdlib Require Import List.
 From Stdlib Require Import Lia.
 From Stdlib Require Import Arith Lia.
 
+
+From AAC_tactics Require Import AAC.
+From AAC_tactics Require Instances.
+Import Instances.Lists.
+
 Import ListNotations.
 
 
@@ -165,7 +170,7 @@ Proof.
          reflexivity.
 Qed.
 
-Lemma compute_transfer_block :
+Lemma compute_transfer_block_aux :
   forall max_char p_str pos_str state_str 
          label_idx x z goto_label if_goto_idx
          h t aux x_value ,
@@ -308,4 +313,48 @@ Proof.
     + rewrite IHstate_z_eq, char_state_z, char_state_x, H_x_value.
       rewrite <- app_assoc. reflexivity.
     + intros var var_diff_x_z. rewrite IH_inv; auto.
+Qed.
+
+
+Lemma compute_transfer_block :
+  forall max_char p_str pos_str state_str 
+         label_idx x z goto_label if_goto_idx
+         h t aux x_value ,
+
+  p_str = h ++
+      transfer_block (A label_idx) x z if_goto_idx goto_label aux max_char
+   ++ t ->
+
+  StringUtils.labels_less_than h if_goto_idx ->
+  StringUtils.labels_less_than h label_idx ->
+
+  label_idx < if_goto_idx ->
+  length h = pos_str  ->
+
+  StringLang.state_over state_str max_char ->
+  state_str x = x_value ->
+  StringLang.ends_with (state_str aux) 0 = true ->
+
+  eqb_var x z = false ->
+  eqb_var x aux = false ->
+  eqb_var z aux = false ->
+
+
+  exists n,
+  let (line_str, state_str') :=
+    StringLang.split_snap
+      (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+         n) in
+
+  line_str = StringLang.get_labeled_instr p_str goto_label /\
+  state_str' x = [] /\
+  state_str' z =  (state_str z) ++ (state_str x) /\
+  (* todo o resto do estado está inalterado *)
+  forall var, 
+  (var <> x /\ var <> z) ->
+  state_str' var = state_str var.
+Proof.
+  intros. unfold transfer_block in *. rewrite H. apply compute_transfer_block_aux
+  with max_char label_idx if_goto_idx h t aux x_value; eauto.
+  aac_reflexivity. 
 Qed.

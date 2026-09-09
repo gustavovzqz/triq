@@ -256,17 +256,17 @@ let goto l :=
 
 get_if_macro_label x (Some B) max_char A1_idx ++ 
 [StringLang.Instr None (StringLang.APPEND 0 z)] ++ 
-goto E ++
+goto T2 ++
 
 [StringLang.Instr (Some An) (StringLang.DEL x)] ++
 [StringLang.Instr None (StringLang.APPEND 0 z)] ++
 [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 B)] ++
 
 
-get_all_incr_blocks x z aux max_char B_idx T1 ++
+get_all_incr_blocks x z aux max_char A1_idx T1 ++
 
 
-transfer_block T1 x z D1_idx E aux max_char ++
+transfer_block T1 x z D1_idx T2 aux max_char ++
 transfer_block T2 z x D2_idx E aux max_char ++ 
 
 
@@ -466,13 +466,5 @@ Proof.
   - destruct max_char;
     simpl. rewrite eqb_lbl_refl; reflexivity.
 Admitted.
-
-
-
-Lemma cancel_sub : forall b c,
-  b + c - b = c.
-Proof.
-  lia.
-Qed.
 
 
