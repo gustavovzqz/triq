@@ -152,9 +152,11 @@ Lemma compute_char_incr :
 
   StringUtils.labels_less_than h if_goto_idx ->
 
+
   length h = pos_str  ->
 
   state_str x = char :: s ->
+
 
   label_idx < if_goto_idx ->
 
@@ -276,46 +278,29 @@ Qed.
 
 
 
-(*
 
-[StringLang.Instr lbl (StringLang.APPEND 0 aux)] ++ 
+Definition label_lt_idx l1 idx :=
+  match l1 with
+  | None => True 
+  | Some (A k) => k < idx
+  end.
 
-get_if_macro_label x (Some B) max_char A1_idx ++ 
-[StringLang.Instr None (StringLang.APPEND 0 z)] ++ 
-goto T2 ++
-
-[StringLang.Instr (Some An) (StringLang.DEL x)] ++
-[StringLang.Instr None (StringLang.APPEND 0 z)] ++
-[StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 B)] ++
-
-
-get_all_incr_blocks x z aux max_char B_idx T1 ++
-
-
-transfer_block T1 x z D1_idx T2 aux max_char ++
-transfer_block T2 z x D2_idx E aux max_char ++ 
+Ltac solve_label :=
+  solve [ eapply StringUtils.labels_greater_implies_diff; eauto; try lia ]
+  ||
+  solve [ eapply StringUtils.labels_less_implies_diff; eauto; try lia ]
+  ||
+  solve [ eapply labeled_instr_if_macro_false; eauto; try lia ].
 
 
-[StringLang.Instr (Some E) (StringLang.DEL aux)].
 
-*)
 
-(* Prova: Indução no valor de x.
-   a) Caso base: x = 0.
-        Pulamos o IF, z recebe [0].
-        x recebe o que tem em z. (z ++ incr(x))
-   b) Passo : x = char :: s 
-        z' <- incr(x) + z 
-        x <- incr(x) + z
-
-   *)
-
- Lemma compute_incr_macro :
+Lemma compute_incr_macro_aux :
   forall max_char p_str pos_str state_str 
          instr_label x 
          max_label_nat max_z_nat  h t x_value, 
 
-  let max_label_str := StringUtils.get_max_label p_str in 
+  let max_label_str := StringUtils.get_max_label h in 
 
   p_str = h ++
   StringMacros.get_str_macro 
@@ -325,9 +310,18 @@ transfer_block T2 z x D2_idx E aux max_char ++
 
   length h = pos_str  ->
 
+  label_lt_idx instr_label max_label_nat ->
+
+  StringLang.state_over state_str max_char ->
+
+  StringLang.string_over x_value max_char -> 
+
 
   state_str x = x_value ->
   state_str (Z (max_z_nat + 2)) = [0] ->
+
+  eqb_var x (Z (max_z_nat + 2)) = false ->
+  eqb_var x (Z (max_z_nat + 1)) = false ->
 
   exists n,
   let (line_str, state_str') :=
@@ -346,13 +340,15 @@ transfer_block T2 z x D2_idx E aux max_char ++
 Proof.
   intros max_char p_str pos_str state_str instr_label x 
   max_label_nat max_z_nat h t x_value.
-  intros max_label_str p_str_decomposition H_length  H_x_value H_aux_value.
+  intros max_label_str p_str_decomposition H_length label_lt_max_nat
+  H_state_over string_over_x_value H_x_value H_aux_value 
+  x_diff_z x_diff_aux.
 
 
   (* Indução em x_value *)
 
   generalize dependent state_str. induction x_value ; 
-  intros state_str H_x_value H_aux_value.
+  intros state_str H_state_over H_x_value H_aux_value.
   - cut (exists n n' : nat, 
     let (line_str, state_str') := StringLang.split_snap
     (StringLang.compute_program p_str (StringLang.compute_program p_str 
@@ -406,11 +402,14 @@ Proof.
     repeat (progress_step).
     assert (StringLang.ends_with (StringLang.append 0 
     state_str (Z (max_z_nat + 1)) (Z (max_z_nat + 2))) 0 = true ) 
-    as ends_with_true. { admit. } rewrite ends_with_true.
+    as ends_with_true. { solve_var_equation. simpl.
+    replace (Nat.eqb (max_z_nat + 1) (max_z_nat + 2)) with false.
+    rewrite H_aux_value. reflexivity. symmetry. rewrite PeanoNat.Nat.eqb_neq.
+    lia. } rewrite ends_with_true.
     repeat (progress_step). simpl in p_str_decomposition.
     repeat (split; auto).
     + f_equal. f_equal. lia.
-    + solve_var_equation. (* Preciso do lema que diz que x <= max_z_nat *) admit.
+    + solve_var_equation. rewrite H_x_value. reflexivity.
     + solve_var_equation. rewrite H_x_value. reflexivity.
     + intros var [var_diff_x var_diff_z].
       rewrite <- var_eqb_neq in *. solve_var_equation.
@@ -445,37 +444,26 @@ Proof.
       [StringLang.Instr (Some (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + max_char + 1 + max_char + 1)))
       (StringLang.DEL (Z (max_z_nat + 2)))] ++ t) as t'.
 
-    assert (a = max_char \/ a < max_char) as max_char_diff by admit.
+    assert (a = max_char \/ a < max_char) as max_char_diff.
+    {simpl in string_over_x_value. lia. }
 
-    pose proof (compute_char_incr 
-            max_char (* max_char *)
-            p_str (*p_str *)
-            (pos_str + 1) (*pos_str*)
-            state_str 
-            x 
-            (Z (max_z_nat + 1))                                                        (* z *)
-            (max_label_nat + max_label_str + 1) (*label_idx ok*)                                       (* label_idx *)
-           (A (max_label_nat + max_label_str + 1 + 1 + max_char 
-           + 1 + 1 + max_char + 1))
-           (max_label_nat + max_label_str + 1 + 1)                                    (* if_goto_idx *)
-            h' 
-            t' 
-            (Z (max_z_nat + 2))                                                        (* aux *)
-            a 
-            x_value
-            (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1))
-            
-            ) as H_char_incr.
+    pose proof (compute_char_incr max_char p_str  (pos_str + 1) 
+    state_str x (Z (max_z_nat + 1)) (max_label_nat + max_label_str + 1)                               
+   (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + max_char + 1))
+   (max_label_nat + max_label_str + 1 + 1) h' t' (Z (max_z_nat + 2))
+   a x_value (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1))) 
+   as H_char_incr.
     
     destruct H_char_incr as [char_incr_steps H_char_incr]; auto; try lia.
     + unfold h', t'. rewrite p_str_decomposition. repeat (rewrite cons_app_assoc).
       aac_reflexivity.
-    + unfold h'. admit.
-    + admit.
-    + admit.
-    + admit.
-    + admit.
-    + admit.
+    + unfold h'. apply StringUtils.labels_less_than_app.
+      ++ apply StringUtils.labels_leq_max. unfold max_label_str. lia.
+      ++ simpl. destruct instr_label; auto.
+         destruct l. simpl in label_lt_max_nat. lia.
+    + unfold h'. rewrite length_app, H_length. reflexivity.
+    + rewrite H_aux_value; reflexivity.
+    + simpl. rewrite PeanoNat.Nat.eqb_neq. lia.
     + exists char_incr_steps. simpl in H_char_incr.
       (* Se for max_char, volto e aplico IH, se for diferente,
          vou para T1, executo, e chego em T2. *)
@@ -487,20 +475,262 @@ Proof.
         rewrite n_eq. (* Aplicar IHx_value *) 
         assert (StringLang.get_labeled_instr p_str 
         (A (max_label_nat + max_label_str + 1)) = pos_str + 1).
-        {admit.  } rewrite H0.
-        pose proof (IHx_value s). destruct H1; auto.
-        rewrite <- H_aux_value. apply forall_eq;
-        (*preciso da hipotese sobre x *) admit.
+        { rewrite p_str_decomposition, StringUtils.get_labeled_instr_app.
+          + simpl. assert (Nat.eqb (max_label_nat + max_label_str + 1)
+            (max_label_nat + max_label_str + 1) = true).
+            {rewrite PeanoNat.Nat.eqb_eq. lia. }
+            destruct instr_label.
+            ++ destruct l. simpl. simpl in label_lt_max_nat.
+               replace (Nat.eqb n0 (max_label_nat + max_label_str + 1))
+               with false. simpl. 
+               destruct max_char; simpl; rewrite H0; auto.
+               symmetry. rewrite PeanoNat.Nat.eqb_neq. lia.
+            ++ simpl. destruct max_char; simpl; rewrite H0; auto.
+          + apply StringUtils.labels_less_implies_diff
+          with (max_label_str + 1); try lia. 
+          apply StringUtils.labels_leq_max. unfold max_label_str. lia. } 
+          rewrite H0.
+        simpl in string_over_x_value. destruct string_over_x_value as
+        [a_leq_max string_over_x_value].
+
+        pose proof (IHx_value string_over_x_value s). destruct H1; auto.
+        unfold StringLang.state_over. intros x0.
+        destruct (var_eqb_dec x x0).
+        rewrite <- e. rewrite sx_eq. auto.
+        destruct (var_eqb_dec (Z (max_z_nat + 1)) x0).
+        rewrite <- e. rewrite sz_eq. apply StringLang.string_over_app.
+        auto. auto. auto. simpl. lia.
+        replace (s x0) with (state_str x0).
+        auto. symmetry. auto. 
+        rewrite <- H_aux_value. apply forall_eq.
+        repeat (split; auto).
+        symmetry. rewrite <- var_eqb_neq. auto.
+        injection. intros H2. lia.
         exists x0. 
         destruct ((StringLang.compute_program p_str (StringLang.SNAP (pos_str + 1) s) x0)).
         simpl in *. destruct H1, H2, H3.
         repeat (split; auto).
         ++ rewrite H3. rewrite sz_eq, sx_eq, H_x_value.  
-           rewrite H. simpl. assert (Nat.ltb max_char max_char = false).
-           {admit. } rewrite H5. rewrite <- app_assoc. simpl. reflexivity.
-        ++ (* ok, so aplicar 2x *) admit.
-      * (* dividir a computação em dois passos.
-           usar. Usar H_char_incr e chego no primeiro transfer.
-                 executo o transfer e chego no segundo. *)
+           rewrite H. simpl. rewrite PeanoNat.Nat.ltb_irrefl. 
+           rewrite <- app_assoc. simpl. reflexivity.
+        ++ intros var [var_diff_x var_diff_z].
+           transitivity (s var). auto. auto.
+      * (* Andar H_char_incr_steps *)
+        assert (PeanoNat.Nat.eqb a max_char = false).
+        {rewrite PeanoNat.Nat.eqb_neq. lia. }
+        rewrite H0 in H_char_incr.
+        destruct (StringLang.compute_program p_str (StringLang.SNAP (pos_str + 1) state_str)
+        char_incr_steps). simpl in H_char_incr.
+        destruct H_char_incr as [[n_eq [sx_eq sz_eq]] forall_eq].
+        (* Preciso executar o transfer *)
+        clear h' t'.
+        set (h ++
+        ([StringLang.Instr instr_label (StringLang.APPEND 0 (Z (max_z_nat + 2)))] ++
+        get_if_macro_label x (Some (A (max_label_nat + max_label_str + 1))) max_char
+        (max_label_nat + max_label_str + 1 + 1) ++
+        [StringLang.Instr None (StringLang.APPEND 0 (Z (max_z_nat + 1)))] ++
+        [StringLang.Instr None
+        (StringLang.IF_ENDS_GOTO (Z (max_z_nat + 2)) 0
+        (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + max_char + 1)))] ++
+        [StringLang.Instr (Some (A (max_label_nat + max_label_str + 1 + 1 + max_char)))
+        (StringLang.DEL x)] ++
+        [StringLang.Instr None (StringLang.APPEND 0 (Z (max_z_nat + 1)))] ++
+        [StringLang.Instr None
+        (StringLang.IF_ENDS_GOTO (Z (max_z_nat + 2)) 0
+        (A (max_label_nat + max_label_str + 1)))] ++
+        get_all_incr_blocks x (Z (max_z_nat + 1)) (Z (max_z_nat + 2)) max_char
+        (max_label_nat + max_label_str + 1 + 1)
+        (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1)))) as h'.
+
+        set (transfer_block (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + max_char + 1))
+        (Z (max_z_nat + 1)) x (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + max_char + 1 + 1)
+        (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + max_char + 1 + max_char + 1))
+        (Z (max_z_nat + 2)) max_char ++
+        [StringLang.Instr (Some (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + max_char + 1 +
+        max_char + 1))) (StringLang.DEL (Z (max_z_nat + 2)))] ++ t) as t'.
+
+        pose proof (TransferMacroProperties.compute_transfer_block
+        max_char p_str n s (max_label_nat + max_label_str + 1 + 1 + max_char + 1)
+        x (Z (max_z_nat + 1))
+        (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 +
+        max_char + 1)) (max_label_nat + max_label_str + 1 + 1 + 
+        max_char + 1 + 1) h' t' (Z (max_z_nat + 2)) (s x)).
+        destruct H1; auto.
+        ** unfold h', t'. rewrite p_str_decomposition. aac_reflexivity.
+        ** unfold h'. apply StringUtils.labels_less_than_app. 
+          *** apply StringUtils.labels_leq_max. unfold max_label_str. lia.
+          *** apply StringUtils.labels_less_than_app.
+              (* esse eu posso resolver na mão *)
+              admit.
+              apply StringUtils.labels_less_than_app.
+              (* lema pro if *)
+              admit.
+              simpl. split; try lia.
+              (* lema pro incr_blocks *)
+              admit. (* aqui já consigo ver o caminho *)
+        ** admit. (* mesmo que o anterior*)
+        ** lia.
+        ** unfold h'. rewrite n_eq. rewrite p_str_decomposition.
+          (* aqui é o mesmo caminho das táticas que já tenho,
+             mas preciso adaptar *)
+          admit.
+        ** intros x0. destruct (var_eqb_dec x x0).
+          rewrite <- e. rewrite sx_eq.
+          simpl in string_over_x_value.
+          destruct string_over_x_value. auto.
+          destruct (var_eqb_dec (Z (max_z_nat + 1)) x0).
+          rewrite <- e. rewrite sz_eq. apply StringLang.string_over_app.
+          auto. auto. auto. simpl. lia.
+          replace (s x0) with (state_str x0).
+          auto. symmetry. auto. 
+        ** replace (s (Z (max_z_nat + 2))) with [0]. reflexivity.
+          rewrite <- H_aux_value. symmetry. apply forall_eq.
+          split. symmetry. rewrite <- var_eqb_neq. auto.
+          injection; lia.
+        ** simpl. rewrite PeanoNat.Nat.eqb_neq; lia.
+        ** exists x0. 
+        destruct ((StringLang.compute_program p_str (StringLang.SNAP n s)
+        x0)). simpl in H1. simpl. 
+        destruct H1 as [n0_q [s0_eq [s0_aux forall_eq_]]].
+        repeat (split; auto).
+        *** rewrite n0_q. f_equal. f_equal. lia.
+        *** rewrite s0_aux, sz_eq, sx_eq, H_x_value.
+            simpl. replace (Nat.ltb a max_char) with true.
+            repeat rewrite <- app_assoc.
+            rewrite cons_app_assoc. reflexivity.
+            symmetry. rewrite (PeanoNat.Nat.ltb_lt). lia.
+        *** intros var [var_diff_x var_diff_z].
+            transitivity (s var). auto. auto.
 Admitted.
     
+Lemma compute_incr_macro :
+  forall max_char p_str pos_str state_str 
+         instr_label x 
+         max_label_nat max_z_nat  h t x_value, 
+
+  let max_label_str := StringUtils.get_max_label h in 
+
+  p_str = h ++
+  StringMacros.get_str_macro 
+  (NatLang.Instr instr_label (NatLang.INCR x)) 
+  max_char max_label_nat max_z_nat
+  max_label_str ++ t  ->
+
+  length h = pos_str  ->
+
+  label_lt_idx instr_label max_label_nat ->
+
+  StringLang.state_over state_str max_char ->
+
+  StringLang.string_over x_value max_char -> 
+
+
+  state_str x = x_value ->
+  state_str (Z (max_z_nat + 2)) = [] ->
+
+  eqb_var x (Z (max_z_nat + 2)) = false ->
+  eqb_var x (Z (max_z_nat + 1)) = false ->
+
+  exists n,
+  let (line_str, state_str') :=
+    StringLang.split_snap
+      (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+         n) in
+
+  line_str = pos_str + StringMacros.macro_length 
+  (NatLang.Instr instr_label (NatLang.INCR x)) max_char /\  
+  state_str' x = state_str (Z (max_z_nat + 1)) 
+             ++ incr_string (state_str x) max_char  /\
+  state_str' (Z (max_z_nat + 1)) = [] /\
+  forall var, 
+  var <> x /\ var <> (Z (max_z_nat + 1)) ->
+  state_str' var = state_str var.
+Proof.
+  intros.
+  
+  cut (exists n n' n'' : nat, 
+       let (line_str, state_str') := StringLang.split_snap
+       (StringLang.compute_program p_str 
+       (StringLang.compute_program p_str (StringLang.compute_program p_str 
+       (StringLang.SNAP pos_str state_str) n) n') n'')
+       in 
+      
+       line_str = pos_str + StringMacros.macro_length 
+  (NatLang.Instr instr_label (NatLang.INCR x)) max_char /\
+      state_str' x = state_str (Z (max_z_nat + 1)) ++ incr_string (state_str x)
+      max_char /\
+      state_str' (Z (max_z_nat + 1)) = [] /\
+      (forall var : variable,
+      var <> x /\ var <> Z (max_z_nat + 1) -> state_str' var = state_str var)).
+       {intros cH. destruct cH as [m [m' [m'']]]. exists (m'' + m' + m). 
+       rewrite StringLangProperties.compute_program_add. 
+       rewrite StringLangProperties.compute_program_add. auto. }
+  exists 1. simpl in *.
+  rewrite H. rewrite <- H0.  rewrite nth_error_app2 by lia.
+  rewrite PeanoNat.Nat.sub_diag. simpl.
+  remember (StringLang.append 0 state_str (Z (max_z_nat + 2)))
+  as one_step_state.
+  pose proof (compute_incr_macro_aux
+  max_char p_str pos_str one_step_state instr_label x max_label_nat max_z_nat
+  h t x_value). simpl in H8. destruct H8; auto.
+  rewrite Heqone_step_state. StringLang.solve_string. lia.
+  rewrite Heqone_step_state. solve_var_equation. auto.
+  rewrite Heqone_step_state. solve_var_equation. rewrite H5. reflexivity.
+  exists x0. rewrite <- H. rewrite <- H0 in H8.
+  destruct ((StringLang.compute_program p_str (StringLang.SNAP (length h + 1)
+  one_step_state) x0)). simpl. simpl in H8.
+  destruct H8, H9, H10.
+  repeat(rewrite cons_app_assoc in H).
+
+  set (h ++
+    [StringLang.Instr instr_label (StringLang.APPEND 0 (Z (max_z_nat + 2)))] ++
+    (get_if_macro_label x (Some (A (max_label_nat + max_label_str + 1))) max_char
+    (max_label_nat + max_label_str + 1 + 1) ++
+    [StringLang.Instr None (StringLang.APPEND 0 (Z (max_z_nat + 1)))] ++
+    [StringLang.Instr None
+    (StringLang.IF_ENDS_GOTO (Z (max_z_nat + 2)) 0
+    (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + max_char +
+    1)))] ++
+    [StringLang.Instr (Some (A (max_label_nat + max_label_str + 1 + 1 + max_char)))
+    (StringLang.DEL x)] ++
+    [StringLang.Instr None (StringLang.APPEND 0 (Z (max_z_nat + 1)))] ++
+    [StringLang.Instr None
+    (StringLang.IF_ENDS_GOTO (Z (max_z_nat + 2)) 0
+    (A (max_label_nat + max_label_str + 1)))] ++
+    get_all_incr_blocks x (Z (max_z_nat + 1)) (Z (max_z_nat + 2)) max_char
+    (max_label_nat + max_label_str + 1 + 1)
+    (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1)) ++
+    transfer_block (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1)) x
+    (Z (max_z_nat + 1)) (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1)
+    (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + max_char + 1))
+    (Z (max_z_nat + 2)) max_char)) as h'.
+
+  set ([StringLang.Instr (Some (A (max_label_nat + max_label_str + 
+  1 + 1 + max_char + 1 + 1 + max_char + 1 + max_char + 1))) 
+  (StringLang.DEL (Z (max_z_nat + 2)))] ++ [] ++ t) as t'.
+
+  pose proof (TransferMacroProperties.compute_transfer_block
+  max_char p_str n s
+  (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 +
+  max_char + 1) (Z (max_z_nat + 1)) x
+  (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 +
+  max_char + 1 + max_char + 1))
+  (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 +
+  max_char + 1 + 1) h' t' (Z (max_z_nat + 2)) x_value).
+  destruct H12; auto.
+  rewrite H. unfold h', t'. aac_reflexivity.
+  admit.
+  admit.
+  lia.
+  admit.
+  admit. 
+  admit.
+  admit.
+  admit.
+  admit. 
+  exists (1 + x1).
+  rewrite StringLangProperties.compute_program_add.
+  destruct ((StringLang.compute_program p_str (StringLang.SNAP n s) x1)).
+  simpl in H12.  destruct H12, H13, H14.
+  simpl. rewrite H, H12. repeat (progress_step).  
+Admitted.

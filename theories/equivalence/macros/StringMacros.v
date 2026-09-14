@@ -452,8 +452,6 @@ Proof.
 Admitted.
 
 
-
-
 Lemma get_labeled_instr_head: forall label instr max_char
   max_label_nat max_z_nat max_z_str t,
   (StringLang.get_labeled_instr ( 

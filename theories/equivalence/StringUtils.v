@@ -121,6 +121,19 @@ Proof.
 Qed.
 
 
+Lemma labels_leq_max : forall h n,
+  n > get_max_label h ->
+  labels_less_than h n.
+Proof.
+  induction h; intros.
+  + simpl. apply I.
+  + simpl. destruct a, o; auto.
+    destruct l. split.
+    ++ simpl in H. lia.
+    ++ apply IHh. simpl in H. lia.
+Qed.
+
+
 Lemma labels_greater_than_S :
   forall p_str value,
   labels_greater_than p_str (S value) ->
@@ -149,3 +162,4 @@ Proof.
       ++ f_equal. auto.
     + simpl. f_equal; auto.
 Qed.
+
