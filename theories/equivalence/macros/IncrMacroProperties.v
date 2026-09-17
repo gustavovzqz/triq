@@ -153,7 +153,7 @@ Lemma compute_char_incr :
   StringUtils.labels_less_than h if_goto_idx ->
 
 
-  length h = pos_str  ->
+length h = pos_str  ->
 
   state_str x = char :: s ->
 
@@ -285,13 +285,96 @@ Definition label_lt_idx l1 idx :=
   | Some (A k) => k < idx
   end.
 
-Ltac solve_label :=
+
+Lemma labels_less_than_if : forall x if_idx max_char 
+  goto_label label_idx,
+  if_idx < label_idx ->
+
+  StringUtils.labels_less_than (get_if_macro_label x 
+  (Some (A if_idx)) max_char goto_label) label_idx.
+Proof.
+  intros.
+  induction max_char.
+  + simpl. lia.
+  + simpl. split; try lia. auto.
+Qed.
+
+Lemma labels_less_than_incr_blocks : forall incr_idx x z aux max_char
+  goto_label label_idx,
+  incr_idx + max_char < label_idx -> 
+  
+  StringUtils.labels_less_than (get_all_incr_blocks x z aux 
+  max_char incr_idx goto_label) label_idx.
+Proof.
+  intros. destruct max_char.
+  + simpl. apply I.
+  + simpl. induction max_char.
+    - simpl. lia.
+    - simpl. split; try lia. apply IHmax_char. lia.
+Qed.
+
+Lemma labels_less_than_instr : forall instr_label idx instr idx',
+  label_lt_idx instr_label idx  ->
+  idx' > idx ->
+  StringUtils.labels_less_than 
+  [StringLang.Instr instr_label instr] idx'.
+Proof.
+  intros. destruct instr_label.
+  - destruct l. simpl in *. lia.
+  - simpl. apply I.
+Qed.
+
+Ltac solve_less_than :=
+  solve [apply StringUtils.labels_leq_max; try lia]
+  ||
+  solve [simpl; try lia]
+  ||
+  solve [eapply labels_less_than_incr_blocks; eauto; try lia ]
+  ||
+  solve [apply labels_less_than_if; try lia ]
+  ||
+  solve [eapply labels_less_than_instr; eauto; try lia ].
+
+
+Ltac solve_less_than_app :=
+  repeat (rewrite <- app_assoc);
+  try (apply (StringUtils.labels_less_than_app));
+  try solve_less_than.
+
+
+Lemma labels_less_implies_diff_weak :
+ forall (p_str : list StringLang.instruction) (n : nat),
+       StringUtils.labels_less_than p_str n ->
+        StringUtils.has_labeled_instr p_str (A n) = false.
+Proof.
+  intros.
+  eapply StringUtils.labels_less_implies_diff.
+  eauto. lia.
+Qed.
+
+
+Ltac solve_label_diff_aux :=
   solve [ eapply StringUtils.labels_greater_implies_diff; eauto; try lia ]
   ||
-  solve [ eapply StringUtils.labels_less_implies_diff; eauto; try lia ]
+  solve [ eapply StringUtils.labels_less_implies_diff; solve_less_than_app]
+  ||
+  solve [ eapply labels_less_implies_diff_weak; solve_less_than_app ]
   ||
   solve [ eapply labeled_instr_if_macro_false; eauto; try lia ].
 
+Ltac rewrite_labeled_instr_app_temp :=
+  match goal with
+  | [ |- context[ StringLang.get_labeled_instr ?x ?y ] ] =>
+      rewrite (StringUtils.get_labeled_instr_app) by solve_label_diff_aux
+  end.
+
+Lemma get_labeled_instr_transfer: forall instr_label x z label_idx 
+E aux max_char t,
+  ((StringLang.get_labeled_instr ((transfer_block instr_label x z label_idx E
+   aux max_char) ++ t)) instr_label) = 0.
+Proof.
+  intros. destruct max_char; simpl; rewrite eqb_lbl_refl; reflexivity.
+Qed.
 
 
 
@@ -555,25 +638,17 @@ Proof.
         (A (max_label_nat + max_label_str + 1 + 1 + max_char + 1 + 1 +
         max_char + 1)) (max_label_nat + max_label_str + 1 + 1 + 
         max_char + 1 + 1) h' t' (Z (max_z_nat + 2)) (s x)).
+        unfold max_label_str in *.
         destruct H1; auto.
         ** unfold h', t'. rewrite p_str_decomposition. aac_reflexivity.
-        ** unfold h'. apply StringUtils.labels_less_than_app. 
-          *** apply StringUtils.labels_leq_max. unfold max_label_str. lia.
-          *** apply StringUtils.labels_less_than_app.
-              (* esse eu posso resolver na mão *)
-              admit.
-              apply StringUtils.labels_less_than_app.
-              (* lema pro if *)
-              admit.
-              simpl. split; try lia.
-              (* lema pro incr_blocks *)
-              admit. (* aqui já consigo ver o caminho *)
-        ** admit. (* mesmo que o anterior*)
+        ** unfold h'. repeat (solve_less_than_app).
+        ** unfold h'. repeat (solve_less_than_app).
         ** lia.
-        ** unfold h'. rewrite n_eq. rewrite p_str_decomposition.
-          (* aqui é o mesmo caminho das táticas que já tenho,
-             mas preciso adaptar *)
-          admit.
+        ** unfold h'. rewrite n_eq, p_str_decomposition.
+           repeat (rewrite <- app_assoc).
+           repeat(rewrite_labeled_instr_app_temp).
+           rewrite get_labeled_instr_transfer.
+           repeat (rewrite length_app). lia.
         ** intros x0. destruct (var_eqb_dec x x0).
           rewrite <- e. rewrite sx_eq.
           simpl in string_over_x_value.
@@ -601,7 +676,7 @@ Proof.
             symmetry. rewrite (PeanoNat.Nat.ltb_lt). lia.
         *** intros var [var_diff_x var_diff_z].
             transitivity (s var). auto. auto.
-Admitted.
+Qed. 
     
 Lemma compute_incr_macro :
   forall max_char p_str pos_str state_str 
