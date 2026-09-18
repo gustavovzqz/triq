@@ -234,7 +234,7 @@ let T1_idx  := An_idx + 1 in
 let D1_idx := T1_idx + 1 in
 let T2_idx := D1_idx + max_char + 1 in
 let D2_idx := T2_idx + 1 in
-let E_idx := T2_idx + max_char + 1 in
+let E_idx := D2_idx + max_char + 1 in
 
 
 
