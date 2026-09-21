@@ -95,3 +95,16 @@ Proof.
   intros. destruct x; simpl; eauto.
   destruct (n <? max_char); eauto.
 Qed.
+
+
+Lemma incr_string_over : forall s max_char,
+StringLang.string_over s max_char ->
+StringLang.string_over (LanguagesUtils.incr_string s max_char) max_char.
+Proof.
+  intros. induction s.
+  + simpl. lia.
+  + simpl in *. destruct H. destruct (a <? max_char) eqn:E.
+    ++ simpl. split; auto. assert (a < max_char).
+       rewrite PeanoNat.Nat.ltb_lt in E; auto. lia.
+    ++ simpl. split; auto. lia.
+Qed.

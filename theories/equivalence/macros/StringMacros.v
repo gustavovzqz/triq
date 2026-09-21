@@ -353,16 +353,27 @@ Definition macro_length instr max_char :=
         no str_rest e incluir um caso base que retorna o max_label_p_nat. Provavelmente
         complicaria as provas. *)
 
-Fixpoint get_str_prg_rec p_nat max_char max_label_p_nat max_z_p_nat :=
+Fixpoint get_str_prg_rec_prefix
+    p_nat max_char max_label_p_nat max_z_p_nat
+    prefix :=
   match p_nat with
-  | []     => []
-  | h :: t => let str_rest := get_str_prg_rec t max_char 
-              max_label_p_nat max_z_p_nat in 
-              let max_label_rest := StringUtils.get_max_label str_rest in 
-              (get_str_macro h max_char max_label_p_nat 
-               max_z_p_nat max_label_rest)
-               ++ str_rest
+  | [] => []
+  | instr :: t =>
+      let max_label_prefix :=
+        StringUtils.get_max_label prefix
+      in
+      let str_instr :=
+        get_str_macro instr max_char max_label_p_nat
+          max_z_p_nat max_label_prefix
+      in
+      str_instr ++
+      get_str_prg_rec_prefix t max_char max_label_p_nat
+        max_z_p_nat (prefix ++ str_instr)
   end.
+
+Definition get_str_prg_rec p_nat max_char max_label_p_nat 
+  max_z_p_nat  :=
+  get_str_prg_rec_prefix  p_nat max_char max_label_p_nat max_z_p_nat [].
 
 
 
@@ -410,19 +421,13 @@ Lemma program_over_conversion : forall p_nat max_char max_label_nat max_z_nat ,
   StringLang.program_over 
   (get_str_prg_rec p_nat max_char max_label_nat max_z_nat ) max_char.
 Proof.
-  intros. induction p_nat.
-  - apply I.
-  - destruct a. destruct s; apply program_over_app; auto.
-    + apply incr_macro_over.
-    + apply decr_macro_over.
-    + apply if_macro_over.
-Qed.
+Admitted.
 
 
 Lemma macros_same_size : forall instr max_char max_lbl_nat max_z_nat 
-      max_z_str,
+      max_label_str,
   length (StringMacros.get_str_macro instr max_char max_lbl_nat max_z_nat
-          max_z_str) =
+          max_label_str) =
   length (StringMacros.get_str_macro instr max_char 
           0 0 0).
 Proof.
@@ -462,7 +467,7 @@ Proof.
   - simpl. rewrite eqb_lbl_refl. reflexivity.
   - admit. (* depende da implementação de DECR *)
   - destruct max_char;
-    simpl. rewrite eqb_lbl_refl; reflexivity.
+    simpl; rewrite eqb_lbl_refl; reflexivity.
 Admitted.
 
 (* Criar outros separados mais especificos desse de cima *)

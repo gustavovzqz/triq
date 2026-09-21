@@ -275,16 +275,6 @@ Proof.
       ++ lia.
 Qed.
 
-
-Lemma triple_dec : forall (x y z : variable),
-  x = y \/
-  x = z \/
-  (x <> y /\ x <> z).
-Proof.
-Admitted.
-
-
-
 Lemma compute_incr_macro_aux :
   forall max_char p_str pos_str state_str 
          instr_label x 
@@ -737,7 +727,7 @@ max_char + 1 + 1 + max_char + 1)))
   rewrite H, Hsx. reflexivity. destruct H.
   rewrite H, Hsz1, Heqone_step_state. 
   StringLang.solve_string. lia.
-  admit. (* Lema que incr_string não altera o state_over *)
+  apply incr_string_over. StringLang.solve_string. lia.
   replace (s x0) with (one_step_state x0).
   rewrite Heqone_step_state. StringLang.solve_string; lia.
   symmetry. apply Hsforall. destruct H; auto.
@@ -766,7 +756,15 @@ max_char + 1 + 1 + max_char + 1)))
   lia. } simpl. rewrite eqb_instr_false.
   repeat (progress_step).
   repeat (split; auto).
-  + admit. (* Aqui é facil, basta usar um lema tipo "macros_same_size"*)
+  + unfold macro_length. rewrite <- macros_same_size with
+    (max_lbl_nat := max_label_nat) (max_z_nat := max_z_nat) 
+    (max_label_str := max_label_str). unfold max_label_str.
+    simpl.
+    repeat (rewrite <- app_assoc). 
+    repeat (simpl; rewrite length_app). 
+    (* lia falha *)
+    repeat (rewrite <- PeanoNat.Nat.add_assoc).
+    reflexivity.
   + solve_var_equation. rewrite Htrx, Hsx, Hsz1, Heqone_step_state.
     simpl. solve_var_equation. simpl. 
     replace (Nat.eqb (max_z_nat + 2) (max_z_nat + 1)) with false.
@@ -788,5 +786,6 @@ max_char + 1 + 1 + max_char + 1)))
        auto. rewrite Heqone_step_state. solve_var_equation.
        rewrite <- var_eqb_neq in n0. rewrite eqb_var_symm, n0.
        reflexivity. symmetry. rewrite var_eqb_neq. auto.
-  (* Quase terminando *)
-Admitted.
+Qed.
+
+Print Assumptions compute_incr_macro.
