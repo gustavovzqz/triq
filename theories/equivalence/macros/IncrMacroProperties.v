@@ -766,5 +766,27 @@ max_char + 1 + 1 + max_char + 1)))
   lia. } simpl. rewrite eqb_instr_false.
   repeat (progress_step).
   repeat (split; auto).
+  + admit. (* Aqui é facil, basta usar um lema tipo "macros_same_size"*)
+  + solve_var_equation. rewrite Htrx, Hsx, Hsz1, Heqone_step_state.
+    simpl. solve_var_equation. simpl. 
+    replace (Nat.eqb (max_z_nat + 2) (max_z_nat + 1)) with false.
+    reflexivity. symmetry. rewrite PeanoNat.Nat.eqb_neq. lia.
+  + solve_var_equation. rewrite Htrz1.
+    replace (eqb_var (Z (max_z_nat + 2)) (Z (max_z_nat + 1))) with false.
+    reflexivity. symmetry. simpl. rewrite PeanoNat.Nat.eqb_neq; lia.
+  + intros var [var_diff_x var_diff_z]. solve_var_equation.
+    destruct (var_eqb_dec var (Z (max_z_nat + 2))).
+    ++ rewrite e, eqb_var_refl. replace (tr_state (Z (max_z_nat + 2)))
+       with (one_step_state (Z (max_z_nat + 2))). rewrite Heqone_step_state.
+       solve_var_equation. simpl. rewrite H_aux_value; reflexivity.
+       symmetry. transitivity (s var). rewrite e.  apply Htrforall.
+       split. injection; lia. symmetry. rewrite <- var_eqb_neq; auto.
+       rewrite e. apply Hsforall. split. symmetry. 
+       rewrite <- var_eqb_neq; auto. injection; lia.
+    ++ replace (eqb_var (Z (max_z_nat + 2)) var) with false.
+       transitivity (s var). auto. transitivity (one_step_state var).
+       auto. rewrite Heqone_step_state. solve_var_equation.
+       rewrite <- var_eqb_neq in n0. rewrite eqb_var_symm, n0.
+       reflexivity. symmetry. rewrite var_eqb_neq. auto.
   (* Quase terminando *)
 Admitted.
