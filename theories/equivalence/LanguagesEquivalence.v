@@ -379,13 +379,15 @@ Proof.
   remember (NatUtils.get_max_z p_nat) as max_z_nat.
 
   (* str program decomposition *)
-  assert (exists (t : list StringLang.instruction),
-  p_str = firstn (get_equiv_simulated_position p_nat pos_nat max_char) 
-  p_str ++ StringMacros.get_str_macro if_instr max_char max_label_nat 
-  max_z_nat max_z_str ++ t /\
-  length (firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
-  = get_equiv_simulated_position p_nat pos_nat max_char)
-  as [t [max_z_str [str_program_decomposition length_decomposition]]].
+  assert ( let h := (firstn (get_equiv_simulated_position p_nat pos_nat 
+  max_char) p_str) in
+  let max_label_str := StringUtils.get_max_label h in
+  exists t,
+    p_str = h
+    ++ (StringMacros.get_str_macro if_instr max_char max_label_nat max_z_nat 
+    max_label_str) ++ t /\ length h = get_equiv_simulated_position p_nat 
+    pos_nat max_char)
+  as [t [str_program_decomposition length_decomposition]].
   { apply simulated_program_decomposition; auto. }
 
   simpl. rewrite nth_pos_nat_instr, if_instr_eq.
@@ -401,7 +403,8 @@ Proof.
     as [k if_computation].
     { rewrite if_instr_eq in *. apply IfMacroProperties.compute_if_block_skip
       with (max_label_nat := max_label_nat) (max_z_nat := max_z_nat)
-      (max_z_str := max_z_str) 
+      (max_z_str := (StringUtils.get_max_label
+      (firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str))) 
       (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
       (t := t); auto.
       rewrite H_equiv_pos. auto. }
@@ -438,7 +441,8 @@ Proof.
     as [k if_computation].
     { rewrite if_instr_eq in *. apply IfMacroProperties.compute_if_block_Sn
       with (max_label_nat := max_label_nat) (max_z_nat := max_z_nat)
-      (max_z_str := max_z_str) 
+      (max_z_str := (StringUtils.get_max_label
+      (firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str))) 
       (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
       (t := t) (instr_label := instr_label) (max_char := max_char)
       (char := char) (x := x); auto.
@@ -456,8 +460,47 @@ Proof.
     rewrite nth_pos_nat_instr. f_equal. eauto.
 Qed.
 
+Lemma nat_instr_le_max_label : forall p_nat instr_label,
+  NatUtils.has_labeled_instr p_nat instr_label = true ->
+  MacroTactics.label_le_idx (Some instr_label) (NatUtils.get_max_label p_nat).
+Proof.
+  intros. induction p_nat.
+  - simpl in H. discriminate.
+  - simpl in *. destruct instr_label eqn:E; auto. destruct a.
+    destruct s.
+    + destruct o; auto.
+      destruct l. simpl in *. destruct (n =? n0) eqn:E1. 
+      ++ rewrite PeanoNat.Nat.eqb_eq in E1. rewrite E1.
+          lia.
+      ++ pose proof (IHp_nat H). lia.
+    + destruct o; auto.
+      destruct l. simpl in *. destruct (n =? n0) eqn:E1. 
+      ++ rewrite PeanoNat.Nat.eqb_eq in E1. lia.
+      ++ pose proof (IHp_nat H). lia.
+    + destruct o; destruct l; auto. 
+      ++ destruct l0. simpl in H. destruct (n =? n1) eqn:E1.
+         * rewrite PeanoNat.Nat.eqb_eq in E1. lia.
+         * pose proof (IHp_nat H). lia.
+      ++ pose proof (IHp_nat H). lia.
+Qed.
 
-(** INCR Macros Simulates *)
+Lemma nth_error_implies_label_in : forall p_nat
+  instr_label pos instr,
+  nth_error p_nat pos = Some (NatLang.Instr (Some instr_label) instr) ->
+  NatUtils.has_labeled_instr p_nat instr_label = true.
+Proof.
+  induction p_nat; intros.
+  - rewrite nth_error_nil in H; discriminate.
+  - destruct pos.
+    + simpl in *. destruct a. destruct o eqn:E.
+      ++ injection H as H. rewrite H, eqb_lbl_refl. reflexivity.
+      ++ injection H as H. discriminate.
+    + simpl in *. destruct a. destruct o eqn:E.
+      ++ destruct (eqb_lbl instr_label l) eqn:E1; eauto.
+      ++ eauto.
+Qed.
+
+
 
 Theorem incr_macro_simulates :
   forall p_nat p_str pos_nat state_nat
@@ -504,14 +547,21 @@ Proof.
   remember (NatUtils.get_max_label p_nat) as max_label_nat.
   remember (NatUtils.get_max_z p_nat) as max_z_nat.
 
+  assert (eqb_var x (Z (max_z_nat + 2)) = false) as x_diff_z2.
+  {admit. }
+  assert (eqb_var x (Z (max_z_nat + 1)) = false) as x_diff_z1.
+  {admit. }
+
   (* str program decomposition *)
-  assert (exists (t : list StringLang.instruction) (max_z_str : nat),
-  p_str = firstn (get_equiv_simulated_position p_nat pos_nat max_char) 
-  p_str ++ StringMacros.get_str_macro incr_instr max_char max_label_nat 
-  max_z_nat max_z_str ++ t /\
-  length (firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
-  = get_equiv_simulated_position p_nat pos_nat max_char)
-  as [t [max_z_str [str_program_decomposition length_decomposition]]].
+  assert ( let h := (firstn (get_equiv_simulated_position p_nat pos_nat 
+    max_char) p_str) in
+    let max_label_str := StringUtils.get_max_label h in
+    exists t,
+      p_str = h
+      ++ (StringMacros.get_str_macro incr_instr max_char max_label_nat max_z_nat 
+      max_label_str) ++ t /\ length h = get_equiv_simulated_position p_nat 
+      pos_nat max_char)
+    as [t [str_program_decomposition length_decomposition]].
   { apply simulated_program_decomposition; auto. }
 
   simpl. rewrite nth_pos_nat_instr, incr_instr_eq.
@@ -535,24 +585,24 @@ Proof.
       (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
       (x_value := state_str x)
       (t := t); auto.
-      (* preciso mudar o lema para dizer exatamente quem é max_z_str *)
-      admit. rewrite H_equiv_pos. auto. 
-      (* Esses três eu consigo com o mesmo lema. 
-         algo como: se ocorre em p_nat, então é menor que max_label_nat
-         ou None *) admit. admit. admit. }
+      rewrite H_equiv_pos. auto.
+      destruct instr_label. rewrite Heqmax_label_nat.
+      apply nat_instr_le_max_label. 
+      eapply nth_error_implies_label_in; eauto. 
+      simpl. auto. }
     exists k.
     destruct (StringLang.compute_program p_str 
     (StringLang.SNAP pos_str state_str) k). simpl in incr_computation.
     destruct incr_computation as [line_str_eq [sx [sz forall_eq]]].
     simpl. rewrite line_str_eq.
     repeat (split; auto).
-    + (* adotar mesma estratégia de string 1 *) admit.
+    + (* Mesmo lema do string 1*) admit. 
     + unfold equiv_pos in *. rewrite H_equiv_pos.
       erewrite get_equiv_simulated_position_Sn; eauto.
       rewrite incr_instr_eq in *. auto.
     + rewrite <- state_str_z2. apply forall_eq. 
-      (* aqui preciso do lema anterior que diz que x <> Z (max_z_nat + 2) *)
-      admit.
+      split. rewrite <- var_eqb_neq, eqb_var_symm. auto.
+      injection. lia.
     + (* Mesma coisa que eu fiz nos lemas, basta um lema para dizer
          que incr_string está limitado ao max_char *) admit.
 Admitted.

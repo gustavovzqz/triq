@@ -153,7 +153,7 @@ Lemma compute_char_incr :
   StringUtils.labels_less_than h if_goto_idx ->
 
 
-length h = pos_str  ->
+  length h = pos_str  ->
 
   state_str x = char :: s ->
 
@@ -290,7 +290,7 @@ Lemma compute_incr_macro_aux :
 
   length h = pos_str  ->
 
-  label_lt_idx instr_label max_label_nat ->
+  label_le_idx instr_label max_label_nat ->
 
   StringLang.state_over state_str max_char ->
 
@@ -591,7 +591,7 @@ Lemma compute_incr_macro :
 
   length h = pos_str  ->
 
-  label_lt_idx instr_label max_label_nat ->
+  label_le_idx instr_label max_label_nat ->
 
   StringLang.state_over state_str max_char ->
 

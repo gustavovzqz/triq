@@ -15,6 +15,13 @@ Definition label_lt_idx l1 idx :=
   | Some (A k) => k < idx
   end.
 
+Definition label_le_idx l1 idx :=
+  match l1 with
+  | None => True 
+  | Some (A k) => k <= idx
+  end.
+
+
 Lemma labeled_instr_if_macro_false : forall x label_idx max_char if_goto_idx n,
   n <> label_idx ->
 
@@ -70,7 +77,7 @@ Proof.
 Qed.
 
 Lemma labels_less_than_instr : forall instr_label idx instr idx',
-  label_lt_idx instr_label idx  ->
+  label_le_idx instr_label idx  ->
   idx' > idx ->
   StringUtils.labels_less_than 
   [StringLang.Instr instr_label instr] idx'.

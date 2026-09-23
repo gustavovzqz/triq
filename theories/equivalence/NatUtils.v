@@ -52,6 +52,20 @@ Fixpoint has_labeled_instr p_nat (lbl : label)  :=
                                        end
   end.
 
+Definition var_in_instr (i : NatLang.instruction) 
+  (var : variable) : bool :=
+  match i with 
+  | NatLang.Instr _ (NatLang.INCR x)
+  | NatLang.Instr _ (NatLang.DECR x)
+  | NatLang.Instr _ (NatLang.IF_GOTO x _) => (eqb_var var x)
+  end.
+
+Fixpoint var_in_program (p : NatLang.program) (var : variable) : bool :=
+  match p with 
+  | h :: t => (var_in_instr h var) || var_in_program t var
+  | [] => false
+  end.
+
 
 Lemma get_max_label_cons : forall h t, 
   NatUtils.get_max_label (h :: t) >= NatUtils.get_max_label t.
