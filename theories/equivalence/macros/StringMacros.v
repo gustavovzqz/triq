@@ -353,7 +353,7 @@ Definition macro_length instr max_char :=
         no str_rest e incluir um caso base que retorna o max_label_p_nat. Provavelmente
         complicaria as provas. *)
 
-Fixpoint get_str_prg_rec_prefix
+Fixpoint get_str_prg_rec
     p_nat max_char max_label_p_nat max_z_p_nat
     prefix :=
   match p_nat with
@@ -367,13 +367,10 @@ Fixpoint get_str_prg_rec_prefix
           max_z_p_nat max_label_prefix
       in
       str_instr ++
-      get_str_prg_rec_prefix t max_char max_label_p_nat
+      get_str_prg_rec t max_char max_label_p_nat
         max_z_p_nat (prefix ++ str_instr)
   end.
 
-Definition get_str_prg_rec p_nat max_char max_label_p_nat 
-  max_z_p_nat  :=
-  get_str_prg_rec_prefix  p_nat max_char max_label_p_nat max_z_p_nat [].
 
 
 
@@ -417,9 +414,9 @@ Proof.
 Admitted.
 
 
-Lemma program_over_conversion : forall p_nat max_char max_label_nat max_z_nat , 
+Lemma program_over_conversion : forall p_nat max_char max_label_nat max_z_nat prefix, 
   StringLang.program_over 
-  (get_str_prg_rec p_nat max_char max_label_nat max_z_nat ) max_char.
+  (get_str_prg_rec p_nat max_char max_label_nat max_z_nat prefix) max_char.
 Proof.
 Admitted.
 
