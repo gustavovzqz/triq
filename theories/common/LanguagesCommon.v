@@ -124,3 +124,17 @@ Proof.
   - apply var_eqb_neq in Heq. right. assumption.
 Qed.
 
+Lemma triple_dec : forall (x y z : variable),
+  x = y \/
+  x = z \/
+  (x <> y /\ x <> z).
+Proof.
+intros x y z.
+  destruct (var_eqb_dec x y); destruct (var_eqb_dec x z); auto.
+Qed.
+
+Definition label_le_idx l1 idx :=
+  match l1 with
+  | None => True 
+  | Some (A k) => k <= idx
+  end.

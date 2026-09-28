@@ -52,6 +52,20 @@ Fixpoint has_labeled_instr p_nat (lbl : label)  :=
                                        end
   end.
 
+Definition var_in_instr (i : NatLang.instruction) 
+  (var : variable) :=
+  match i with 
+  | NatLang.Instr _ (NatLang.INCR x)
+  | NatLang.Instr _ (NatLang.DECR x)
+  | NatLang.Instr _ (NatLang.IF_GOTO x _) =>  var = x
+  end.
+
+Fixpoint var_in_program (p : NatLang.program) (var : variable) :=
+  match p with 
+  | h :: t => (var_in_instr h var) \/ var_in_program t var
+  | [] => False
+  end.
+
 
 Lemma get_max_label_cons : forall h t, 
   NatUtils.get_max_label (h :: t) >= NatUtils.get_max_label t.
@@ -88,3 +102,74 @@ Proof.
 Qed.
 
 
+Lemma nat_instr_le_max_label : forall p_nat instr_label,
+  NatUtils.has_labeled_instr p_nat instr_label = true ->
+  label_le_idx (Some instr_label) (NatUtils.get_max_label p_nat).
+Proof.
+  intros. induction p_nat.
+  - simpl in H. discriminate.
+  - simpl in *. destruct instr_label eqn:E; auto. destruct a.
+    destruct s.
+    + destruct o; auto.
+      destruct l. simpl in *. destruct (n =? n0) eqn:E1. 
+      ++ rewrite PeanoNat.Nat.eqb_eq in E1. rewrite E1.
+          lia.
+      ++ pose proof (IHp_nat H). lia.
+    + destruct o; auto.
+      destruct l. simpl in *. destruct (n =? n0) eqn:E1. 
+      ++ rewrite PeanoNat.Nat.eqb_eq in E1. lia.
+      ++ pose proof (IHp_nat H). lia.
+    + destruct o; destruct l; auto. 
+      ++ destruct l0. simpl in H. destruct (n =? n1) eqn:E1.
+         * rewrite PeanoNat.Nat.eqb_eq in E1. lia.
+         * pose proof (IHp_nat H). lia.
+      ++ pose proof (IHp_nat H). lia.
+Qed.
+
+Lemma var_in_le_max : forall p_nat idx, 
+  NatUtils.var_in_program p_nat (Z idx) ->
+  idx <= NatUtils.get_max_z p_nat.
+Proof.
+  induction p_nat; intros.
+  - simpl in H. destruct H.
+  - simpl in *. destruct H. 
+    + destruct a. destruct s. 
+      ++ destruct v; try discriminate H.
+         simpl in H. injection H as H. lia.
+      ++ destruct v; try discriminate H.
+         simpl in H. injection H as H. lia.
+      ++ destruct v; try discriminate H.
+         simpl in H. injection H as H. lia.
+    + pose proof (IHp_nat idx H).
+      destruct a. destruct s; destruct v; try lia.
+Qed.
+
+
+Lemma nth_error_implies_var_in : forall p_nat pos instr var,
+  nth_error p_nat pos = Some (instr) ->
+  NatUtils.var_in_instr instr var ->
+  NatUtils.var_in_program p_nat var.
+Proof.
+  induction p_nat; intros.
+  - rewrite nth_error_nil in H; discriminate.
+  - destruct pos.
+    + injection H as H. simpl. left. rewrite H. auto.
+    + simpl in *. right. eauto.
+Qed.
+      
+
+Lemma nth_error_implies_label_in : forall p_nat
+  instr_label pos instr,
+  nth_error p_nat pos = Some (NatLang.Instr (Some instr_label) instr) ->
+  NatUtils.has_labeled_instr p_nat instr_label = true.
+Proof.
+  induction p_nat; intros.
+  - rewrite nth_error_nil in H; discriminate.
+  - destruct pos.
+    + simpl in *. destruct a. destruct o eqn:E.
+      ++ injection H as H. rewrite H, eqb_lbl_refl. reflexivity.
+      ++ injection H as H. discriminate.
+    + simpl in *. destruct a. destruct o eqn:E.
+      ++ destruct (eqb_lbl instr_label l) eqn:E1; eauto.
+      ++ eauto.
+Qed.

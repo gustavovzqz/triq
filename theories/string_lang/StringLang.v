@@ -125,7 +125,6 @@ Ltac solve_string :=
 
 
 
-
 Declare Custom Entry com'.
 Declare Scope string_lang_scope.
 Declare Custom Entry com_aux'.
