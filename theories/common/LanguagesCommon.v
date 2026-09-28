@@ -132,3 +132,9 @@ Proof.
 intros x y z.
   destruct (var_eqb_dec x y); destruct (var_eqb_dec x z); auto.
 Qed.
+
+Definition label_le_idx l1 idx :=
+  match l1 with
+  | None => True 
+  | Some (A k) => k <= idx
+  end.

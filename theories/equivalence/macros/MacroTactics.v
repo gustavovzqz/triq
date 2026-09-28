@@ -9,18 +9,6 @@ From Stdlib Require Import Arith Lia.
 
 Import ListNotations.
 
-Definition label_lt_idx l1 idx :=
-  match l1 with
-  | None => True 
-  | Some (A k) => k < idx
-  end.
-
-Definition label_le_idx l1 idx :=
-  match l1 with
-  | None => True 
-  | Some (A k) => k <= idx
-  end.
-
 
 Lemma labeled_instr_if_macro_false : forall x label_idx max_char if_goto_idx n,
   n <> label_idx ->

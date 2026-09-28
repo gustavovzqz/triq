@@ -313,8 +313,6 @@ Proof.
          rewrite eqb_opt_lbl_symm. auto.
 Qed.
 
-
-
 Lemma get_equiv_simulated_position_Sn :
   forall p_nat n instr max_char,
   nth_error p_nat n = Some instr ->
@@ -327,8 +325,6 @@ Proof.
   rewrite LanguagesUtils.firstn_S_nth_error with (x := instr); auto.
   rewrite fold_left_app. simpl. lia.
 Qed.
-
-
 
 
 (** IF Macros Simulates *)
@@ -460,46 +456,48 @@ Proof.
     rewrite nth_pos_nat_instr. f_equal. eauto.
 Qed.
 
-Lemma nat_instr_le_max_label : forall p_nat instr_label,
-  NatUtils.has_labeled_instr p_nat instr_label = true ->
-  MacroTactics.label_le_idx (Some instr_label) (NatUtils.get_max_label p_nat).
+(** INCR Macro Simulates *)
+
+Definition is_incr_of_state state' state max_char (x : variable) :=
+  forall var,
+    (var <> x -> state var = state' var) /\
+    (var = x -> state' var = incr_string (state var) max_char).
+
+Lemma state_equiv_incr_aux : forall x state_nat state_str max_char,
+  (nat_to_string (state_nat x) max_char) = state_str x ->
+  (nat_to_string (NatLang.incr state_nat x x) max_char) =
+  (incr_string (state_str x) max_char).
 Proof.
-  intros. induction p_nat.
-  - simpl in H. discriminate.
-  - simpl in *. destruct instr_label eqn:E; auto. destruct a.
-    destruct s.
-    + destruct o; auto.
-      destruct l. simpl in *. destruct (n =? n0) eqn:E1. 
-      ++ rewrite PeanoNat.Nat.eqb_eq in E1. rewrite E1.
-          lia.
-      ++ pose proof (IHp_nat H). lia.
-    + destruct o; auto.
-      destruct l. simpl in *. destruct (n =? n0) eqn:E1. 
-      ++ rewrite PeanoNat.Nat.eqb_eq in E1. lia.
-      ++ pose proof (IHp_nat H). lia.
-    + destruct o; destruct l; auto. 
-      ++ destruct l0. simpl in H. destruct (n =? n1) eqn:E1.
-         * rewrite PeanoNat.Nat.eqb_eq in E1. lia.
-         * pose proof (IHp_nat H). lia.
-      ++ pose proof (IHp_nat H). lia.
+  intros. 
+  unfold NatLang.incr, NatLang.update. rewrite eqb_var_refl. 
+  destruct (state_nat x) as [| n'].
+  + simpl. rewrite <- H. reflexivity.
+  + simpl. replace (n' + 1) with (S n') by lia. rewrite H. reflexivity.
 Qed.
 
-Lemma nth_error_implies_label_in : forall p_nat
-  instr_label pos instr,
-  nth_error p_nat pos = Some (NatLang.Instr (Some instr_label) instr) ->
-  NatUtils.has_labeled_instr p_nat instr_label = true.
-Proof.
-  induction p_nat; intros.
-  - rewrite nth_error_nil in H; discriminate.
-  - destruct pos.
-    + simpl in *. destruct a. destruct o eqn:E.
-      ++ injection H as H. rewrite H, eqb_lbl_refl. reflexivity.
-      ++ injection H as H. discriminate.
-    + simpl in *. destruct a. destruct o eqn:E.
-      ++ destruct (eqb_lbl instr_label l) eqn:E1; eauto.
-      ++ eauto.
-Qed.
 
+Lemma state_equiv_incr : forall max_char state_nat state_str state_str' x,
+  state_equiv state_nat state_str max_char ->
+  is_incr_of_state state_str' state_str max_char x ->
+  state_equiv (NatLang.incr state_nat x) state_str' max_char.
+Proof.
+  intros max_char state_nat state_str state_str' x.
+  intros H_equiv H_incr.
+  unfold state_equiv. intros var.
+  unfold is_incr_of_state in H_incr. 
+  specialize (H_incr var). destruct H_incr as [H_var_diff_x H_var_eq_x].
+  destruct (var_eqb_dec var x) as [var_eq_x | var_diff_x].
+  (* var = x  *)  
+  - rewrite var_eq_x. apply H_var_eq_x in var_eq_x as state_str_var.
+    subst. specialize (H_equiv x). rewrite state_str_var.
+    apply state_equiv_incr_aux; auto.
+  (* var != x *)
+  - unfold NatLang.incr, NatLang.update. 
+    assert (eqb_var x var = false).
+    { rewrite eqb_var_symm. rewrite var_eqb_neq. auto. }
+    rewrite H. unfold state_equiv in H_equiv. specialize (H_equiv var).
+    apply H_var_diff_x in var_diff_x. rewrite <- var_diff_x. auto.
+Qed.
 
 
 Theorem incr_macro_simulates :
@@ -547,10 +545,18 @@ Proof.
   remember (NatUtils.get_max_label p_nat) as max_label_nat.
   remember (NatUtils.get_max_z p_nat) as max_z_nat.
 
+
   assert (eqb_var x (Z (max_z_nat + 2)) = false) as x_diff_z2.
-  {admit. }
+  {destruct x; auto. simpl. rewrite PeanoNat.Nat.eqb_neq.
+   assert (n <= max_z_nat). rewrite Heqmax_z_nat. apply NatUtils.var_in_le_max.
+   apply NatUtils.nth_error_implies_var_in with pos_nat incr_instr; auto.
+   rewrite incr_instr_eq. simpl. auto. lia. }
+
   assert (eqb_var x (Z (max_z_nat + 1)) = false) as x_diff_z1.
-  {admit. }
+  {destruct x; auto. simpl. rewrite PeanoNat.Nat.eqb_neq.
+   assert (n <= max_z_nat). rewrite Heqmax_z_nat. apply NatUtils.var_in_le_max.
+   apply NatUtils.nth_error_implies_var_in with pos_nat incr_instr; auto.
+   rewrite incr_instr_eq. simpl. auto. lia. }
 
   (* str program decomposition *)
   assert ( let h := (firstn (get_equiv_simulated_position p_nat pos_nat 
@@ -587,8 +593,8 @@ Proof.
       (t := t); auto.
       rewrite H_equiv_pos. auto.
       destruct instr_label. rewrite Heqmax_label_nat.
-      apply nat_instr_le_max_label. 
-      eapply nth_error_implies_label_in; eauto. 
+      apply NatUtils.nat_instr_le_max_label. 
+      eapply NatUtils.nth_error_implies_label_in; eauto. 
       simpl. auto. }
     exists k.
     destruct (StringLang.compute_program p_str 
@@ -596,18 +602,29 @@ Proof.
     destruct incr_computation as [line_str_eq [sx [sz forall_eq]]].
     simpl. rewrite line_str_eq.
     repeat (split; auto).
-    + (* Mesmo lema do string 1*) admit. 
+    + assert (is_incr_of_state s state_str max_char x).
+      { unfold is_incr_of_state. intros var. split.
+        + intros. destruct (var_eqb_dec var (Z (max_z_nat + 1))).
+          rewrite e. rewrite state_str_z1, sz. reflexivity.
+          symmetry. apply forall_eq. auto. 
+        + intros var_eq_x. rewrite var_eq_x. rewrite sx.
+          rewrite state_str_z1. reflexivity. } 
+      apply state_equiv_incr with state_str; auto.
     + unfold equiv_pos in *. rewrite H_equiv_pos.
       erewrite get_equiv_simulated_position_Sn; eauto.
       rewrite incr_instr_eq in *. auto.
     + rewrite <- state_str_z2. apply forall_eq. 
       split. rewrite <- var_eqb_neq, eqb_var_symm. auto.
       injection. lia.
-    + (* Mesma coisa que eu fiz nos lemas, basta um lema para dizer
-         que incr_string está limitado ao max_char *) admit.
-Admitted.
-
-
+    + unfold StringLang.state_over. intros x0.
+      destruct (triple_dec x0 x (Z (max_z_nat + 1))) as
+      [x0_eq_x | [x0_eq_z | x0_diff]].
+      ++ rewrite x0_eq_x. rewrite sx. StringLang.solve_string.
+         apply incr_string_over. auto.
+      ++ rewrite x0_eq_z. rewrite sz. reflexivity.
+      ++ replace (s x0) with (state_str x0). auto.
+         symmetry. auto.
+Qed.
 
 
 (** Teorema Principal *)
@@ -718,3 +735,4 @@ Proof.
     + simpl. rewrite p_nat_instr. exists 0. simpl.
       repeat (split; auto).
 Admitted.
+
