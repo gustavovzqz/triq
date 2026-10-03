@@ -10,6 +10,8 @@ From Triq Require Import LanguagesUtils.
 From Triq Require StringMacros.
 From Triq Require IfMacroProperties.
 From Triq Require IncrMacroProperties.
+From Triq Require DecrMacroProperties.
+
 
 
 From Triq Require NatUtils.

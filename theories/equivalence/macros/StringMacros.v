@@ -273,6 +273,34 @@ transfer_block T2 z x D2_idx E aux max_char ++
 [StringLang.Instr (Some E) (StringLang.DEL aux)].
 
 
+Definition get_ai_block_decr 
+  (x : variable)
+  (z : variable)
+  (aux : variable)
+  (first_block_label : nat)
+  (char : nat)
+  (goto_label: label ) :=
+
+
+let ai_label := Some (A (first_block_label + char))  in
+
+[StringLang.Instr ai_label (StringLang.DEL x);
+StringLang.Instr None (StringLang.APPEND (char - 1) z);
+StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 goto_label)].
+
+Fixpoint get_all_ai_blocks_decr
+  (x : variable)
+  (z : variable)
+  (aux : variable)
+  (max_char : nat)
+  (first_label : nat)
+  (goto_label : label) :=
+
+match max_char with 
+| 0 => []
+| S n => get_ai_block_decr x z aux first_label max_char goto_label ++
+         get_all_ai_blocks_decr x z aux n first_label goto_label
+end.
 
 
 (* DECR MACRO *)
@@ -316,8 +344,57 @@ Definition get_decr_macro
   (lbl : option label)
   (max_label_nat max_z_nat : nat)
   (max_label_str : nat)
-  (max_char : nat) : StringLang.program.
-Admitted.
+  (max_char : nat) : StringLang.program :=
+
+let z := Z (max_z_nat + 1) in 
+let aux := Z (max_z_nat + 2 ) in
+
+let B_idx  := max_label_nat + max_label_str + 1 in  (* 1 *)
+let A1_idx := B_idx  + 1 in (* 2 *)
+let An_idx := A1_idx + max_char in 
+let C2_idx := An_idx + 1 in
+let T1_idx := C2_idx + 1 in 
+let D1_idx := T1_idx + 1 in
+let T2_idx := D1_idx + max_char + 1 in
+let D2_idx := T2_idx + 1 in
+let E_idx  := D2_idx + max_char + 1 in
+
+
+let B  := A B_idx  in
+let A1 := A A1_idx in
+let An := A An_idx in
+let C2 := A C2_idx in
+let T1 := A T1_idx in
+let D1 := A D1_idx in
+let T2 := A T2_idx in
+let D2 := A D2_idx in
+let E  := A E_idx  in
+
+let goto l := 
+  [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 l)] in
+
+
+[StringLang.Instr lbl (StringLang.APPEND 0 aux)] ++ 
+
+get_if_macro_label x (Some B) max_char A1_idx ++ 
+goto T2 ++
+
+get_all_ai_blocks_decr x z aux max_char A1_idx T1 ++
+
+[StringLang.Instr (Some A1) (StringLang.DEL x)] ++
+get_if_macro x None C2 max_char ++
+goto T2 ++ 
+
+[StringLang.Instr (Some C2) (StringLang.APPEND max_char z)] ++
+goto B ++ 
+
+
+transfer_block T1 x z D1_idx T2 aux max_char ++
+transfer_block T2 z x D2_idx E aux max_char ++ 
+
+
+[StringLang.Instr (Some E) (StringLang.DEL aux)].
+
 
 
 (* ------------------------------------------------------------------ *)
