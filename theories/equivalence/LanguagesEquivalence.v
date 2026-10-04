@@ -628,6 +628,171 @@ Proof.
          symmetry. auto.
 Qed.
 
+(** Decr Macro Simulates *)
+
+
+Definition is_decr_of_state state' state max_char (x : variable) :=
+  forall var,
+    (var <> x -> state var = state' var) /\
+    (var = x -> state' var = decr_string (state var) max_char).
+
+Lemma state_equiv_decr_aux : forall x state_nat state_str max_char,
+  (nat_to_string (state_nat x) max_char) = state_str x ->
+  (nat_to_string (NatLang.decr state_nat x x) max_char) =
+  (decr_string (state_str x) max_char).
+Proof.
+Admitted.
+
+
+
+Lemma state_equiv_decr : forall max_char state_nat state_str state_str' x,
+  state_equiv state_nat state_str max_char ->
+  is_decr_of_state state_str' state_str max_char x ->
+  state_equiv (NatLang.decr state_nat x) state_str' max_char.
+Proof.
+  intros max_char state_nat state_str state_str' x.
+  intros H_equiv H_incr.
+  unfold state_equiv. intros var.
+  unfold is_incr_of_state in H_incr. 
+  specialize (H_incr var). destruct H_incr as [H_var_diff_x H_var_eq_x].
+  destruct (var_eqb_dec var x) as [var_eq_x | var_diff_x].
+  (* var = x  *)  
+  - rewrite var_eq_x. apply H_var_eq_x in var_eq_x as state_str_var.
+    subst. specialize (H_equiv x). rewrite state_str_var.
+    apply state_equiv_decr_aux; auto.
+  (* var != x *)
+  - unfold NatLang.decr, NatLang.update. 
+    assert (eqb_var x var = false).
+    { rewrite eqb_var_symm. rewrite var_eqb_neq. auto. }
+    rewrite H. unfold state_equiv in H_equiv. specialize (H_equiv var).
+    apply H_var_diff_x in var_diff_x. rewrite <- var_diff_x. auto.
+Qed.
+
+Theorem decr_macro_simulates :
+  forall p_nat p_str pos_nat state_nat
+               pos_str state_str
+         max_char x instr_label,
+
+  p_str = get_equiv_str_program p_nat max_char ->
+
+  state_str (Z (NatUtils.get_max_z p_nat + 1)) = [] ->
+  state_str (Z (NatUtils.get_max_z p_nat + 2)) = [] ->
+  StringLang.state_over state_str max_char ->
+
+
+  nth_error p_nat pos_nat = Some (NatLang.Instr instr_label
+  (NatLang.DECR x)) ->
+
+  state_equiv state_nat state_str max_char ->
+
+  equiv_pos p_nat pos_nat pos_str max_char ->
+
+  exists n' : nat,
+    let (line_nat, state_nat') :=
+      NatLang.split_snap
+        (NatLang.next_step p_nat (NatLang.SNAP pos_nat state_nat)) in
+    let (line_str, state_str') :=
+      StringLang.split_snap
+        (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+           n') in
+    state_equiv state_nat' state_str' max_char /\
+    equiv_pos p_nat line_nat line_str max_char /\
+    state_str' (Z (NatUtils.get_max_z p_nat + 1)) = [] /\
+    state_str' (Z (NatUtils.get_max_z p_nat + 2)) = [] /\
+    StringLang.state_over state_str' max_char.
+Proof.
+  intros p_nat p_str pos_nat state_nat pos_str state_str
+  max_char x instr_label.
+  intros p_str_eq state_str_z1 state_str_z2 state_over_str
+  nth_pos_nat_instr H_state_equiv H_equiv_pos. 
+  unfold get_equiv_str_program in p_str_eq.
+
+  (* naming *)
+  remember (NatLang.Instr instr_label (NatLang.DECR x)) 
+  as decr_instr eqn:decr_instr_eq.
+  remember (NatUtils.get_max_label p_nat) as max_label_nat.
+  remember (NatUtils.get_max_z p_nat) as max_z_nat.
+
+
+  assert (eqb_var x (Z (max_z_nat + 2)) = false) as x_diff_z2.
+  {destruct x; auto. simpl. rewrite PeanoNat.Nat.eqb_neq.
+   assert (n <= max_z_nat). rewrite Heqmax_z_nat. apply NatUtils.var_in_le_max.
+   apply NatUtils.nth_error_implies_var_in with pos_nat decr_instr; auto.
+   rewrite decr_instr_eq. simpl. auto. lia. }
+
+  assert (eqb_var x (Z (max_z_nat + 1)) = false) as x_diff_z1.
+  {destruct x; auto. simpl. rewrite PeanoNat.Nat.eqb_neq.
+   assert (n <= max_z_nat). rewrite Heqmax_z_nat. apply NatUtils.var_in_le_max.
+   apply NatUtils.nth_error_implies_var_in with pos_nat decr_instr; auto.
+   rewrite decr_instr_eq. simpl. auto. lia. }
+
+  (* str program decomposition *)
+  assert ( let h := (firstn (get_equiv_simulated_position p_nat pos_nat 
+    max_char) p_str) in
+    let max_label_str := StringUtils.get_max_label h in
+    exists t,
+      p_str = h
+      ++ (StringMacros.get_str_macro decr_instr max_char max_label_nat max_z_nat 
+      max_label_str) ++ t /\ length h = get_equiv_simulated_position p_nat 
+      pos_nat max_char)
+    as [t [str_program_decomposition length_decomposition]].
+  { apply simulated_program_decomposition; auto. }
+
+  simpl. rewrite nth_pos_nat_instr, decr_instr_eq.
+  unfold state_equiv in H_state_equiv.
+  pose proof (H_state_equiv x) as state_str_value.
+  assert (exists n,
+    let (line_str, state_str') :=
+      StringLang.split_snap
+        (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+          n) in
+      line_str = pos_str + StringMacros.macro_length 
+      (NatLang.Instr instr_label (NatLang.DECR x)) max_char /\  
+      state_str' x = state_str (Z (max_z_nat + 1)) 
+                ++ decr_string (state_str x) max_char  /\
+      state_str' (Z (max_z_nat + 1)) = [] /\
+      forall var, 
+      var <> x /\ var <> (Z (max_z_nat + 1)) ->
+      state_str' var = state_str var) as [k decr_computation].
+    { rewrite decr_instr_eq in *. apply DecrMacroProperties.compute_decr_macro
+      with (max_label_nat := max_label_nat)
+      (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
+      (x_value := state_str x)
+      (t := t); auto.
+      rewrite H_equiv_pos. auto.
+      destruct instr_label. rewrite Heqmax_label_nat.
+      apply NatUtils.nat_instr_le_max_label. 
+      eapply NatUtils.nth_error_implies_label_in; eauto. 
+      simpl. auto. }
+    exists k.
+    destruct (StringLang.compute_program p_str 
+    (StringLang.SNAP pos_str state_str) k). simpl in decr_computation.
+    destruct decr_computation as [line_str_eq [sx [sz forall_eq]]].
+    simpl. rewrite line_str_eq.
+    repeat (split; auto).
+    + assert (is_decr_of_state s state_str max_char x).
+      { unfold is_decr_of_state. intros var. split.
+        + intros. destruct (var_eqb_dec var (Z (max_z_nat + 1))).
+          rewrite e. rewrite state_str_z1, sz. reflexivity.
+          symmetry. apply forall_eq. auto. 
+        + intros var_eq_x. rewrite var_eq_x. rewrite sx.
+          rewrite state_str_z1. reflexivity. } 
+      apply state_equiv_decr with state_str; auto.
+    + unfold equiv_pos in *. rewrite H_equiv_pos.
+      erewrite get_equiv_simulated_position_Sn; eauto.
+      rewrite decr_instr_eq in *. auto.
+    + rewrite <- state_str_z2. apply forall_eq. 
+      split. rewrite <- var_eqb_neq, eqb_var_symm. auto.
+      injection. lia.
+    + unfold StringLang.state_over. intros x0.
+      destruct (triple_dec x0 x (Z (max_z_nat + 1))) as
+      [x0_eq_x | [x0_eq_z | x0_diff]].
+      ++ rewrite x0_eq_x. rewrite sx. StringLang.solve_string.
+         apply decr_string_over. auto.
+      ++ rewrite x0_eq_z. rewrite sz. reflexivity.
+      ++ replace (s x0) with (state_str x0). auto.
+         symmetry. auto.
+Admitted.
 
 (** Teorema Principal *)
 
@@ -728,7 +893,7 @@ Proof.
       (* a. x <- x + 1 *)
       ++ eapply incr_macro_simulates; eauto.
       (* b. x <- x- - 1 *)
-      ++ admit.
+      ++ eapply decr_macro_simulates; eauto.
       (* c. IF v != 0 GOTO A *)
       ++ eapply if_macro_simulates; eauto.
     (* caso 2: não existe uma linha na posição.
@@ -736,5 +901,5 @@ Proof.
        basta também não fazer nada no programa de strings *)
     + simpl. rewrite p_nat_instr. exists 0. simpl.
       repeat (split; auto).
-Admitted.
+Qed.
 
