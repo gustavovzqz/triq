@@ -322,7 +322,7 @@ Proof.
   max_label_nat max_z_nat h t x_value.
   intros max_label_str p_str_decomposition H_length label_lt_max_nat
   H_state_over string_over_x_value H_x_value H_aux_value 
-  x_diff_z x_diff_aux.
+  x_diff_aux x_diff_z.
 
 
   (* Indução em x_value *)
@@ -623,7 +623,7 @@ Proof.
   max_label_nat max_z_nat h t x_value max_label_str.
   intros p_str_decomposition H_length label_lt_max_nat
   H_state_over string_over_x_value H_x_value H_aux_value 
-  x_diff_z x_diff_aux.
+  x_diff_aux x_diff_z.
 
   (* Executo um passo, depois o lema anterior, depois uma transferência e
      finalmente mais um passo.*)

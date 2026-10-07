@@ -497,6 +497,67 @@ Lemma program_over_conversion : forall p_nat max_char max_label_nat max_z_nat pr
 Proof.
 Admitted.
 
+Lemma get_if_macro_label_same_size : forall v lbl max_char goto
+      lbl' goto',
+  length (get_if_macro_label v lbl max_char goto) = 
+  length (get_if_macro_label v lbl' max_char goto').
+Proof.
+Admitted.
+
+Lemma get_all_incr_blocks_same_size : forall x z aux idx goto
+x' z' aux' max_char idx' goto',
+  length (get_all_incr_blocks x z aux max_char idx goto) =
+  length (get_all_incr_blocks x' z' aux' max_char idx' goto').
+Proof.
+Admitted.
+
+(* transfer_block T1 x z D1_idx T2 aux max_char*)
+
+Lemma transfer_block_same_size : forall t1 x z d1 t2 aux max_char 
+t1' x' z' d1' t2' aux',
+  length (transfer_block t1 x z d1 t2 aux max_char) = 
+  length (transfer_block t1' x' z' d1' t2' aux' max_char).
+Proof.
+Admitted.
+
+
+
+Lemma incr_same_size : forall v o max_lbl_nat max_z_nat max_label_str max_char,
+length (get_incr_macro v o max_lbl_nat max_z_nat max_label_str
+max_char) = length (get_incr_macro v o 0 0 0 max_char).
+Proof.
+  intros. unfold get_incr_macro. repeat (simpl; rewrite length_app).
+  simpl. rewrite get_if_macro_label_same_size with (lbl' := (Some (A 1)))
+  (goto' := 2).
+  replace (length (get_all_incr_blocks v (Z (max_z_nat + 1)) (Z (max_z_nat + 2)) 
+  max_char (max_lbl_nat + max_label_str + 1 + 1)
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1)))) with 
+  (length (get_all_incr_blocks v (Z 1) (Z 2) max_char 2 (A (S (S (max_char + 1)))))).
+  replace (length
+  (transfer_block (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1)) v (Z (max_z_nat + 1))
+  (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1)
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + max_char + 1)) (Z (max_z_nat + 2))
+  max_char)) with (length
+  (transfer_block (A (S (S (max_char + 1)))) v
+  (Z 1) (S (S (max_char + 1 + 1)))
+  (A (S (S (max_char + 1 + 1 + max_char + 1))))
+  (Z 2) max_char)).
+  replace (length (transfer_block (A (max_lbl_nat + max_label_str + 1 + 1 +
+  max_char + 1 + 1 + max_char + 1)) (Z (max_z_nat + 1)) v (max_lbl_nat + max_label_str + 1 + 1 +
+  max_char + 1 + 1 + max_char + 1 + 1) (A (max_lbl_nat + max_label_str + 1 + 1 +
+  max_char + 1 + 1 + max_char + 1 + 1 + max_char + 1)) (Z (max_z_nat + 2))
+  max_char)) with (length (transfer_block (A (S (S (max_char + 1 + 1 + max_char + 1))))
+  (Z 1) v (S (S (max_char + 1 + 1 + max_char + 1 + 1)))
+  (A (S (S
+  (max_char + 1 + 1 + max_char + 1 +
+  1 + max_char + 1)))) (Z 2)
+  max_char)). reflexivity.
+  apply transfer_block_same_size.
+  apply transfer_block_same_size.
+  apply get_all_incr_blocks_same_size.
+Qed.
+
+
 
 Lemma macros_same_size : forall instr max_char max_lbl_nat max_z_nat 
       max_label_str,
@@ -505,6 +566,10 @@ Lemma macros_same_size : forall instr max_char max_lbl_nat max_z_nat
   length (StringMacros.get_str_macro instr max_char 
           0 0 0).
 Proof.
+  intros. destruct instr. destruct s; unfold get_str_macro.
+  - apply incr_same_size.
+  - admit.
+  - admit.
 Admitted.
 
 (** Simulated Program Decomposition *)

@@ -22,6 +22,26 @@ Proof.
   simpl; rewrite H; auto.
 Qed.
 
+Lemma labeled_instr_if_macro_false_none : forall x max_char goto_label n,
+
+  StringUtils.has_labeled_instr
+    (get_if_macro x None goto_label max_char)
+    (A n) =
+  false.
+Proof.
+  intros. induction max_char; auto.
+Qed.
+
+Lemma labeled_instr_ai_blocks_decr_false : forall x z 
+aux max_char if_goto_idx goto_label,
+  StringUtils.has_labeled_instr (get_all_ai_blocks_decr x z aux 
+  max_char if_goto_idx goto_label) (A if_goto_idx) = false.
+Proof.
+  intros. induction max_char; auto.
+  simpl. replace (if_goto_idx =? if_goto_idx + S max_char) with false; auto.
+  symmetry. rewrite PeanoNat.Nat.eqb_neq. lia.
+Qed.
+
 
 Lemma labels_less_than_if : forall x if_idx max_char 
   goto_label label_idx,
@@ -36,11 +56,34 @@ Proof.
   + simpl. split; try lia. auto.
 Qed.
 
+Lemma labels_less_than_if_none : forall x max_char goto_label n,
+
+  StringUtils.labels_less_than
+  (get_if_macro x None goto_label max_char) n.
+Proof.
+  intros. induction max_char; simpl; auto.
+Qed.
+
+
 Lemma labels_less_than_incr_blocks : forall incr_idx x z aux max_char
   goto_label label_idx,
   incr_idx + max_char < label_idx -> 
   
   StringUtils.labels_less_than (get_all_incr_blocks x z aux 
+  max_char incr_idx goto_label) label_idx.
+Proof.
+  intros. destruct max_char.
+  + simpl. apply I.
+  + simpl. induction max_char.
+    - simpl. lia.
+    - simpl. split; try lia. apply IHmax_char. lia.
+Qed.
+
+Lemma labels_less_than_decr_blocks : forall incr_idx x z aux max_char
+  goto_label label_idx,
+  incr_idx + max_char < label_idx -> 
+  
+  StringUtils.labels_less_than (get_all_ai_blocks_decr  x z aux 
   max_char incr_idx goto_label) label_idx.
 Proof.
   intros. destruct max_char.
@@ -116,9 +159,13 @@ Ltac solve_less_than :=
   ||
   solve [eapply labels_less_than_incr_blocks; eauto; try lia ]
   ||
+  solve [eapply labels_less_than_decr_blocks; eauto; try lia ]
+  ||
   solve [eapply labels_less_than_di_blocks; eauto; try lia ]
   ||
   solve [apply labels_less_than_if; try lia ]
+  ||
+  solve [apply labels_less_than_if_none]
   ||
   solve [apply labels_less_than_transfer; try lia]
   ||
@@ -157,6 +204,10 @@ Ltac solve_label_diff :=
   solve [ eapply StringUtils.labels_less_implies_diff; eauto; try lia ]
   ||
   solve [ apply labels_less_implies_diff_weak; solve_less_than_app; try lia]
+  ||
+  solve [ apply labeled_instr_ai_blocks_decr_false]
+  ||
+  solve [ apply labeled_instr_if_macro_false_none]
   ||
   solve [ eapply labeled_instr_if_macro_false; eauto; try lia ].
 

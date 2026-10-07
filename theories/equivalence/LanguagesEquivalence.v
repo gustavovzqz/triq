@@ -399,10 +399,10 @@ Proof.
            state_str' = state_str /\
            line_str = pos_str + StringMacros.macro_length if_instr max_char)
     as [k if_computation].
-    { rewrite if_instr_eq in *. apply IfMacroProperties.compute_if_block_skip
-      with (max_label_nat := max_label_nat) (max_z_nat := max_z_nat)
-      (max_z_str := (StringUtils.get_max_label
-      (firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str))) 
+    { rewrite if_instr_eq in *. unfold StringMacros.macro_length. simpl.
+      Transparent StringMacros.get_str_macro.
+      unfold StringMacros.get_str_macro.
+      apply IfMacroProperties.compute_if_block_skip with 
       (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
       (t := t); auto.
       rewrite H_equiv_pos. auto. }
@@ -437,12 +437,11 @@ Proof.
            state_str' = state_str /\
            line_str = StringLang.get_labeled_instr p_str goto_label)
     as [k if_computation].
-    { rewrite if_instr_eq in *. apply IfMacroProperties.compute_if_block_Sn
-      with (max_label_nat := max_label_nat) (max_z_nat := max_z_nat)
-      (max_z_str := (StringUtils.get_max_label
-      (firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str))) 
-      (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
-      (t := t) (instr_label := instr_label) (max_char := max_char)
+    { rewrite if_instr_eq in *. unfold StringMacros.macro_length. simpl.
+      Transparent StringMacros.get_str_macro.
+      unfold StringMacros.get_str_macro. apply IfMacroProperties.compute_if_block_Sn
+      with (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
+      (t := t) (opt_label := instr_label) (max_char := max_char)
       (char := char) (x := x); auto.
       + rewrite H_equiv_pos. auto.
       + rewrite state_str_decomposition. apply PeanoNat.Nat.eqb_refl. }
