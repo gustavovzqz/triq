@@ -470,6 +470,9 @@ Qed.
 Lemma if_macro_over : forall x instr_lbl goto_lbl max_char,
   StringLang.program_over (get_if_macro x instr_lbl goto_lbl max_char) max_char.
 Proof.
+  induction max_char; intros.
+  simpl. lia. simpl. split; try lia.
+  (* program over S *)
 Admitted.
 
 (* INCR *)
@@ -497,19 +500,35 @@ Lemma program_over_conversion : forall p_nat max_char max_label_nat max_z_nat pr
 Proof.
 Admitted.
 
-Lemma get_if_macro_label_same_size : forall v lbl max_char goto
+Lemma get_if_macro_label_same_size : forall v lbl max_char goto v'
       lbl' goto',
   length (get_if_macro_label v lbl max_char goto) = 
-  length (get_if_macro_label v lbl' max_char goto').
+  length (get_if_macro_label v' lbl' max_char goto').
 Proof.
-Admitted.
+  induction max_char; intros; auto.
+  simpl. f_equal. apply IHmax_char.
+Qed.
 
 Lemma get_all_incr_blocks_same_size : forall x z aux idx goto
 x' z' aux' max_char idx' goto',
   length (get_all_incr_blocks x z aux max_char idx goto) =
   length (get_all_incr_blocks x' z' aux' max_char idx' goto').
 Proof.
-Admitted.
+  intros. destruct max_char; auto.
+  simpl. induction max_char; auto.
+  simpl. f_equal. f_equal. f_equal. apply IHmax_char. 
+Qed.
+
+Lemma get_all_di_blocks_same_size : forall x z aux max_char d1 t1
+x' z' aux' d1' t1',
+  length (get_all_di_blocks x z aux max_char d1 t1) = 
+  length (get_all_di_blocks x' z' aux' max_char d1' t1').
+Proof.
+  intros; induction max_char; auto.
+  simpl. f_equal. f_equal. f_equal. apply IHmax_char.
+Qed.
+
+
 
 (* transfer_block T1 x z D1_idx T2 aux max_char*)
 
@@ -518,7 +537,29 @@ t1' x' z' d1' t2' aux',
   length (transfer_block t1 x z d1 t2 aux max_char) = 
   length (transfer_block t1' x' z' d1' t2' aux' max_char).
 Proof.
-Admitted.
+  intros. unfold transfer_block. repeat (rewrite length_app).
+  replace (length (get_if_macro_label x (Some t1) max_char d1))
+  with (length (get_if_macro_label x' (Some t1') max_char d1')).
+  f_equal. simpl. f_equal. apply get_all_di_blocks_same_size.
+  apply get_if_macro_label_same_size.
+Qed.
+
+Lemma get_all_ai_blocks_decr_same_size : forall v x z max_char idx goto
+x' z' v' idx' goto',
+  length (get_all_ai_blocks_decr v x z max_char idx goto) = 
+  length (get_all_ai_blocks_decr v' x' z' max_char idx' goto').
+Proof.
+  induction max_char; intros; auto.
+  simpl. f_equal. f_equal. f_equal. apply IHmax_char.
+Qed.
+
+Lemma get_if_macro_same_size : forall v lbl v' goto lbl' goto' max_char,
+  length (get_if_macro v lbl goto max_char) =
+  length (get_if_macro v' lbl' goto' max_char).
+Proof.
+  induction max_char; intros; auto.
+  simpl. f_equal. apply IHmax_char.
+Qed.
 
 
 
@@ -528,7 +569,7 @@ max_char) = length (get_incr_macro v o 0 0 0 max_char).
 Proof.
   intros. unfold get_incr_macro. repeat (simpl; rewrite length_app).
   simpl. rewrite get_if_macro_label_same_size with (lbl' := (Some (A 1)))
-  (goto' := 2).
+  (goto' := 2) (v' := v).
   replace (length (get_all_incr_blocks v (Z (max_z_nat + 1)) (Z (max_z_nat + 2)) 
   max_char (max_lbl_nat + max_label_str + 1 + 1)
   (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1)))) with 
@@ -557,6 +598,56 @@ Proof.
   apply get_all_incr_blocks_same_size.
 Qed.
 
+Lemma decr_same_size : forall v o max_lbl_nat max_z_nat max_label_str max_char,
+length (get_decr_macro v o max_lbl_nat max_z_nat max_label_str
+max_char) = length (get_decr_macro v o 0 0 0 max_char).
+Proof.
+  intros. unfold get_decr_macro. repeat (simpl; rewrite length_app).
+  simpl. rewrite get_if_macro_label_same_size with (lbl' := (Some (A 1)))
+  (goto' := 2) (v' := v).
+
+  replace (length
+  (get_all_ai_blocks_decr v (Z (max_z_nat + 1)) (Z (max_z_nat + 2)) max_char
+  (max_lbl_nat + max_label_str + 1 + 1)
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1)))) with 
+  (length (get_all_ai_blocks_decr v (Z 1) (Z 2) max_char 2
+  (A (S (S (max_char + 1 + 1)))))).
+  replace ((length
+  (get_if_macro v None (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1))
+  max_char))) with 
+  (length (get_if_macro v None (A (S (S (max_char + 1)))) max_char)).
+
+  replace ((length (transfer_block
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1)) v
+  (Z (max_z_nat + 1))
+  (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + 1)
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + 1 +
+  max_char + 1)) (Z (max_z_nat + 2)) max_char))) with 
+  (length (transfer_block (A (S (S (max_char + 1 + 1)))) v (Z 1)
+  (S (S (max_char + 1 + 1 + 1)))
+  (A (S (S (max_char + 1 + 1 + 1 + max_char + 1)))) (Z 2)
+  max_char)).
+
+  replace ((length (transfer_block
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + 1 +
+  max_char + 1)) (Z (max_z_nat + 1)) v
+  (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + 1 +
+  max_char + 1 + 1)
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + 1 +
+  max_char + 1 + 1 + max_char + 1)) (Z (max_z_nat + 2))
+  max_char))) with 
+
+  (length
+  (transfer_block (A (S (S (max_char + 1 + 1 + 1 + max_char + 1))))
+  (Z 1) v (S (S (max_char + 1 + 1 + 1 + max_char + 1 + 1)))
+  (A (S (S (max_char + 1 + 1 + 1 + max_char + 1 + 1 + max_char +
+  1)))) (Z 2) max_char)).  reflexivity.
+
+  apply transfer_block_same_size.
+  apply transfer_block_same_size.
+  apply get_if_macro_same_size.
+  apply get_all_ai_blocks_decr_same_size.
+Qed.
 
 
 Lemma macros_same_size : forall instr max_char max_lbl_nat max_z_nat 
@@ -568,9 +659,9 @@ Lemma macros_same_size : forall instr max_char max_lbl_nat max_z_nat
 Proof.
   intros. destruct instr. destruct s; unfold get_str_macro.
   - apply incr_same_size.
-  - admit.
-  - admit.
-Admitted.
+  - apply decr_same_size.
+  - reflexivity.
+Qed.
 
 (** Simulated Program Decomposition *)
 
@@ -590,9 +681,7 @@ Lemma nat_label_not_in_macro : forall instr opt_label
   max_label_nat max_z_nat max_z_str) (A label_idx) = false.
 Proof.
   intros. destruct instr.
-  + simpl.
-  (* Essa prova não é conceitualmente difícil, mas é bem trabalhosa.
-   *)
+  + (* Acho que consigo aproveitar do macro_tactics tudo*)
 Admitted.
 
 
@@ -604,10 +693,8 @@ Lemma get_labeled_instr_head: forall label instr max_char
 Proof.
   intros. simpl. destruct instr.
   - simpl. rewrite eqb_lbl_refl. reflexivity.
-  - admit. (* depende da implementação de DECR *)
+  - simpl. rewrite eqb_lbl_refl. reflexivity.
   - destruct max_char;
     simpl; rewrite eqb_lbl_refl; reflexivity.
-Admitted.
-
-(* Criar outros separados mais especificos desse de cima *)
+Qed.
 

@@ -791,7 +791,7 @@ Proof.
       ++ rewrite x0_eq_z. rewrite sz. reflexivity.
       ++ replace (s x0) with (state_str x0). auto.
          symmetry. auto.
-Admitted.
+Qed.
 
 (** Teorema Principal *)
 
@@ -902,3 +902,4 @@ Proof.
       repeat (split; auto).
 Qed.
 
+Print Assumptions nat_implies_string.
