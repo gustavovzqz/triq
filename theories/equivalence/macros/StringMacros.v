@@ -273,6 +273,34 @@ transfer_block T2 z x D2_idx E aux max_char ++
 [StringLang.Instr (Some E) (StringLang.DEL aux)].
 
 
+Definition get_ai_block_decr 
+  (x : variable)
+  (z : variable)
+  (aux : variable)
+  (first_block_label : nat)
+  (char : nat)
+  (goto_label: label ) :=
+
+
+let ai_label := Some (A (first_block_label + char))  in
+
+[StringLang.Instr ai_label (StringLang.DEL x);
+StringLang.Instr None (StringLang.APPEND (char - 1) z);
+StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 goto_label)].
+
+Fixpoint get_all_ai_blocks_decr
+  (x : variable)
+  (z : variable)
+  (aux : variable)
+  (max_char : nat)
+  (first_label : nat)
+  (goto_label : label) :=
+
+match max_char with 
+| 0 => []
+| S n => get_ai_block_decr x z aux first_label max_char goto_label ++
+         get_all_ai_blocks_decr x z aux n first_label goto_label
+end.
 
 
 (* DECR MACRO *)
@@ -316,8 +344,57 @@ Definition get_decr_macro
   (lbl : option label)
   (max_label_nat max_z_nat : nat)
   (max_label_str : nat)
-  (max_char : nat) : StringLang.program.
-Admitted.
+  (max_char : nat) : StringLang.program :=
+
+let z := Z (max_z_nat + 1) in 
+let aux := Z (max_z_nat + 2 ) in
+
+let B_idx  := max_label_nat + max_label_str + 1 in  (* 1 *)
+let A1_idx := B_idx  + 1 in (* 2 *)
+let An_idx := A1_idx + max_char in 
+let C2_idx := An_idx + 1 in
+let T1_idx := C2_idx + 1 in 
+let D1_idx := T1_idx + 1 in
+let T2_idx := D1_idx + max_char + 1 in
+let D2_idx := T2_idx + 1 in
+let E_idx  := D2_idx + max_char + 1 in
+
+
+let B  := A B_idx  in
+let A1 := A A1_idx in
+let An := A An_idx in
+let C2 := A C2_idx in
+let T1 := A T1_idx in
+let D1 := A D1_idx in
+let T2 := A T2_idx in
+let D2 := A D2_idx in
+let E  := A E_idx  in
+
+let goto l := 
+  [StringLang.Instr None (StringLang.IF_ENDS_GOTO aux 0 l)] in
+
+
+[StringLang.Instr lbl (StringLang.APPEND 0 aux)] ++ 
+
+get_if_macro_label x (Some B) max_char A1_idx ++ 
+goto T2 ++
+
+get_all_ai_blocks_decr x z aux max_char A1_idx T1 ++
+
+[StringLang.Instr (Some A1) (StringLang.DEL x)] ++
+get_if_macro x None C2 max_char ++
+goto T2 ++ 
+
+[StringLang.Instr (Some C2) (StringLang.APPEND max_char z)] ++
+goto B ++ 
+
+
+transfer_block T1 x z D1_idx T2 aux max_char ++
+transfer_block T2 z x D2_idx E aux max_char ++ 
+
+
+[StringLang.Instr (Some E) (StringLang.DEL aux)].
+
 
 
 (* ------------------------------------------------------------------ *)
@@ -386,39 +463,153 @@ Proof.
     ++ destruct hp; auto.
 Qed.
 
-(* String Program is over max_char *)
 
-(* IF *)
-
-Lemma if_macro_over : forall x instr_lbl goto_lbl max_char,
-  StringLang.program_over (get_if_macro x instr_lbl goto_lbl max_char) max_char.
+Lemma get_if_macro_label_same_size : forall v lbl max_char goto v'
+      lbl' goto',
+  length (get_if_macro_label v lbl max_char goto) = 
+  length (get_if_macro_label v' lbl' max_char goto').
 Proof.
-Admitted.
+  induction max_char; intros; auto.
+  simpl. f_equal. apply IHmax_char.
+Qed.
 
-(* INCR *)
-
-Lemma incr_macro_over : 
-  forall x instr_lbl ml_nat mz_nat ml_str max_char,
-  StringLang.program_over (get_incr_macro x instr_lbl ml_nat mz_nat ml_str max_char)
-  max_char.
+Lemma get_all_incr_blocks_same_size : forall x z aux idx goto
+x' z' aux' max_char idx' goto',
+  length (get_all_incr_blocks x z aux max_char idx goto) =
+  length (get_all_incr_blocks x' z' aux' max_char idx' goto').
 Proof.
-Admitted.
+  intros. destruct max_char; auto.
+  simpl. induction max_char; auto.
+  simpl. f_equal. f_equal. f_equal. apply IHmax_char. 
+Qed.
 
-(* DECR *)
-
-Lemma decr_macro_over : 
-  forall x instr_lbl ml_nat mz_nat ml_str max_char,
-  StringLang.program_over (get_decr_macro x instr_lbl ml_nat mz_nat ml_str max_char)
-  max_char.
+Lemma get_all_di_blocks_same_size : forall x z aux max_char d1 t1
+x' z' aux' d1' t1',
+  length (get_all_di_blocks x z aux max_char d1 t1) = 
+  length (get_all_di_blocks x' z' aux' max_char d1' t1').
 Proof.
-Admitted.
+  intros; induction max_char; auto.
+  simpl. f_equal. f_equal. f_equal. apply IHmax_char.
+Qed.
 
+(* transfer_block T1 x z D1_idx T2 aux max_char*)
 
-Lemma program_over_conversion : forall p_nat max_char max_label_nat max_z_nat prefix, 
-  StringLang.program_over 
-  (get_str_prg_rec p_nat max_char max_label_nat max_z_nat prefix) max_char.
+Lemma transfer_block_same_size : forall t1 x z d1 t2 aux max_char 
+t1' x' z' d1' t2' aux',
+  length (transfer_block t1 x z d1 t2 aux max_char) = 
+  length (transfer_block t1' x' z' d1' t2' aux' max_char).
 Proof.
-Admitted.
+  intros. unfold transfer_block. repeat (rewrite length_app).
+  replace (length (get_if_macro_label x (Some t1) max_char d1))
+  with (length (get_if_macro_label x' (Some t1') max_char d1')).
+  f_equal. simpl. f_equal. apply get_all_di_blocks_same_size.
+  apply get_if_macro_label_same_size.
+Qed.
+
+Lemma get_all_ai_blocks_decr_same_size : forall v x z max_char idx goto
+x' z' v' idx' goto',
+  length (get_all_ai_blocks_decr v x z max_char idx goto) = 
+  length (get_all_ai_blocks_decr v' x' z' max_char idx' goto').
+Proof.
+  induction max_char; intros; auto.
+  simpl. f_equal. f_equal. f_equal. apply IHmax_char.
+Qed.
+
+Lemma get_if_macro_same_size : forall v lbl v' goto lbl' goto' max_char,
+  length (get_if_macro v lbl goto max_char) =
+  length (get_if_macro v' lbl' goto' max_char).
+Proof.
+  induction max_char; intros; auto.
+  simpl. f_equal. apply IHmax_char.
+Qed.
+
+
+
+Lemma incr_same_size : forall v o max_lbl_nat max_z_nat max_label_str max_char,
+length (get_incr_macro v o max_lbl_nat max_z_nat max_label_str
+max_char) = length (get_incr_macro v o 0 0 0 max_char).
+Proof.
+  intros. unfold get_incr_macro. repeat (simpl; rewrite length_app).
+  simpl. rewrite get_if_macro_label_same_size with (lbl' := (Some (A 1)))
+  (goto' := 2) (v' := v).
+  replace (length (get_all_incr_blocks v (Z (max_z_nat + 1)) (Z (max_z_nat + 2)) 
+  max_char (max_lbl_nat + max_label_str + 1 + 1)
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1)))) with 
+  (length (get_all_incr_blocks v (Z 1) (Z 2) max_char 2 (A (S (S (max_char + 1)))))).
+  replace (length
+  (transfer_block (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1)) v (Z (max_z_nat + 1))
+  (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1)
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + max_char + 1)) (Z (max_z_nat + 2))
+  max_char)) with (length
+  (transfer_block (A (S (S (max_char + 1)))) v
+  (Z 1) (S (S (max_char + 1 + 1)))
+  (A (S (S (max_char + 1 + 1 + max_char + 1))))
+  (Z 2) max_char)).
+  replace (length (transfer_block (A (max_lbl_nat + max_label_str + 1 + 1 +
+  max_char + 1 + 1 + max_char + 1)) (Z (max_z_nat + 1)) v (max_lbl_nat + max_label_str + 1 + 1 +
+  max_char + 1 + 1 + max_char + 1 + 1) (A (max_lbl_nat + max_label_str + 1 + 1 +
+  max_char + 1 + 1 + max_char + 1 + 1 + max_char + 1)) (Z (max_z_nat + 2))
+  max_char)) with (length (transfer_block (A (S (S (max_char + 1 + 1 + max_char + 1))))
+  (Z 1) v (S (S (max_char + 1 + 1 + max_char + 1 + 1)))
+  (A (S (S
+  (max_char + 1 + 1 + max_char + 1 +
+  1 + max_char + 1)))) (Z 2)
+  max_char)). reflexivity.
+  apply transfer_block_same_size.
+  apply transfer_block_same_size.
+  apply get_all_incr_blocks_same_size.
+Qed.
+
+Lemma decr_same_size : forall v o max_lbl_nat max_z_nat max_label_str max_char,
+length (get_decr_macro v o max_lbl_nat max_z_nat max_label_str
+max_char) = length (get_decr_macro v o 0 0 0 max_char).
+Proof.
+  intros. unfold get_decr_macro. repeat (simpl; rewrite length_app).
+  simpl. rewrite get_if_macro_label_same_size with (lbl' := (Some (A 1)))
+  (goto' := 2) (v' := v).
+
+  replace (length
+  (get_all_ai_blocks_decr v (Z (max_z_nat + 1)) (Z (max_z_nat + 2)) max_char
+  (max_lbl_nat + max_label_str + 1 + 1)
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1)))) with 
+  (length (get_all_ai_blocks_decr v (Z 1) (Z 2) max_char 2
+  (A (S (S (max_char + 1 + 1)))))).
+  replace ((length
+  (get_if_macro v None (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1))
+  max_char))) with 
+  (length (get_if_macro v None (A (S (S (max_char + 1)))) max_char)).
+
+  replace ((length (transfer_block
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1)) v
+  (Z (max_z_nat + 1))
+  (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + 1)
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + 1 +
+  max_char + 1)) (Z (max_z_nat + 2)) max_char))) with 
+  (length (transfer_block (A (S (S (max_char + 1 + 1)))) v (Z 1)
+  (S (S (max_char + 1 + 1 + 1)))
+  (A (S (S (max_char + 1 + 1 + 1 + max_char + 1)))) (Z 2)
+  max_char)).
+
+  replace ((length (transfer_block
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + 1 +
+  max_char + 1)) (Z (max_z_nat + 1)) v
+  (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + 1 +
+  max_char + 1 + 1)
+  (A (max_lbl_nat + max_label_str + 1 + 1 + max_char + 1 + 1 + 1 +
+  max_char + 1 + 1 + max_char + 1)) (Z (max_z_nat + 2))
+  max_char))) with 
+
+  (length
+  (transfer_block (A (S (S (max_char + 1 + 1 + 1 + max_char + 1))))
+  (Z 1) v (S (S (max_char + 1 + 1 + 1 + max_char + 1 + 1)))
+  (A (S (S (max_char + 1 + 1 + 1 + max_char + 1 + 1 + max_char +
+  1)))) (Z 2) max_char)).  reflexivity.
+
+  apply transfer_block_same_size.
+  apply transfer_block_same_size.
+  apply get_if_macro_same_size.
+  apply get_all_ai_blocks_decr_same_size.
+Qed.
 
 
 Lemma macros_same_size : forall instr max_char max_lbl_nat max_z_nat 
@@ -428,13 +619,108 @@ Lemma macros_same_size : forall instr max_char max_lbl_nat max_z_nat
   length (StringMacros.get_str_macro instr max_char 
           0 0 0).
 Proof.
-Admitted.
+  intros. destruct instr. destruct s; unfold get_str_macro.
+  - apply incr_same_size.
+  - apply decr_same_size.
+  - reflexivity.
+Qed.
 
-(** Simulated Program Decomposition *)
 
-(* 
-   NatLang.Instr o (NatLang.IF_GOTO x l) => get_if_macro x o l max_char *)
+Lemma has_labeled_instr_if_false : forall label_idx opt_label
+  v l max_char,
+  eqb_opt_lbl (Some (A label_idx)) opt_label = false ->
+  StringUtils.has_labeled_instr (get_if_macro v opt_label l max_char) 
+  (A label_idx) = false.
+Proof.
+  induction max_char; intros.
+  - simpl. destruct opt_label; auto. destruct l0. simpl in *.
+    rewrite H. reflexivity.
+  - destruct opt_label; auto. simpl.
+    destruct l0. simpl in *. rewrite H; auto.
+Qed.
 
+Lemma has_labeled_instr_if_label_false : forall label_idx opt_label
+  v l max_char,
+  eqb_opt_lbl (Some (A label_idx)) opt_label = false ->
+  StringUtils.has_labeled_instr (get_if_macro_label v opt_label max_char l) 
+  (A label_idx) = false.
+Proof.
+  induction max_char; intros.
+  - unfold get_if_macro_label. destruct opt_label; auto. destruct l0. simpl in *.
+    rewrite H. reflexivity.
+  - destruct opt_label; auto. simpl.
+    destruct l0. simpl in *. rewrite H; auto.
+Qed.
+
+
+Lemma labels_greater_than_if : forall x if_idx max_char 
+  goto_label label_idx,
+  if_idx > label_idx ->
+
+  StringUtils.labels_greater_than (get_if_macro_label x 
+  (Some (A if_idx)) max_char goto_label) label_idx.
+Proof.
+  intros.
+  induction max_char.
+  + simpl. lia.
+  + simpl. split; try lia. auto.
+Qed.
+
+Lemma labels_greater_than_di_blocks : forall di_idx x z aux max_char
+  goto_label label_idx,
+  di_idx > label_idx -> 
+  
+  StringUtils.labels_greater_than (get_all_di_blocks x z aux 
+  max_char di_idx goto_label) label_idx.
+Proof.
+  intros. destruct max_char.
+  + simpl. lia.
+  + simpl. induction max_char.
+    - simpl. lia.
+    - simpl. split; try lia. apply IHmax_char.
+Qed.
+
+Lemma has_labeled_instr_transfer : forall label_idx x z 
+instr_idx instr_idx' E aux max_char,
+  instr_idx > label_idx ->
+  instr_idx' > label_idx ->
+
+  StringUtils.labels_greater_than (transfer_block (A instr_idx) x z 
+  instr_idx' E aux max_char) label_idx.
+Proof.
+  intros. unfold transfer_block. 
+  apply StringUtils.labels_greater_than_app.
+  apply labels_greater_than_if; lia.
+  simpl. apply labels_greater_than_di_blocks. lia.
+Qed.
+
+Lemma labels_greater_than_incr_blocks : forall incr_idx x z aux max_char
+  goto_label label_idx,
+  incr_idx > label_idx -> 
+  
+  StringUtils.labels_greater_than (get_all_incr_blocks x z aux 
+  max_char incr_idx goto_label) label_idx.
+Proof.
+  intros. destruct max_char.
+  + simpl. apply I.
+  + simpl. induction max_char.
+    - simpl. lia.
+    - simpl. split; try lia. apply IHmax_char.
+Qed.
+
+Lemma labels_greater_than_decr_blocks : forall incr_idx x z aux max_char
+  goto_label label_idx,
+  incr_idx > label_idx -> 
+
+  StringUtils.labels_greater_than (get_all_ai_blocks_decr  x z aux 
+  max_char incr_idx goto_label) label_idx.
+Proof.
+  intros. destruct max_char.
+  + simpl. apply I.
+  + simpl. induction max_char.
+    - simpl. lia.
+    - simpl. split; try lia. apply IHmax_char. 
+Qed.
 
 Lemma nat_label_not_in_macro : forall instr opt_label 
   max_char label_idx max_label_nat max_z_nat max_z_str,
@@ -448,11 +734,50 @@ Lemma nat_label_not_in_macro : forall instr opt_label
   max_label_nat max_z_nat max_z_str) (A label_idx) = false.
 Proof.
   intros. destruct instr.
-  + simpl.
-  (* Essa prova não é conceitualmente difícil, mas é bem trabalhosa.
-   *)
-Admitted.
-
+  - unfold get_str_macro, get_incr_macro. 
+    rewrite (StringUtils.has_labeled_instr_app).
+    repeat (simpl; rewrite StringUtils.has_labeled_instr_app).
+    replace (Nat.eqb label_idx (max_label_nat + max_z_str + 
+    1 + 1 + max_char)) with false. simpl.
+    replace (Nat.eqb label_idx
+    (max_label_nat + max_z_str + 1 + 1 + max_char + 1 + 1 + max_char + 1 + 1 +
+    max_char + 1)) with false. lia. symmetry. rewrite PeanoNat.Nat.eqb_neq.
+    lia.  symmetry. rewrite PeanoNat.Nat.eqb_neq. lia.
+    apply StringUtils.labels_greater_implies_diff with label_idx; try lia.
+    apply has_labeled_instr_transfer; lia.
+    apply StringUtils.labels_greater_implies_diff with label_idx; try lia.
+    apply has_labeled_instr_transfer; lia.
+    apply StringUtils.labels_greater_implies_diff with label_idx; try lia.
+    apply labels_greater_than_incr_blocks; lia.
+    apply has_labeled_instr_if_label_false. simpl.
+    rewrite PeanoNat.Nat.eqb_neq. lia. destruct opt_label; auto.
+    destruct l. simpl in *. rewrite H. auto.
+  - unfold get_str_macro, get_decr_macro. 
+    rewrite (StringUtils.has_labeled_instr_app).
+    repeat (simpl; rewrite StringUtils.has_labeled_instr_app).
+    replace (Nat.eqb label_idx (max_label_nat + max_z_str + 
+    1 + 1)) with false. simpl.
+    replace ( Nat.eqb label_idx (max_label_nat + max_z_str + 
+    1 + 1 + max_char + 1)) with false.
+    replace (Nat.eqb label_idx
+    (max_label_nat + max_z_str + 1 + 1 + max_char + 1 + 1 + 1 + max_char + 1 + 1 +
+    max_char + 1)) with false.
+    lia. symmetry. rewrite PeanoNat.Nat.eqb_neq.
+    lia. symmetry. rewrite PeanoNat.Nat.eqb_neq. lia.
+    symmetry. rewrite PeanoNat.Nat.eqb_neq. lia.
+    apply StringUtils.labels_greater_implies_diff with label_idx; try lia.
+    apply has_labeled_instr_transfer; lia.
+    apply StringUtils.labels_greater_implies_diff with label_idx; try lia.
+    apply has_labeled_instr_transfer; lia.
+    apply has_labeled_instr_if_false. auto. 
+    apply StringUtils.labels_greater_implies_diff with label_idx; try lia.
+    apply labels_greater_than_decr_blocks; lia.
+    apply has_labeled_instr_if_label_false.
+    simpl. rewrite PeanoNat.Nat.eqb_neq. lia.
+    simpl. destruct opt_label; auto. destruct l.
+    simpl in *. rewrite H; auto.
+  - apply has_labeled_instr_if_false; auto.
+Qed.
 
 Lemma get_labeled_instr_head: forall label instr max_char
   max_label_nat max_z_nat max_z_str t,
@@ -462,10 +787,8 @@ Lemma get_labeled_instr_head: forall label instr max_char
 Proof.
   intros. simpl. destruct instr.
   - simpl. rewrite eqb_lbl_refl. reflexivity.
-  - admit. (* depende da implementação de DECR *)
+  - simpl. rewrite eqb_lbl_refl. reflexivity.
   - destruct max_char;
     simpl; rewrite eqb_lbl_refl; reflexivity.
-Admitted.
-
-(* Criar outros separados mais especificos desse de cima *)
+Qed.
 

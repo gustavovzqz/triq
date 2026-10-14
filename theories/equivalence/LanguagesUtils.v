@@ -53,7 +53,7 @@ Fixpoint decr_string (s: StringLang.string) (max_char : nat ) : (StringLang.stri
 match s with 
 | [ ]    => []
 | h :: t => match t with 
-            | [] => if h =? 0 then [] else [h + 1]
+            | [] => if h =? 0 then [] else [h - 1]
             |  _ => if 0 <? h then (h - 1) :: t
             else max_char :: decr_string t max_char
             end
@@ -108,3 +108,19 @@ Proof.
        rewrite PeanoNat.Nat.ltb_lt in E; auto. lia.
     ++ simpl. split; auto. lia.
 Qed.
+
+Lemma decr_string_over : forall s max_char,
+StringLang.string_over s max_char ->
+StringLang.string_over (decr_string s max_char) max_char.
+Proof.
+  intros. induction s.
+  + simpl. auto.
+  + simpl. destruct s eqn:E.
+    ++ destruct (a =? 0); simpl; auto.
+       simpl in H. split; lia.
+    ++ rewrite <- E in H, IHs. rewrite <- E. simpl in H.
+       destruct H. destruct (0 <? a). 
+       +++ simpl in *. split; auto. lia.
+       +++ simpl. split; auto.
+Qed.
+

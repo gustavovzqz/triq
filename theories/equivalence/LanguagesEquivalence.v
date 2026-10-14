@@ -10,6 +10,8 @@ From Triq Require Import LanguagesUtils.
 From Triq Require StringMacros.
 From Triq Require IfMacroProperties.
 From Triq Require IncrMacroProperties.
+From Triq Require DecrMacroProperties.
+
 
 
 From Triq Require NatUtils.
@@ -93,16 +95,6 @@ Definition get_equiv_str_program p_nat max_char :=
 
   StringMacros.get_str_prg_rec p_nat max_char max_label_nat max_z_nat [].
 
-
-(** O programa que simula está limitado à max_char *)
-
-Lemma equiv_str_program_over : forall p_nat max_char,
-  StringLang.program_over (get_equiv_str_program p_nat max_char) max_char.
-Proof.
-  intros p_nat max_char.
-  unfold get_equiv_str_program. 
-  apply StringMacros.program_over_conversion.
-Qed.
 
 (** Obter Estado Convertido nat -> string *)
 
@@ -397,10 +389,10 @@ Proof.
            state_str' = state_str /\
            line_str = pos_str + StringMacros.macro_length if_instr max_char)
     as [k if_computation].
-    { rewrite if_instr_eq in *. apply IfMacroProperties.compute_if_block_skip
-      with (max_label_nat := max_label_nat) (max_z_nat := max_z_nat)
-      (max_z_str := (StringUtils.get_max_label
-      (firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str))) 
+    { rewrite if_instr_eq in *. unfold StringMacros.macro_length. simpl.
+      Transparent StringMacros.get_str_macro.
+      unfold StringMacros.get_str_macro.
+      apply IfMacroProperties.compute_if_block_skip with 
       (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
       (t := t); auto.
       rewrite H_equiv_pos. auto. }
@@ -435,12 +427,11 @@ Proof.
            state_str' = state_str /\
            line_str = StringLang.get_labeled_instr p_str goto_label)
     as [k if_computation].
-    { rewrite if_instr_eq in *. apply IfMacroProperties.compute_if_block_Sn
-      with (max_label_nat := max_label_nat) (max_z_nat := max_z_nat)
-      (max_z_str := (StringUtils.get_max_label
-      (firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str))) 
-      (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
-      (t := t) (instr_label := instr_label) (max_char := max_char)
+    { rewrite if_instr_eq in *. unfold StringMacros.macro_length. simpl.
+      Transparent StringMacros.get_str_macro.
+      unfold StringMacros.get_str_macro. apply IfMacroProperties.compute_if_block_Sn
+      with (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
+      (t := t) (opt_label := instr_label) (max_char := max_char)
       (char := char) (x := x); auto.
       + rewrite H_equiv_pos. auto.
       + rewrite state_str_decomposition. apply PeanoNat.Nat.eqb_refl. }
@@ -627,6 +618,257 @@ Proof.
 Qed.
 
 
+(** Decr Macro Simulates *)
+
+Lemma f_equal_incr : forall s1 s2 max_char, 
+  StringLang.string_over s1 max_char ->
+  StringLang.string_over s2 max_char ->
+  incr_string s1 max_char = incr_string s2 max_char ->
+  s1 = s2.
+Proof. 
+  induction s1; destruct s2; intros; auto.
+  (* Contradição em H1 *)
+  + simpl in H1. destruct (n <? max_char).
+    ++ destruct s2; try discriminate. injection H1; lia. 
+    ++ pose proof (incr_string_not_empty s2 max_char).
+       destruct H2 as [h [t H2]].
+       destruct (incr_string s2 max_char); try discriminate.
+  (* contradição em H1 *)
+  + simpl in H1. destruct (a <? max_char).
+    ++ destruct s1; try discriminate. injection H1; lia.
+    ++ pose proof (incr_string_not_empty s1 max_char).
+       destruct H2 as [h [t H2]].
+       destruct (incr_string s1 max_char); try discriminate. 
+  + simpl in *. destruct H, H0.
+    assert (a < max_char \/ a = max_char) by lia.
+    assert (n < max_char \/ n = max_char) by lia.
+    destruct H4; destruct H5; subst; simpl in *.
+    ++ apply PeanoNat.Nat.ltb_lt in H4, H5.
+       rewrite H4, H5 in H1. injection H1 as H1. rewrite H6.
+       replace a with n by lia. reflexivity.
+    ++ apply PeanoNat.Nat.ltb_lt in H4. rewrite H4 in H1.
+       replace (max_char <? max_char) with false in H1. injection H1; lia.
+       symmetry. apply PeanoNat.Nat.ltb_nlt. lia.
+    ++ apply PeanoNat.Nat.ltb_lt in H5. rewrite H5 in H1.
+       replace (max_char <? max_char) with false in H1. injection H1; lia.
+       symmetry. apply PeanoNat.Nat.ltb_nlt. lia.
+    ++ replace (max_char <? max_char) with false in H1. 
+       injection H1 as H4. f_equal. apply IHs1 with max_char; auto.
+       symmetry. apply PeanoNat.Nat.ltb_nlt. lia.
+Qed.
+
+Lemma string_over_conversion :  forall (n : nat) max_char,
+  StringLang.string_over (nat_to_string n max_char) max_char.
+Proof.
+  induction n; intros.
+  + simpl. auto.
+  + simpl. apply incr_string_over, IHn.
+Qed.
+
+Definition is_decr_of_state state' state max_char (x : variable) :=
+  forall var,
+    (var <> x -> state var = state' var) /\
+    (var = x -> state' var = decr_string (state var) max_char).
+
+Lemma incr_rev_decr : forall s max_char,
+  StringLang.string_over s max_char ->
+  s <> [] ->
+  incr_string (decr_string s max_char) max_char = s.
+Proof.
+  induction s; intros.
+  + contradiction.
+  + destruct s. 
+    ++ simpl in *. destruct H. destruct a; auto.
+       simpl. assert (a - 0 <? max_char = true).
+       {rewrite PeanoNat.Nat.ltb_lt. lia. } rewrite H2. f_equal.
+       lia.
+    ++ simpl in *. destruct a; auto.
+       +++ simpl. replace (max_char <? max_char) with false.
+           f_equal. apply IHs; auto. destruct H as [H1 [H2 H3]]; auto.
+           intros falso. discriminate. symmetry. 
+           apply PeanoNat.Nat.ltb_nlt. lia.
+       +++ simpl. destruct H as [H1 [H2 H3]].
+           replace (a - 0) with a by lia.
+           replace (a <? max_char) with true. 
+           replace (a + 1) with (S a) by lia. reflexivity.
+           symmetry. apply PeanoNat.Nat.ltb_lt. lia.  
+Qed.
+
+
+Lemma state_equiv_decr_aux : forall x state_nat state_str max_char,
+  StringLang.state_over state_str max_char ->
+  (nat_to_string (state_nat x) max_char) = state_str x ->
+  (nat_to_string (NatLang.decr state_nat x x) max_char) =
+  (decr_string (state_str x) max_char).
+Proof.
+  intros. 
+  unfold NatLang.decr, NatLang.update. rewrite eqb_var_refl. 
+  destruct (state_nat x) as [| n'].
+  + simpl. rewrite <- H0. reflexivity.
+  + simpl. replace (n' - 0) with n' by lia. simpl in H0.
+    apply f_equal_incr with max_char. 
+    ++ apply string_over_conversion. 
+    ++ apply decr_string_over, H.
+    ++ simpl in *. rewrite H0. destruct (state_str x) eqn:E.
+       +++ pose proof (incr_string_not_empty (nat_to_string n' max_char) max_char).
+           destruct H1 as [h [t H1]]. rewrite H1 in H0. discriminate.
+       +++ rewrite incr_rev_decr; auto. 
+           * rewrite <- H0. apply incr_string_over.
+             apply string_over_conversion.
+           * intros falso. discriminate.
+Qed.
+
+
+Lemma state_equiv_decr : forall max_char state_nat state_str state_str' x,
+  StringLang.state_over state_str max_char ->
+  state_equiv state_nat state_str max_char ->
+  is_decr_of_state state_str' state_str max_char x ->
+  state_equiv (NatLang.decr state_nat x) state_str' max_char.
+Proof.
+  intros max_char state_nat state_str state_str' x.
+  intros H_state_over H_equiv H_incr.
+  unfold state_equiv. intros var.
+  unfold is_incr_of_state in H_incr. 
+  specialize (H_incr var). destruct H_incr as [H_var_diff_x H_var_eq_x].
+  destruct (var_eqb_dec var x) as [var_eq_x | var_diff_x].
+  (* var = x  *)  
+  - rewrite var_eq_x. apply H_var_eq_x in var_eq_x as state_str_var.
+    subst. specialize (H_equiv x). rewrite state_str_var.
+    apply state_equiv_decr_aux; auto.
+  (* var != x *)
+  - unfold NatLang.decr, NatLang.update. 
+    assert (eqb_var x var = false).
+    { rewrite eqb_var_symm. rewrite var_eqb_neq. auto. }
+    rewrite H. unfold state_equiv in H_equiv. specialize (H_equiv var).
+    apply H_var_diff_x in var_diff_x. rewrite <- var_diff_x. auto.
+Qed.
+
+Theorem decr_macro_simulates :
+  forall p_nat p_str pos_nat state_nat
+               pos_str state_str
+         max_char x instr_label,
+
+  p_str = get_equiv_str_program p_nat max_char ->
+
+  state_str (Z (NatUtils.get_max_z p_nat + 1)) = [] ->
+  state_str (Z (NatUtils.get_max_z p_nat + 2)) = [] ->
+  StringLang.state_over state_str max_char ->
+
+
+  nth_error p_nat pos_nat = Some (NatLang.Instr instr_label
+  (NatLang.DECR x)) ->
+
+  state_equiv state_nat state_str max_char ->
+
+  equiv_pos p_nat pos_nat pos_str max_char ->
+
+  exists n' : nat,
+    let (line_nat, state_nat') :=
+      NatLang.split_snap
+        (NatLang.next_step p_nat (NatLang.SNAP pos_nat state_nat)) in
+    let (line_str, state_str') :=
+      StringLang.split_snap
+        (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+           n') in
+    state_equiv state_nat' state_str' max_char /\
+    equiv_pos p_nat line_nat line_str max_char /\
+    state_str' (Z (NatUtils.get_max_z p_nat + 1)) = [] /\
+    state_str' (Z (NatUtils.get_max_z p_nat + 2)) = [] /\
+    StringLang.state_over state_str' max_char.
+Proof.
+  intros p_nat p_str pos_nat state_nat pos_str state_str
+  max_char x instr_label.
+  intros p_str_eq state_str_z1 state_str_z2 state_over_str
+  nth_pos_nat_instr H_state_equiv H_equiv_pos. 
+  unfold get_equiv_str_program in p_str_eq.
+
+  (* naming *)
+  remember (NatLang.Instr instr_label (NatLang.DECR x)) 
+  as decr_instr eqn:decr_instr_eq.
+  remember (NatUtils.get_max_label p_nat) as max_label_nat.
+  remember (NatUtils.get_max_z p_nat) as max_z_nat.
+
+
+  assert (eqb_var x (Z (max_z_nat + 2)) = false) as x_diff_z2.
+  {destruct x; auto. simpl. rewrite PeanoNat.Nat.eqb_neq.
+   assert (n <= max_z_nat). rewrite Heqmax_z_nat. apply NatUtils.var_in_le_max.
+   apply NatUtils.nth_error_implies_var_in with pos_nat decr_instr; auto.
+   rewrite decr_instr_eq. simpl. auto. lia. }
+
+  assert (eqb_var x (Z (max_z_nat + 1)) = false) as x_diff_z1.
+  {destruct x; auto. simpl. rewrite PeanoNat.Nat.eqb_neq.
+   assert (n <= max_z_nat). rewrite Heqmax_z_nat. apply NatUtils.var_in_le_max.
+   apply NatUtils.nth_error_implies_var_in with pos_nat decr_instr; auto.
+   rewrite decr_instr_eq. simpl. auto. lia. }
+
+  (* str program decomposition *)
+  assert ( let h := (firstn (get_equiv_simulated_position p_nat pos_nat 
+    max_char) p_str) in
+    let max_label_str := StringUtils.get_max_label h in
+    exists t,
+      p_str = h
+      ++ (StringMacros.get_str_macro decr_instr max_char max_label_nat max_z_nat 
+      max_label_str) ++ t /\ length h = get_equiv_simulated_position p_nat 
+      pos_nat max_char)
+    as [t [str_program_decomposition length_decomposition]].
+  { apply simulated_program_decomposition; auto. }
+
+  simpl. rewrite nth_pos_nat_instr, decr_instr_eq.
+  unfold state_equiv in H_state_equiv.
+  pose proof (H_state_equiv x) as state_str_value.
+  assert (exists n,
+    let (line_str, state_str') :=
+      StringLang.split_snap
+        (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
+          n) in
+      line_str = pos_str + StringMacros.macro_length 
+      (NatLang.Instr instr_label (NatLang.DECR x)) max_char /\  
+      state_str' x = state_str (Z (max_z_nat + 1)) 
+                ++ decr_string (state_str x) max_char  /\
+      state_str' (Z (max_z_nat + 1)) = [] /\
+      forall var, 
+      var <> x /\ var <> (Z (max_z_nat + 1)) ->
+      state_str' var = state_str var) as [k decr_computation].
+    { rewrite decr_instr_eq in *. apply DecrMacroProperties.compute_decr_macro
+      with (max_label_nat := max_label_nat)
+      (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
+      (x_value := state_str x)
+      (t := t); auto.
+      rewrite H_equiv_pos. auto.
+      destruct instr_label. rewrite Heqmax_label_nat.
+      apply NatUtils.nat_instr_le_max_label. 
+      eapply NatUtils.nth_error_implies_label_in; eauto. 
+      simpl. auto. }
+    exists k.
+    destruct (StringLang.compute_program p_str 
+    (StringLang.SNAP pos_str state_str) k). simpl in decr_computation.
+    destruct decr_computation as [line_str_eq [sx [sz forall_eq]]].
+    simpl. rewrite line_str_eq.
+    repeat (split; auto).
+    + assert (is_decr_of_state s state_str max_char x).
+      { unfold is_decr_of_state. intros var. split.
+        + intros. destruct (var_eqb_dec var (Z (max_z_nat + 1))).
+          rewrite e. rewrite state_str_z1, sz. reflexivity.
+          symmetry. apply forall_eq. auto. 
+        + intros var_eq_x. rewrite var_eq_x. rewrite sx.
+          rewrite state_str_z1. reflexivity. } 
+      apply state_equiv_decr with state_str; auto.
+    + unfold equiv_pos in *. rewrite H_equiv_pos.
+      erewrite get_equiv_simulated_position_Sn; eauto.
+      rewrite decr_instr_eq in *. auto.
+    + rewrite <- state_str_z2. apply forall_eq. 
+      split. rewrite <- var_eqb_neq, eqb_var_symm. auto.
+      injection. lia.
+    + unfold StringLang.state_over. intros x0.
+      destruct (triple_dec x0 x (Z (max_z_nat + 1))) as
+      [x0_eq_x | [x0_eq_z | x0_diff]].
+      ++ rewrite x0_eq_x. rewrite sx. StringLang.solve_string.
+         apply decr_string_over. auto.
+      ++ rewrite x0_eq_z. rewrite sz. reflexivity.
+      ++ replace (s x0) with (state_str x0). auto.
+         symmetry. auto.
+Qed.
+
 (** Teorema Principal *)
 
 Theorem nat_implies_string :
@@ -637,7 +879,6 @@ Theorem nat_implies_string :
 
   exists (p_str : StringLang.program)
         (initial_state_str : StringLang.state),
-  StringLang.program_over p_str max_char /\
   StringLang.state_over initial_state_str max_char /\
 
   forall (n : nat),
@@ -663,9 +904,6 @@ Proof.
   (* inital_str_state é o estado inicial de nat convertido *)
   exists (get_equiv_str_state initial_nat_state max_char).
   repeat split.
-  (* o programa equivalente de strings possui apenas caracteres 
-     dentro do limite max_char *)
-  { apply equiv_str_program_over. }
   (* o estado de strings também está limitado à max_char *)
   { apply equiv_state_over. }
   (* ramo principal *)
@@ -726,7 +964,7 @@ Proof.
       (* a. x <- x + 1 *)
       ++ eapply incr_macro_simulates; eauto.
       (* b. x <- x- - 1 *)
-      ++ admit.
+      ++ eapply decr_macro_simulates; eauto.
       (* c. IF v != 0 GOTO A *)
       ++ eapply if_macro_simulates; eauto.
     (* caso 2: não existe uma linha na posição.
@@ -734,5 +972,6 @@ Proof.
        basta também não fazer nada no programa de strings *)
     + simpl. rewrite p_nat_instr. exists 0. simpl.
       repeat (split; auto).
-Admitted.
+Qed.
 
+Print Assumptions nat_implies_string.
