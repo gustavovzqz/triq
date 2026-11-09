@@ -6,7 +6,7 @@ From Stdlib Require Import Lia.
 Import ListNotations.
 
 
-From Triq Require Import StringMacros.
+From Triq Require Import NatToStringMacros.
 
 Lemma compute_if_block_skip :
   forall max_char p_str pos_str state_str 
@@ -28,7 +28,7 @@ Lemma compute_if_block_skip :
   state_str' = state_str /\
   line_str = pos_str + length (get_if_macro x opt_label goto_label max_char).
 Proof.
-  Transparent StringMacros.get_str_macro.
+  Transparent NatToStringMacros.get_str_macro.
   induction max_char;
   intros p_str pos_str state_str x opt_label if_goto_idx h t;
   intros p_str_decomposition H_length H_state_str.
@@ -36,7 +36,7 @@ Proof.
     exists 1. simpl. rewrite nth_error_app2 by lia.
     rewrite H_length, PeanoNat.Nat.sub_diag.
     simpl.
-    rewrite H_state_str. simpl. unfold StringMacros.macro_length.
+    rewrite H_state_str. simpl. unfold NatToStringMacros.macro_length.
     repeat (split; auto).
     (* Passo *)
   - cut (exists n n' : nat, 
@@ -155,7 +155,7 @@ Lemma compute_if_block_label_skip :
   state_str' = state_str /\
   line_str = pos_str + length (get_if_macro_label x opt_label max_char if_goto_idx).
 Proof.
-  Transparent StringMacros.get_str_macro.
+  Transparent NatToStringMacros.get_str_macro.
   induction max_char;
   intros p_str pos_str state_str x opt_label if_goto_idx h t;
   intros p_str_decomposition H_length H_state_str.
@@ -163,7 +163,7 @@ Proof.
     exists 1. simpl. rewrite nth_error_app2 by lia.
     rewrite H_length, PeanoNat.Nat.sub_diag.
     simpl.
-    rewrite H_state_str. simpl. unfold StringMacros.macro_length.
+    rewrite H_state_str. simpl. unfold NatToStringMacros.macro_length.
     repeat (split; auto).
     (* Passo *)
   - cut (exists n n' : nat, 
@@ -218,7 +218,7 @@ Lemma compute_if_block_label_value :
   state_str' = state_str /\
   line_str = StringLang.get_labeled_instr p_str (A (char + if_goto_idx)).
 Proof.
-  Transparent StringMacros.get_str_macro.
+  Transparent NatToStringMacros.get_str_macro.
   induction max_char;
   intros p_str pos_str state_str x opt_label if_goto_idx h t char s;
   intros p_str_decomposition H_length char_value H_state_str.

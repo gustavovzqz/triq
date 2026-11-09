@@ -614,9 +614,9 @@ Qed.
 
 Lemma macros_same_size : forall instr max_char max_lbl_nat max_z_nat 
       max_label_str,
-  length (StringMacros.get_str_macro instr max_char max_lbl_nat max_z_nat
+  length (NatToStringMacros.get_str_macro instr max_char max_lbl_nat max_z_nat
           max_label_str) =
-  length (StringMacros.get_str_macro instr max_char 
+  length (NatToStringMacros.get_str_macro instr max_char
           0 0 0).
 Proof.
   intros. destruct instr. destruct s; unfold get_str_macro.
@@ -730,7 +730,7 @@ Lemma nat_label_not_in_macro : forall instr opt_label
 
 
   StringUtils.has_labeled_instr
-  (StringMacros.get_str_macro (NatLang.Instr opt_label instr) max_char
+  (NatToStringMacros.get_str_macro (NatLang.Instr opt_label instr) max_char
   max_label_nat max_z_nat max_z_str) (A label_idx) = false.
 Proof.
   intros. destruct instr.
@@ -782,7 +782,7 @@ Qed.
 Lemma get_labeled_instr_head: forall label instr max_char
   max_label_nat max_z_nat max_z_str t,
   (StringLang.get_labeled_instr ( 
-    (StringMacros.get_str_macro (NatLang.Instr (Some label) instr) max_char
+    (NatToStringMacros.get_str_macro (NatLang.Instr (Some label) instr) max_char
     max_label_nat max_z_nat max_z_str) ++ t) label) = 0.
 Proof.
   intros. simpl. destruct instr.

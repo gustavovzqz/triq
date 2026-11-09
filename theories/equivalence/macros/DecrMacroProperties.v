@@ -2,7 +2,7 @@ From Triq Require StringLang.
 From Triq Require Import LanguagesCommon.
 From Triq Require Import LanguagesUtils.
 From Triq Require StringUtils.
-From Triq Require Import StringMacros.
+From Triq Require Import NatToStringMacros.
 From Triq Require TransferMacroProperties.
 
 From Triq Require Import MacroTactics.
@@ -409,7 +409,7 @@ Lemma compute_decr_macro_aux :
   let max_label_str := StringUtils.get_max_label h in 
 
   p_str = h ++
-  StringMacros.get_str_macro 
+  NatToStringMacros.get_str_macro
   (NatLang.Instr instr_label (NatLang.DECR x)) 
   max_char max_label_nat max_z_nat
   max_label_str ++ t  ->
@@ -729,7 +729,7 @@ Lemma compute_decr_macro :
   let max_label_str := StringUtils.get_max_label h in 
 
   p_str = h ++
-  StringMacros.get_str_macro 
+  NatToStringMacros.get_str_macro
   (NatLang.Instr instr_label (NatLang.DECR x)) 
   max_char max_label_nat max_z_nat
   max_label_str ++ t  ->
@@ -755,7 +755,7 @@ Lemma compute_decr_macro :
       (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
          n) in
 
-  line_str = pos_str + StringMacros.macro_length 
+  line_str = pos_str + NatToStringMacros.macro_length
   (NatLang.Instr instr_label (NatLang.DECR x)) max_char /\  
   state_str' x = state_str (Z (max_z_nat + 1)) 
              ++ decr_string (state_str x) max_char  /\
@@ -781,7 +781,7 @@ Proof.
        (StringLang.SNAP pos_str state_str) n) n') n'') n''')
        in 
       
-       line_str = pos_str + StringMacros.macro_length 
+       line_str = pos_str + NatToStringMacros.macro_length
      (NatLang.Instr instr_label (NatLang.DECR x)) max_char /\
       state_str' x = state_str (Z (max_z_nat + 1)) ++ decr_string (state_str x)
       max_char /\

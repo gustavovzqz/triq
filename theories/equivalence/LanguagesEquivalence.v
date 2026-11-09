@@ -7,7 +7,7 @@ From Triq Require StringLangProperties.
 From Triq Require Import LanguagesCommon.
 From Triq Require Import LanguagesUtils.
 
-From Triq Require StringMacros.
+From Triq Require NatToStringMacros.
 From Triq Require IfMacroProperties.
 From Triq Require IncrMacroProperties.
 From Triq Require DecrMacroProperties.
@@ -41,26 +41,26 @@ Definition get_equiv_simulated_position
   (n : nat)
   (max_char : nat) :=
 fold_left
-  (fun acc instr => acc + StringMacros.macro_length instr max_char)
+  (fun acc instr => acc + NatToStringMacros.macro_length instr max_char)
   (firstn n p_nat)
 0.
 
 Lemma fold_left_add_const :
 forall l acc c max_char,
   fold_left
-    (fun acc instr => acc + StringMacros.macro_length instr max_char)
+    (fun acc instr => acc + NatToStringMacros.macro_length instr max_char)
     l (acc + c)
   =
   acc +
   fold_left
-    (fun acc instr => acc + StringMacros.macro_length instr max_char)
+    (fun acc instr => acc + NatToStringMacros.macro_length instr max_char)
   l c.
 Proof.
   induction l as [|h t IH]; intros acc c max_char.
   - simpl. reflexivity.
-  - simpl. pose proof (IH acc (c + StringMacros.macro_length h max_char)).
-    replace (acc + (c + StringMacros.macro_length h max_char)) with 
-      (acc + c + (StringMacros.macro_length h max_char))
+  - simpl. pose proof (IH acc (c + NatToStringMacros.macro_length h max_char)).
+    replace (acc + (c + NatToStringMacros.macro_length h max_char)) with
+      (acc + c + (NatToStringMacros.macro_length h max_char))
     in H. rewrite H. reflexivity.
     lia.
 Qed.
@@ -68,16 +68,16 @@ Qed.
 Lemma get_equiv_simulated_position_cons :
 forall h t i max_char,
   get_equiv_simulated_position (h :: t) (S i) max_char =
-  StringMacros.macro_length h max_char +
+  NatToStringMacros.macro_length h max_char +
   get_equiv_simulated_position t i max_char.
 Proof.
   intros.
   replace (h :: t) with ([h] ++ t).
   + unfold get_equiv_simulated_position. simpl.
     pose proof (fold_left_add_const (firstn i t) 
-    (StringMacros.macro_length h max_char) 0 max_char).
-    replace (StringMacros.macro_length h max_char + 0) 
-    with (StringMacros.macro_length h max_char) in H by lia.
+    (NatToStringMacros.macro_length h max_char) 0 max_char).
+    replace (NatToStringMacros.macro_length h max_char + 0)
+    with (NatToStringMacros.macro_length h max_char) in H by lia.
     exact H.
   + reflexivity.
 Qed.
@@ -93,7 +93,7 @@ Definition get_equiv_str_program p_nat max_char :=
   let max_label_nat := NatUtils.get_max_label p_nat in
   let max_z_nat := NatUtils.get_max_z p_nat in
 
-  StringMacros.get_str_prg_rec p_nat max_char max_label_nat max_z_nat [].
+  NatToStringMacros.get_str_prg_rec p_nat max_char max_label_nat max_z_nat [].
 
 
 (** Obter Estado Convertido nat -> string *)
@@ -136,12 +136,12 @@ Qed.
 Lemma get_str_prg_rec_app : forall h t max_char max_label_nat 
   max_z_nat prefix,
 
-  let h_prefix := (StringMacros.get_str_prg_rec h max_char 
+  let h_prefix := (NatToStringMacros.get_str_prg_rec h max_char
     max_label_nat max_z_nat prefix) in
 
-  StringMacros.get_str_prg_rec (h ++ t) max_char max_label_nat max_z_nat 
+  NatToStringMacros.get_str_prg_rec (h ++ t) max_char max_label_nat max_z_nat
   prefix = 
-  h_prefix ++ (StringMacros.get_str_prg_rec t max_char max_label_nat 
+  h_prefix ++ (NatToStringMacros.get_str_prg_rec t max_char max_label_nat
   max_z_nat (prefix ++ h_prefix)).
 Proof.
   induction h; intros.
@@ -173,16 +173,16 @@ Qed.
 Lemma get_equiv_simulated_length : forall program max_char 
   max_label_nat max_z_nat prefix,
   get_equiv_simulated_position program (length program) max_char =
-  length (StringMacros.get_str_prg_rec program max_char max_label_nat max_z_nat
+  length (NatToStringMacros.get_str_prg_rec program max_char max_label_nat max_z_nat
   prefix).
 Proof.
   induction program; intros; auto.
   simpl. rewrite get_equiv_simulated_position_cons.
-  rewrite length_app. unfold StringMacros.macro_length.
-  assert (length (StringMacros.get_str_macro a max_char 0 0 0) =
-  (length (StringMacros.get_str_macro a max_char max_label_nat max_z_nat
+  rewrite length_app. unfold NatToStringMacros.macro_length.
+  assert (length (NatToStringMacros.get_str_macro a max_char 0 0 0) =
+  (length (NatToStringMacros.get_str_macro a max_char max_label_nat max_z_nat
   (StringUtils.get_max_label prefix)))).
-  { symmetry. apply StringMacros.macros_same_size. }
+  { symmetry. apply NatToStringMacros.macros_same_size. }
   rewrite H. f_equal. auto.
 Qed.
 
@@ -190,7 +190,7 @@ Qed.
 Lemma simulated_program_decomposition:
   forall p_nat p_str i instr max_char max_label_nat max_z_nat,
   nth_error p_nat i = Some instr ->
-  p_str = StringMacros.get_str_prg_rec p_nat 
+  p_str = NatToStringMacros.get_str_prg_rec p_nat
   max_char max_label_nat max_z_nat [] ->
 
   let h := (firstn (get_equiv_simulated_position p_nat i max_char) p_str) in
@@ -198,7 +198,7 @@ Lemma simulated_program_decomposition:
 
   exists t,
     p_str = h
-    ++ (StringMacros.get_str_macro instr max_char max_label_nat max_z_nat max_label_str)
+    ++ (NatToStringMacros.get_str_macro instr max_char max_label_nat max_z_nat max_label_str)
     ++ t /\ length h = get_equiv_simulated_position p_nat i max_char.
 
 Proof. 
@@ -210,7 +210,7 @@ Proof.
     + rewrite nth_error_app1 in H_instr; auto.
       simpl in p_str_eq. rewrite get_str_prg_rec_app in p_str_eq.
       rewrite app_nil_l in p_str_eq. 
-      remember (StringMacros.get_str_prg_rec program max_char max_label_nat 
+      remember (NatToStringMacros.get_str_prg_rec program max_char max_label_nat
       max_z_nat []) as program'.
       pose proof (IHprogram program' i instr max_char max_label_nat max_z_nat 
       H_instr). clear IHprogram. 
@@ -221,7 +221,7 @@ Proof.
       replace (get_equiv_simulated_position (program ++ [new_line]) i 
       max_char) with (get_equiv_simulated_position program i max_char).
       replace (firstn (get_equiv_simulated_position program i max_char)
-      (program' ++ StringMacros.get_str_prg_rec [new_line] max_char 
+      (program' ++ NatToStringMacros.get_str_prg_rec [new_line] max_char
       max_label_nat max_z_nat program')) with (firstn 
       (get_equiv_simulated_position program i max_char) program').
       repeat (rewrite <- app_assoc). eauto.
@@ -241,14 +241,14 @@ Proof.
       unfold max_label_str, h.
       rewrite p_str_eq. rewrite get_equiv_simulated_app_eq by lia. 
       rewrite get_str_prg_rec_app. simpl.
-      assert (length (StringMacros.get_str_prg_rec program max_char 
+      assert (length (NatToStringMacros.get_str_prg_rec program max_char
       max_label_nat max_z_nat []) = get_equiv_simulated_position program i 
       max_char) as length_eq_simulated.
       { erewrite i_eq_length, get_equiv_simulated_length. eauto. }
       rewrite app_nil_r. rewrite firstn_app_length, new_line_eq_instr.
       assert ((firstn (get_equiv_simulated_position program i max_char)
-      (StringMacros.get_str_prg_rec program max_char max_label_nat 
-      max_z_nat [] )) = (StringMacros.get_str_prg_rec program 
+      (NatToStringMacros.get_str_prg_rec program max_char max_label_nat
+      max_z_nat [] )) = (NatToStringMacros.get_str_prg_rec program
       max_char max_label_nat max_z_nat [])) as firstn_skip.
       { rewrite i_eq_length. erewrite get_equiv_simulated_length.
         rewrite firstn_all. reflexivity. }
@@ -264,7 +264,7 @@ Qed.
 
 
 (* Não quero que o get_str_macro simplifique. *)
-Opaque StringMacros.get_str_macro. 
+Opaque NatToStringMacros.get_str_macro.
 
 
 (* Índices menores que ou iguais a max_lbl_nat estão
@@ -273,7 +273,7 @@ Opaque StringMacros.get_str_macro.
 Lemma goto_label_equiv_position :
 forall p_nat label_idx max_char max_lbl_nat max_z_nat prefix,
   max_lbl_nat >= label_idx ->
-  let p_str := StringMacros.get_str_prg_rec p_nat max_char
+  let p_str := NatToStringMacros.get_str_prg_rec p_nat max_char
                max_lbl_nat max_z_nat prefix in
   equiv_pos
     p_nat
@@ -293,15 +293,15 @@ Proof.
     + unfold equiv_pos. unfold get_equiv_simulated_position. simpl.
       unfold p_str. destruct opt_label; try discriminate.
       simpl in E1. destruct l. simpl in E1. rewrite PeanoNat.Nat.eqb_eq in E1.
-      rewrite E1. simpl. rewrite StringMacros.get_labeled_instr_head.
+      rewrite E1. simpl. rewrite NatToStringMacros.get_labeled_instr_head.
       reflexivity.
     + unfold p_str, equiv_pos. rewrite get_equiv_simulated_position_cons.
       simpl. rewrite StringUtils.get_labeled_instr_app.
-      ++ unfold StringMacros.macro_length.
-         rewrite StringMacros.macros_same_size.
+      ++ unfold NatToStringMacros.macro_length.
+         rewrite NatToStringMacros.macros_same_size.
          apply f_equal2_plus; auto.
          apply IHt; auto.
-      ++ apply StringMacros.nat_label_not_in_macro; auto.
+      ++ apply NatToStringMacros.nat_label_not_in_macro; auto.
          rewrite eqb_opt_lbl_symm. auto.
 Qed.
 
@@ -310,7 +310,7 @@ Lemma get_equiv_simulated_position_Sn :
   nth_error p_nat n = Some instr ->
   get_equiv_simulated_position p_nat (n + 1) max_char
   = get_equiv_simulated_position p_nat n max_char + 
-    StringMacros.macro_length instr max_char.
+    NatToStringMacros.macro_length instr max_char.
 Proof.
   intros p_nat n instr max_char Hnth.
   unfold get_equiv_simulated_position.
@@ -372,7 +372,7 @@ Proof.
   let max_label_str := StringUtils.get_max_label h in
   exists t,
     p_str = h
-    ++ (StringMacros.get_str_macro if_instr max_char max_label_nat max_z_nat 
+    ++ (NatToStringMacros.get_str_macro if_instr max_char max_label_nat max_z_nat
     max_label_str) ++ t /\ length h = get_equiv_simulated_position p_nat 
     pos_nat max_char)
   as [t [str_program_decomposition length_decomposition]].
@@ -387,11 +387,11 @@ Proof.
             StringLang.split_snap (StringLang.compute_program p_str 
             (StringLang.SNAP pos_str state_str) n') in
            state_str' = state_str /\
-           line_str = pos_str + StringMacros.macro_length if_instr max_char)
+           line_str = pos_str + NatToStringMacros.macro_length if_instr max_char)
     as [k if_computation].
-    { rewrite if_instr_eq in *. unfold StringMacros.macro_length. simpl.
-      Transparent StringMacros.get_str_macro.
-      unfold StringMacros.get_str_macro.
+    { rewrite if_instr_eq in *. unfold NatToStringMacros.macro_length. simpl.
+      Transparent NatToStringMacros.get_str_macro.
+      unfold NatToStringMacros.get_str_macro.
       apply IfMacroProperties.compute_if_block_skip with 
       (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
       (t := t); auto.
@@ -427,9 +427,9 @@ Proof.
            state_str' = state_str /\
            line_str = StringLang.get_labeled_instr p_str goto_label)
     as [k if_computation].
-    { rewrite if_instr_eq in *. unfold StringMacros.macro_length. simpl.
-      Transparent StringMacros.get_str_macro.
-      unfold StringMacros.get_str_macro. apply IfMacroProperties.compute_if_block_Sn
+    { rewrite if_instr_eq in *. unfold NatToStringMacros.macro_length. simpl.
+      Transparent NatToStringMacros.get_str_macro.
+      unfold NatToStringMacros.get_str_macro. apply IfMacroProperties.compute_if_block_Sn
       with (h := firstn (get_equiv_simulated_position p_nat pos_nat max_char) p_str)
       (t := t) (opt_label := instr_label) (max_char := max_char)
       (char := char) (x := x); auto.
@@ -555,7 +555,7 @@ Proof.
     let max_label_str := StringUtils.get_max_label h in
     exists t,
       p_str = h
-      ++ (StringMacros.get_str_macro incr_instr max_char max_label_nat max_z_nat 
+      ++ (NatToStringMacros.get_str_macro incr_instr max_char max_label_nat max_z_nat
       max_label_str) ++ t /\ length h = get_equiv_simulated_position p_nat 
       pos_nat max_char)
     as [t [str_program_decomposition length_decomposition]].
@@ -569,7 +569,7 @@ Proof.
       StringLang.split_snap
         (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
           n) in
-      line_str = pos_str + StringMacros.macro_length 
+      line_str = pos_str + NatToStringMacros.macro_length
       (NatLang.Instr instr_label (NatLang.INCR x)) max_char /\  
       state_str' x = state_str (Z (max_z_nat + 1)) 
                 ++ incr_string (state_str x) max_char  /\
@@ -807,7 +807,7 @@ Proof.
     let max_label_str := StringUtils.get_max_label h in
     exists t,
       p_str = h
-      ++ (StringMacros.get_str_macro decr_instr max_char max_label_nat max_z_nat 
+      ++ (NatToStringMacros.get_str_macro decr_instr max_char max_label_nat max_z_nat
       max_label_str) ++ t /\ length h = get_equiv_simulated_position p_nat 
       pos_nat max_char)
     as [t [str_program_decomposition length_decomposition]].
@@ -821,7 +821,7 @@ Proof.
       StringLang.split_snap
         (StringLang.compute_program p_str (StringLang.SNAP pos_str state_str)
           n) in
-      line_str = pos_str + StringMacros.macro_length 
+      line_str = pos_str + NatToStringMacros.macro_length
       (NatLang.Instr instr_label (NatLang.DECR x)) max_char /\  
       state_str' x = state_str (Z (max_z_nat + 1)) 
                 ++ decr_string (state_str x) max_char  /\

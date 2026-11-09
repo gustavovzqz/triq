@@ -1,5 +1,5 @@
 From Triq Require StringLang.
-From Triq Require Import StringMacros.
+From Triq Require Import NatToStringMacros.
 
 From Triq Require Import LanguagesCommon.
 From Triq Require IfMacroProperties.

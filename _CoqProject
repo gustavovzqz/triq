@@ -18,7 +18,8 @@ theories/equivalence/NatUtils.v
 theories/equivalence/StringUtils.v
 
 # Macros
-theories/equivalence/macros/StringMacros.v
+theories/macros/StringMacros.v
+theories/equivalence/macros/NatToStringMacros.v
 theories/equivalence/macros/MacroTactics.v
 theories/equivalence/macros/IfMacroProperties.v
 theories/equivalence/macros/TransferMacroProperties.v
