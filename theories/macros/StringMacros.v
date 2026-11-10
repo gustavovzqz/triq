@@ -4,22 +4,122 @@ From Triq.string_lang Require StringLang.
 Import ListNotations.
 
 
+
 Module Type TStringMacros.
-  Parameter low_z high_z low_label high_label max_char : nat.
-  Axiom z_range_valid : low_z <= high_z.
-  Axiom label_range_valid : low_label <= high_label.
+  Parameter z_shift l_shift n_input n_aux n_labels max_char : nat.
   Parameter program : StringLang.program.
+
   Axiom variables_range : forall o s k,
     In (StringLang.Instr o s) program -> statement_variable s = Z k ->
-    low_z <= k /\ k <= high_z.
+    z_shift <= k /\ k <= z_shift + n_input + n_aux.
+                      (* <= já que separamos o Z (shift) 
+                            para variável de saída *)
+
   Axiom labels_range : forall s k,
     In (StringLang.Instr (Some (A k)) s) program ->
-    low_label <= k /\ k <= high_label.
+    l_shift <= k /\ k < l_shift + n_labels.
+
   Axiom alphabet : StringLang.program_over program max_char.
+
   Axiom internal_jumps : forall o v c l,
     In (StringLang.Instr o (StringLang.IF_ENDS_GOTO v c l)) program ->
     has_labeled_instr program l = true.
 End TStringMacros.
+
+(*
+  Expansão da Macro 
+
+  Z (z_shift) = variável de saída
+  Z (z_shift + 1) até (z_shift + n_input) são as variáveis de entrada
+  Z (z_shift + n_input + 1) até Z (z_shift + n_input + n_aux) são as variáveis auxiliares
+
+  Na expansão:
+    1. Atribuímos as variáveis de entrada (parâmetros da expansão) às entradas da macro e zeramos a saída
+       Z (shift)           <- 0
+       Z (shift + 1)       <- arg1
+       Z (shift + 2)       <- arg2
+                      ...
+       Z (shift + n_input) <- arg_n_input
+
+    2. Zeramos as variáveis auxiliares e 
+       Z (shift + n_input + 1)     <- 0
+                      ...
+       Z (shift + n_input + n_aux) <- 0
+
+    3. Expandimos a macro
+
+    4. Atribuímos o valor em Z (shift) para a variável de saída declarada como argumento da expansão
+       X_saida <- Z (shift)
+      
+
+*)
+
+(* Como passar a propriedade da execução de uma macro "isolada" para uma macro expandida?
+
+    1. A ideia é descrever a propriedade da macro da seguinte forma:
+       "Para qualquer estado, onde as variáveis auxiliares possuem valor zero, ..., chegamos 
+        em um estado final onde temos P(s) onde P(s) descreve a variável 
+        de saída (em termos das de entrada)" 
+
+  OBS: Ao final da execução, a macro pode ter alterado as variáveis auxiliares, assim, precisamos alterar
+       ligeiramente a definição de StateEquiv. Anteriormente, a restrição era de que após a execução da macro,
+       o estado resultante era EXATAMENTE o estado dos naturais, com conversões para strings. Isso era possível
+       já que as macros de incremento e decremento zeravam o valor de Z ao final. Como estamos tratando de forma
+       genérica, para a implicação, podemos tratar a equivalência de estados como "as variáveis que aparecem em
+       nat" e não "todas as variáveis dos dois estados".
+
+       O resultado disso é que no final da execução o programa de Strings pode ter algumas variáveis a mais com
+       valores descartáveis, o que não é problema para a implicação.
+
+       L1: Podemos provar que PARA QUALQUER EXPANSÃO DE MACRO, com um prefix "prefix", a execução não altera
+       variáveis que não estão na macro. Assim, na implicação de Nat para Strings, o usuário não precisa
+       se preocupar com nada do que foi alterado na macro, assumindo que a macro está sendo construída
+       com valores que não estão no programa dos naturais.
+
+
+    2. Assim, vamos para a situação prática: 
+      
+      Seja M uma macro que implementa o incremento de uma entrada X, usando duas variáveis auxiliares. 
+      Assim, temos o seguinte, tratando inicialmente como shift 0.
+        Z 0 -> Variável de saída. Inicialmente ZERO
+        Z 1 -> Variável de entrada. Inicialmente X.
+        Z 2 -> Auxiliar. Inicialmente ZERO.
+        Z 3 -> Auxiliar. Inicialmente ZERO.
+
+        Daí, vamos supor que o usuário prova o seguinte:
+          T1 : "Para um estado inicial 's' QUALQUER, onde Z 0, Z 2, Z 3 são NULOS e Z 1 é um valor X,
+                existe um número de passos em que finalizamos a macro e chegamos ao estado s', onde, 
+                s' (Z 0) é X + 1."
+
+        Com a macro construída e esta propriedade provada, adicionado da propriedade descrita em L1,
+        podemos gerar a expansão anterior. Veja abaixo a chamada de EXPANSÃO_MACRO(MacroIncr, X)
+        "
+        1.  [ZEROS E ATRIBUIÇÕES]
+        2.  [MacroIncr]
+        3.  [X <- (Z 0)]
+        "
+
+        De 1, temos que as condições para P(s) estão satisfeitas. De 2, temos que (Z 0) tem o valor X + 1
+        e que as variáveis auxiliares podem ter sido alteradas. De 3, temos que X recebeu o incremento.
+
+        Para a implicação de Nat para Strings, o que é necessário:
+          1. Provar que X recebeu o incremento 
+          2. Provar que nenhuma outra variável de Nat foi alterada.
+
+        A primeira tarefa é imediata do lema, a segunda pode ser feita usando do fato de que
+          a) A macro altera somente as variáveis que estão nela;
+          b) Nenhuma variável que está em Nat está em Macro. (Isso pode ser obtido usando um shift 
+          de max_z_nat)
+    *)
+
+(* Qual a estratégia então? 
+
+  1. Módulo Macro como descrito acima;
+  2. Funtor StringMacroProperties gera propriedades de uma Macro M, possuindo 
+     Axiomas que falam sobre a execução da macro, dado pré condições. Outras 
+     propriedades 
+  3. Funtor StringMacroExpansion que recebe módulo M e gera expansão, fala sobre execução da expansão 
+*)
 
 
 Lemma next_step_in_context (macro : StringLang.program)
