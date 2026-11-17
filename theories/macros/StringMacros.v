@@ -4,28 +4,6 @@ From Triq.string_lang Require StringLang.
 Import ListNotations.
 
 
-
-Module Type TStringMacros.
-  Parameter z_shift l_shift n_input n_aux n_labels max_char : nat.
-  Parameter program : StringLang.program.
-
-  Axiom variables_range : forall o s k,
-    In (StringLang.Instr o s) program -> statement_variable s = Z k ->
-    z_shift <= k /\ k <= z_shift + n_input + n_aux.
-                      (* <= já que separamos o Z (shift) 
-                            para variável de saída *)
-
-  Axiom labels_range : forall s k,
-    In (StringLang.Instr (Some (A k)) s) program ->
-    l_shift <= k /\ k < l_shift + n_labels.
-
-  Axiom alphabet : StringLang.program_over program max_char.
-
-  Axiom internal_jumps : forall o v c l,
-    In (StringLang.Instr o (StringLang.IF_ENDS_GOTO v c l)) program ->
-    has_labeled_instr program l = true.
-End TStringMacros.
-
 (*
   Expansão da Macro 
 
@@ -54,74 +32,68 @@ End TStringMacros.
 
 *)
 
-(* Como passar a propriedade da execução de uma macro "isolada" para uma macro expandida?
+Module Type TStringMacros.
+  Parameter z_shift l_shift n_input n_aux n_labels max_char : nat.
+  Parameter program : StringLang.program.
 
-    1. A ideia é descrever a propriedade da macro da seguinte forma:
-       "Para qualquer estado, onde as variáveis auxiliares possuem valor zero, ..., chegamos 
-        em um estado final onde temos P(s) onde P(s) descreve a variável 
-        de saída (em termos das de entrada)" 
+  (* Não ocorrem variáveis do tipo X e Y no programa, apenas Z *)
+  Axiom variables_local : forall o s,
+    In (StringLang.Instr o s) program ->
+    exists k, statement_variable s = Z k.
 
-  OBS: Ao final da execução, a macro pode ter alterado as variáveis auxiliares, assim, precisamos alterar
-       ligeiramente a definição de StateEquiv. Anteriormente, a restrição era de que após a execução da macro,
-       o estado resultante era EXATAMENTE o estado dos naturais, com conversões para strings. Isso era possível
-       já que as macros de incremento e decremento zeravam o valor de Z ao final. Como estamos tratando de forma
-       genérica, para a implicação, podemos tratar a equivalência de estados como "as variáveis que aparecem em
-       nat" e não "todas as variáveis dos dois estados".
+  (* Toda variável que ocorre dentro do programa está entre o shift 
+     e shift + n_input + n_aux *)
+  Axiom variables_range : forall o s k,
+    In (StringLang.Instr o s) program -> 
+    statement_variable s = Z k ->
+    z_shift <= k /\ k <= z_shift + n_input + n_aux.
 
-       O resultado disso é que no final da execução o programa de Strings pode ter algumas variáveis a mais com
-       valores descartáveis, o que não é problema para a implicação.
+  (* As labels também estão no limite [l_shift, l_shift + n_labels) *)
+  Axiom labels_range : forall s k,
+    In (StringLang.Instr (Some (A k)) s) program ->
+    l_shift <= k /\ k < l_shift + n_labels.
 
-       L1: Podemos provar que PARA QUALQUER EXPANSÃO DE MACRO, com um prefix "prefix", a execução não altera
-       variáveis que não estão na macro. Assim, na implicação de Nat para Strings, o usuário não precisa
-       se preocupar com nada do que foi alterado na macro, assumindo que a macro está sendo construída
-       com valores que não estão no programa dos naturais.
+  (* Delimita o alfabeto usado pelo programa *)
+  Axiom alphabet : StringLang.program_over program max_char.
 
+  (* Todos os pulos são internos. *)
+  Axiom internal_jumps : forall o v c l,
+    In (StringLang.Instr o (StringLang.IF_ENDS_GOTO v c l)) program ->
+    has_labeled_instr program l = true.
+End TStringMacros.
 
-    2. Assim, vamos para a situação prática: 
-      
-      Seja M uma macro que implementa o incremento de uma entrada X, usando duas variáveis auxiliares. 
-      Assim, temos o seguinte, tratando inicialmente como shift 0.
-        Z 0 -> Variável de saída. Inicialmente ZERO
-        Z 1 -> Variável de entrada. Inicialmente X.
-        Z 2 -> Auxiliar. Inicialmente ZERO.
-        Z 3 -> Auxiliar. Inicialmente ZERO.
+(** Uma macro com especificação de sua saída e garantia de término.
+    A propriedade depende das entradas INICIAIS, pois a execução pode
+    modificar tanto as entradas locais quanto as variáveis auxiliares. *)
+Module Type TStringMacroWithSpec.
+  Include TStringMacros.
 
-        Daí, vamos supor que o usuário prova o seguinte:
-          T1 : "Para um estado inicial 's' QUALQUER, onde Z 0, Z 2, Z 3 são NULOS e Z 1 é um valor X,
-                existe um número de passos em que finalizamos a macro e chegamos ao estado s', onde, 
-                s' (Z 0) é X + 1."
+  (** Entradas na ordem Z (z_shift + 1), ..., Z (z_shift + n_input). *)
+  Definition input_values (st : StringLang.state) : list StringLang.string :=
+    map (fun i => st (Z (z_shift + S i))) (seq 0 n_input).
 
-        Com a macro construída e esta propriedade provada, adicionado da propriedade descrita em L1,
-        podemos gerar a expansão anterior. Veja abaixo a chamada de EXPANSÃO_MACRO(MacroIncr, X)
-        "
-        1.  [ZEROS E ATRIBUIÇÕES]
-        2.  [MacroIncr]
-        3.  [X <- (Z 0)]
-        "
+  (** Apenas a saída e as auxiliares locais precisam começar vazias.
+      As entradas e as variáveis fora da macro têm valores arbitrários.
+      Em StringLang, o valor nulo é a string vazia [], e não [0]. *)
+  Definition precondition (st : StringLang.state) : Prop :=
+    st (Z z_shift) = [] /\
+    forall k, z_shift + n_input < k <= z_shift + n_input + n_aux ->
+      st (Z k) = [].
 
-        De 1, temos que as condições para P(s) estão satisfeitas. De 2, temos que (Z 0) tem o valor X + 1
-        e que as variáveis auxiliares podem ter sido alteradas. De 3, temos que X recebeu o incremento.
+  (** Relaciona as entradas iniciais com a saída final *)
+  Parameter postcondition : list StringLang.string -> StringLang.string -> Prop.
 
-        Para a implicação de Nat para Strings, o que é necessário:
-          1. Provar que X recebeu o incremento 
-          2. Provar que nenhuma outra variável de Nat foi alterada.
+  (** Cada implementação deve provar este contrato: a execução termina
+      e sua saída satisfaz a propriedade declarada. *)
+  Axiom execution_correct : forall initial,
+    precondition initial ->
+    exists steps final,
+      StringLang.compute_program program (StringLang.SNAP 0 initial) steps =
+        StringLang.SNAP (length program) final /\
+      postcondition (input_values initial) (final (Z z_shift)).
+End TStringMacroWithSpec.
 
-        A primeira tarefa é imediata do lema, a segunda pode ser feita usando do fato de que
-          a) A macro altera somente as variáveis que estão nela;
-          b) Nenhuma variável que está em Nat está em Macro. (Isso pode ser obtido usando um shift 
-          de max_z_nat)
-    *)
-
-(* Qual a estratégia então? 
-
-  1. Módulo Macro como descrito acima;
-  2. Funtor StringMacroProperties gera propriedades de uma Macro M, possuindo 
-     Axiomas que falam sobre a execução da macro, dado pré condições. Outras 
-     propriedades 
-  3. Funtor StringMacroExpansion que recebe módulo M e gera expansão, fala sobre execução da expansão 
-*)
-
-
+(** Um passo interno da macro coincide com o passo no programa maior. *)
 Lemma next_step_in_context (macro : StringLang.program)
   (internal_jumps : forall o v c l,
     In (StringLang.Instr o (StringLang.IF_ENDS_GOTO v c l)) macro ->
@@ -224,6 +196,7 @@ Definition shifted_state dz (old new : StringLang.state) :=
 Definition unshift_state dz (st : StringLang.state) : StringLang.state :=
   fun v => st (shift_variable dz v).
 
+(** Atualizações correspondentes preservam a relação entre estados deslocados. *)
 Lemma shift_update : forall dz old new v value,
   shifted_state dz old new ->
   shifted_state dz (StringLang.update old v value)
@@ -233,6 +206,7 @@ Proof.
   rewrite shift_variable_eqb. destruct (eqb_var v w); auto.
 Qed.
 
+(** Um passo preserva o contador e a correspondência dos estados. *)
 Lemma shift_next_step : forall p dz dl pc old new,
   shifted_state dz old new ->
   let '(StringLang.SNAP pc1 old1) := StringLang.next_step p (StringLang.SNAP pc old) in
@@ -250,6 +224,7 @@ Proof.
     symmetry. apply shift_label_position.
 Qed.
 
+(** A simulação de um passo estende-se a qualquer número de passos. *)
 Lemma shift_compute : forall p dz dl steps pc old new,
   shifted_state dz old new ->
   let '(StringLang.SNAP pc1 old1) :=
@@ -269,54 +244,70 @@ Qed.
 Module StringMacroProperties (M : TStringMacros).
   Definition shift dz dl := shift_program dz dl M.program.
 
-  Lemma shifted_variables_range : forall dz dl o s k,
-    In (StringLang.Instr o s) (shift dz dl) -> statement_variable s = Z k ->
-    dz + M.low_z <= k /\ k <= dz + M.high_z.
+  (** A variável de uma instrução deslocada continua sendo local. *)
+  Lemma shifted_variables_local : forall dz dl o s,
+    In (StringLang.Instr o s) (shift dz dl) ->
+    exists k, statement_variable s = Z k /\
+      dz + M.z_shift <= k /\ k <= dz + M.z_shift + M.n_input + M.n_aux.
   Proof.
-    intros dz dl o s k Hin Hvar.
+    intros dz dl o s Hin.
     apply in_map_iff in Hin. destruct Hin as [[o' s'] [E Hin]].
     destruct s'; simpl in E; inversion E; subst;
-      destruct v; simpl in Hvar; try discriminate;
-      injection Hvar as Hk; subst k;
+      destruct (M.variables_local _ _ Hin) as [k Hk];
+      destruct v as [i|i|]; simpl in Hk; try discriminate;
+      injection Hk as Heq; subst;
+      exists (dz + k); simpl; repeat split;
       pose proof (M.variables_range _ _ _ Hin eq_refl); lia.
   Qed.
 
-  Lemma shifted_next_step_preserves_outside : forall dz dl k pc st,
-    k < dz + M.low_z \/ dz + M.high_z < k ->
+  Definition outside dz (v : variable) : Prop :=
+    match v with
+    | Z k => k < dz + M.z_shift \/ dz + M.z_shift + M.n_input + M.n_aux < k
+    | _ => True
+    end.
+
+  (** Um passo não modifica variáveis fora do intervalo local. *)
+  Lemma shifted_next_step_preserves_outside : forall dz dl v pc st,
+    outside dz v ->
     let '(StringLang.SNAP _ st') :=
-      StringLang.next_step (shift dz dl) (StringLang.SNAP pc st) in st' (Z k) = st (Z k).
+      StringLang.next_step (shift dz dl) (StringLang.SNAP pc st) in st' v = st v.
   Proof.
-    intros dz dl k pc st Houtside. unfold StringLang.next_step.
+    intros dz dl v pc st Houtside. unfold StringLang.next_step.
     destruct (nth_error (shift dz dl) pc) as [[o s]|] eqn:E; auto.
-    assert (Hvar : statement_variable s <> Z k).
-    { intros Hvar. pose proof (shifted_variables_range dz dl o s k
-        (nth_error_In _ _ E) Hvar). lia. }
+    assert (Hvar : statement_variable s <> v).
+    { intros Hvar.
+      destruct (shifted_variables_local dz dl o s (nth_error_In _ _ E))
+        as [k [Hlocal Hrange]].
+      rewrite Hvar in Hlocal. destruct v; simpl in Houtside;
+        try discriminate. injection Hlocal as Heq; subst; lia. }
     destruct s; simpl in Hvar; simpl.
     - unfold StringLang.append, StringLang.update.
       apply var_eqb_neq in Hvar. rewrite Hvar. reflexivity.
     - unfold StringLang.del, StringLang.update.
       apply var_eqb_neq in Hvar. rewrite Hvar. reflexivity.
-    - destruct (StringLang.ends_with (st v) n); reflexivity.
+    - destruct (StringLang.ends_with (st v0) n); reflexivity.
   Qed.
 
-  Lemma shifted_preserves_outside : forall dz dl k steps pc st,
-    k < dz + M.low_z \/ dz + M.high_z < k ->
+  (** Uma execução inteira preserva variáveis fora do intervalo local. *)
+  Lemma shifted_preserves_outside : forall dz dl v steps pc st,
+    outside dz v ->
     let '(StringLang.SNAP _ st') :=
       StringLang.compute_program (shift dz dl) (StringLang.SNAP pc st) steps in
-    st' (Z k) = st (Z k).
+    st' v = st v.
   Proof.
-    intros dz dl k steps. induction steps as [|steps IH]; intros pc st Houtside; simpl; auto.
+    intros dz dl v steps. induction steps as [|steps IH]; intros pc st Houtside; simpl; auto.
     specialize (IH pc st Houtside).
     destruct (StringLang.compute_program (shift dz dl) (StringLang.SNAP pc st) steps)
       as [pc' st'].
-    pose proof (shifted_next_step_preserves_outside dz dl k pc' st' Houtside) as Hstep.
+    pose proof (shifted_next_step_preserves_outside dz dl v pc' st' Houtside) as Hstep.
     destruct (StringLang.next_step (shift dz dl) (StringLang.SNAP pc' st')).
     simpl in *. congruence.
   Qed.
 
+  (** As marcas deslocadas ficam no intervalo reservado. *)
   Lemma shifted_labels_range : forall dz dl s k,
     In (StringLang.Instr (Some (A k)) s) (shift dz dl) ->
-    dl + M.low_label <= k /\ k <= dl + M.high_label.
+    dl + M.l_shift <= k /\ k < dl + M.l_shift + M.n_labels.
   Proof.
     intros dz dl s k Hin. apply in_map_iff in Hin.
     destruct Hin as [[o s'] [E Hin]].
@@ -325,14 +316,7 @@ Module StringMacroProperties (M : TStringMacros).
     pose proof (M.labels_range _ _ Hin). lia.
   Qed.
 
-  Lemma shifted_alphabet : forall dz dl,
-    StringLang.program_over (shift dz dl) M.max_char.
-  Proof.
-    intros dz dl. unfold shift, shift_program.
-    pose proof M.alphabet as H. induction M.program as [|[o s] p IH]; simpl in *; auto.
-    destruct s; simpl in *; intuition.
-  Qed.
-
+  (** Saltos internos continuam apontando para marcas da macro deslocada. *)
   Lemma shifted_internal_jumps : forall dz dl o v c l,
     In (StringLang.Instr o (StringLang.IF_ENDS_GOTO v c l)) (shift dz dl) ->
     has_labeled_instr (shift dz dl) l = true.
@@ -345,46 +329,22 @@ Module StringMacroProperties (M : TStringMacros).
 
   (** O range deslocado fica acima das labels do prefixo. *)
   Lemma shift_no_shadow : forall dz dl prefix,
-    get_max_label prefix < dl + M.low_label ->
+    get_max_label prefix < dl + M.l_shift ->
     forall l, has_labeled_instr (shift dz dl) l = true ->
       has_labeled_instr prefix l = false.
   Proof.
     intros dz dl prefix Hfresh [k] Hlabel.
     destruct (has_labeled_instr_in _ _ Hlabel) as [s Hin].
     pose proof (shifted_labels_range dz dl s k Hin) as Hrange.
-    eapply labels_less_implies_diff with (value := dl + M.low_label); [|lia].
+    eapply labels_less_implies_diff with (value := dl + M.l_shift); [|lia].
     apply labels_leq_max; exact Hfresh.
-  Qed.
-
-  (** Indexação após SHIFT e inserção no contexto. *)
-  Lemma shifted_instruction_position : forall dz dl prefix suffix pc,
-    pc < length M.program ->
-    nth_error (prefix ++ shift dz dl ++ suffix) (length prefix + pc) =
-    option_map (shift_instruction dz dl) (nth_error M.program pc).
-  Proof.
-    intros. unfold shift. rewrite nth_error_in_context by (rewrite shift_length; assumption).
-    apply shift_nth_error.
-  Qed.
-
-  Lemma shifted_label_position : forall dz dl prefix suffix l,
-    get_max_label prefix < dl + M.low_label ->
-    has_labeled_instr M.program l = true ->
-    StringLang.get_labeled_instr (prefix ++ shift dz dl ++ suffix) (shift_label dl l) =
-    length prefix + StringLang.get_labeled_instr M.program l.
-  Proof.
-    intros dz dl prefix suffix l Hfresh Hl. unfold shift.
-    assert (Hshift : has_labeled_instr (shift dz dl) (shift_label dl l) = true)
-      by (unfold shift; rewrite shift_has_label; exact Hl).
-    rewrite get_labeled_instr_app by
-      exact (shift_no_shadow dz dl prefix Hfresh (shift_label dl l) Hshift).
-    rewrite get_labeled_instr_app_present by exact Hshift.
-    rewrite shift_label_position. reflexivity.
   Qed.
 
   (** Executar a macro original e inserir seu SHIFT produzem a mesma
       alteração nos nomes correspondentes.  *)
-  Theorem shifted_macro_in_context : forall dz dl prefix suffix st result steps,
-    get_max_label prefix < dl + M.low_label ->
+  Theorem shifted_macro_in_context_no_shadow : forall dz dl prefix suffix st result steps,
+    (forall l, has_labeled_instr (shift dz dl) l = true ->
+      has_labeled_instr prefix l = false) ->
     StringLang.compute_program M.program (StringLang.SNAP 0 (unshift_state dz st)) steps =
       StringLang.SNAP (length M.program) result ->
     exists used_steps final_state,
@@ -393,10 +353,9 @@ Module StringMacroProperties (M : TStringMacros).
         (StringLang.SNAP (length prefix) st) used_steps =
         StringLang.SNAP (length prefix + length M.program) final_state /\
       shifted_state dz result final_state /\
-      (forall k, k < dz + M.low_z \/ dz + M.high_z < k ->
-        final_state (Z k) = st (Z k)).
+      (forall v, outside dz v -> final_state v = st v).
   Proof.
-    intros dz dl prefix suffix st result steps Hfresh Hrun. unfold shift in *.
+    intros dz dl prefix suffix st result steps Hshadow Hrun. unfold shift in *.
     pose proof (shift_compute M.program dz dl steps 0 (unshift_state dz st) st
       ltac:(intros v; reflexivity)) as Hshift.
     rewrite Hrun in Hshift.
@@ -407,105 +366,79 @@ Module StringMacroProperties (M : TStringMacros).
       StringLang.SNAP (length (shift dz dl)) final_state).
     { unfold shift in *. rewrite shift_length. exact E. }
     destruct (macro_in_context (shift dz dl) (shifted_internal_jumps dz dl)
-      prefix suffix (shift_no_shadow dz dl prefix Hfresh) st final_state steps Hend)
+      prefix suffix Hshadow st final_state steps Hend)
       as [used [Hused Hcontext]].
     exists used, final_state. unfold shift in Hcontext. rewrite shift_length in Hcontext.
-    repeat split; auto. intros k Houtside.
-    pose proof (shifted_preserves_outside dz dl k steps 0 st Houtside) as Houtside'.
+    repeat split; auto. intros v Houtside.
+    pose proof (shifted_preserves_outside dz dl v steps 0 st Houtside) as Houtside'.
     unfold shift in Houtside'. rewrite E in Houtside'. exact Houtside'.
   Qed.
-  (** O deslocamento dos labels é escolhido acima dos labels do prefixo. *)
-  Corollary fresh_macro_in_context : forall dz prefix suffix st result steps,
-    StringLang.compute_program M.program
-      (StringLang.SNAP 0 (unshift_state dz st)) steps =
+  (** Limites de rótulos fornecem uma forma simples de garantir frescor. *)
+  Theorem shifted_macro_in_context : forall dz dl prefix suffix st result steps,
+    get_max_label prefix < dl + M.l_shift ->
+    StringLang.compute_program M.program (StringLang.SNAP 0 (unshift_state dz st)) steps =
       StringLang.SNAP (length M.program) result ->
     exists used_steps final_state,
       used_steps <= steps /\
-      StringLang.compute_program
-        (prefix ++ shift dz (S (get_max_label prefix)) ++ suffix)
+      StringLang.compute_program (prefix ++ shift dz dl ++ suffix)
         (StringLang.SNAP (length prefix) st) used_steps =
         StringLang.SNAP (length prefix + length M.program) final_state /\
       shifted_state dz result final_state /\
-      (forall k, k < dz + M.low_z \/ dz + M.high_z < k ->
-        final_state (Z k) = st (Z k)).
+      (forall v, outside dz v -> final_state v = st v).
   Proof.
-    intros dz prefix suffix st result steps Hrun.
-    apply shifted_macro_in_context.
-    - lia.
+    intros dz dl prefix suffix st result steps Hfresh Hrun.
+    apply shifted_macro_in_context_no_shadow.
+    - apply shift_no_shadow; exact Hfresh.
     - exact Hrun.
   Qed.
 End StringMacroProperties.
 
-(** Exemplo: os limites pertencem à própria implementação; o programa
-    é escrito em função deles e depois deslocado por SHIFT. *)
-Module AppendLocal <: TStringMacros.
-  Definition low_z := 2.
-  Definition high_z := 4.
-  Definition low_label := 3.
-  Definition high_label := 5.
-  Definition max_char := 1.
+(** Transfere o contrato fornecido pela macro para sua execução em contexto.
+    Os lemas estruturais continuam disponíveis neste mesmo módulo. *)
+Module StringMacroSpecProperties (M : TStringMacroWithSpec).
+  Include StringMacroProperties M.
 
-  Lemma z_range_valid : low_z <= high_z. 
-  Proof. 
-    unfold low_z, high_z; lia. 
-  Qed.
-
-  Lemma label_range_valid : low_label <= high_label.
-  Proof. 
-    unfold low_label, high_label; lia. 
-  Qed
-  .
-  Definition program : StringLang.program :=
-    [StringLang.Instr (Some (A low_label)) (StringLang.APPEND 0 (Z low_z))].
-
-  Lemma variables_range : forall o s k,
-    In (StringLang.Instr o s) program -> statement_variable s = Z k ->
-    low_z <= k /\ k <= high_z.
+  (** A macro isolada e a macro em contexto produzem o mesmo estado final.
+      A contagem de passos termina antes de executar o sufixo. *)
+  Theorem correct_in_context : forall prefix suffix initial,
+    (forall l, has_labeled_instr M.program l = true ->
+      has_labeled_instr prefix l = false) ->
+    M.precondition initial ->
+    exists steps final,
+      StringLang.compute_program (prefix ++ M.program ++ suffix)
+        (StringLang.SNAP (length prefix) initial) steps =
+        StringLang.SNAP (length prefix + length M.program) final /\
+      M.postcondition (M.input_values initial) (final (Z M.z_shift)).
   Proof.
-    intros o s k [E|H] Hvar; [|contradiction].
-    inversion E; subst. simpl in Hvar. injection Hvar as Ek; subst. split; [lia|apply z_range_valid].
+    intros prefix suffix initial Hshadow Hpre.
+    destruct (M.execution_correct initial Hpre)
+      as [steps [final [Hrun Hpost]]].
+    destruct (macro_in_context M.program M.internal_jumps prefix suffix
+      Hshadow initial final steps Hrun) as [used [Hused Hcontext]].
+    exists used, final. split; assumption.
   Qed.
 
-  Lemma labels_range : forall s k,
-    In (StringLang.Instr (Some (A k)) s) program -> low_label <= k /\ k <= high_label.
+  (** A pré-condição é verificada nos nomes deslocados por dz. A saída
+      satisfaz o contrato, e todas as variáveis fora da macro são preservadas. *)
+  Theorem shifted_correct_in_context : forall dz dl prefix suffix initial,
+    get_max_label prefix < dl + M.l_shift ->
+    M.precondition (unshift_state dz initial) ->
+    exists steps final,
+      StringLang.compute_program (prefix ++ shift dz dl ++ suffix)
+        (StringLang.SNAP (length prefix) initial) steps =
+        StringLang.SNAP (length prefix + length M.program) final /\
+      M.postcondition (M.input_values (unshift_state dz initial))
+        (final (Z (dz + M.z_shift))) /\
+      (forall v, outside dz v -> final v = initial v).
   Proof.
-    intros s k [E|H]; [|contradiction]. inversion E; subst.
-    split; [lia|apply label_range_valid].
+    intros dz dl prefix suffix initial Hfresh Hpre.
+    destruct (M.execution_correct (unshift_state dz initial) Hpre)
+      as [steps [result [Hrun Hpost]]].
+    destruct (shifted_macro_in_context dz dl prefix suffix initial result steps
+      Hfresh Hrun) as [used [final [Hused [Hcontext [Hstate Houtside]]]]].
+    exists used, final. split; [exact Hcontext|]. split; [|exact Houtside].
+    change (M.postcondition (M.input_values (unshift_state dz initial))
+      (final (shift_variable dz (Z M.z_shift)))).
+    rewrite (Hstate (Z M.z_shift)). exact Hpost.
   Qed.
-
-  Lemma alphabet : StringLang.program_over program max_char.
-  Proof. 
-    simpl; auto with arith. 
-  Qed.
-
-  Lemma internal_jumps : forall o v c l,
-    In (StringLang.Instr o (StringLang.IF_ENDS_GOTO v c l)) program ->
-    has_labeled_instr program l = true.
-  Proof. 
-    intros o v c l [H|H]; discriminate || contradiction. 
-  Qed.
-End AppendLocal.
-
-Module ExampleProperties := StringMacroProperties AppendLocal.
-
-Example shifted_append_local : ExampleProperties.shift 10 20 =
-  [StringLang.Instr (Some (A 23)) (StringLang.APPEND 0 (Z 12))].
-Proof. reflexivity. Qed.
-
-Example append_local_in_context : forall prefix suffix st,
-  exists steps final_state,
-    steps <= 1 /\
-    StringLang.compute_program
-      (prefix ++ ExampleProperties.shift 10 (S (get_max_label prefix)) ++ suffix)
-      (StringLang.SNAP (length prefix) st) steps =
-      StringLang.SNAP (length prefix + 1) final_state /\
-    final_state (Z 12) = st (Z 12) ++ [0] /\
-    (forall k, k < 12 \/ 14 < k -> final_state (Z k) = st (Z k)).
-Proof.
-  intros prefix suffix st.
-  destruct (ExampleProperties.fresh_macro_in_context 10 prefix suffix st
-    (StringLang.append 0 (unshift_state 10 st) (Z 2)) 1 eq_refl)
-    as [steps [final_state [Hsteps [Hrun [Hstate Houtside]]]]].
-  exists steps, final_state. repeat split; auto.
-  exact (Hstate (Z 2)).
-Qed.
+End StringMacroSpecProperties.
