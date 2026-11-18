@@ -19,12 +19,6 @@ theories/equivalence/StringUtils.v
 
 # Macros
 theories/macros/StringMacros.v
-theories/macros/StringMacroGuardProperties.v
-theories/macros/StringMacroBranchPositions.v
-theories/macros/StringMacroExpansion.v
-theories/macros/StringMacroInitProperties.v
-theories/macros/StringMacroBlockProperties.v
-theories/macros/StringBasicMacros.v
 theories/equivalence/macros/NatToStringMacros.v
 theories/equivalence/macros/MacroTactics.v
 theories/equivalence/macros/IfMacroProperties.v
